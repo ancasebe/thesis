@@ -1,3 +1,12 @@
+"""
+This module defines the `LoginPage` class, which represents the user interface for logging in.
+
+Key functionalities:
+- Displaying a login form where users can input their username and password.
+- Handling user input and verifying credentials against the database.
+- Switching to the main application page upon successful login or the registration page if needed.
+"""
+
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
     QLineEdit, QFormLayout, QMessageBox
@@ -7,7 +16,15 @@ from PySide6.QtCore import Qt
 
 
 class LoginPage(QWidget):
+    """
+    A class representing the login page of the application.
+
+    Methods:
+        setup_ui: Sets up the user interface for the login page.
+        handle_login: Handles user login, verifying credentials.
+    """
     def __init__(self, switch_to_main, switch_to_register, db_manager):
+        """Initializes the login page with references to the switch functions and db_manager."""
         super().__init__()
         self.switch_to_main = switch_to_main
         self.switch_to_register = switch_to_register
@@ -15,6 +32,7 @@ class LoginPage(QWidget):
         self.setup_ui()
 
     def setup_ui(self):
+        """Sets up the layout and widgets for the login page."""
         layout = QVBoxLayout()
         layout.setAlignment(Qt.AlignCenter)
 
@@ -79,6 +97,10 @@ class LoginPage(QWidget):
         self.setLayout(layout)
 
     def handle_login(self):
+        """
+        Handles user login by verifying the entered username and password.
+        If the credentials are valid, it switches to the main page.
+        """
         username = self.username_input.text().strip()
         password = self.password_input.text()
 

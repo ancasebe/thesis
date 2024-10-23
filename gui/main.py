@@ -1,13 +1,34 @@
+"""
+This module is the entry point of the application, providing the main window that handles page
+transitions between login, registration, and the main application interface.
+
+Key functionalities:
+- Manages the application's main window and page transitions.
+- Switches between login, registration, and the main page.
+- Handles user logout and application shutdown.
+"""
+
 import sys
 from PySide6.QtWidgets import QApplication, QMainWindow, QStackedWidget, QMessageBox
 from db_manager import DatabaseManager
 from login_page import LoginPage
 from registration_page import RegistrationPage
 from main_page import MainPage
+from test_page import TestPage
 
 
 class MainWindow(QMainWindow):
+    """
+    The main window class that handles page transitions between login, registration, and the main application interface.
+
+    Attributes:
+        db_manager (DatabaseManager): The database manager for handling user data.
+        stacked_widget (QStackedWidget): A stacked widget to switch between pages.
+    """
+
     def __init__(self):
+        """Initializes the main window, setting up page transitions and database connection."""
+
         super().__init__()
         self.db_manager = DatabaseManager()
         self.setWindowTitle("Log in page")
@@ -37,7 +58,12 @@ class MainWindow(QMainWindow):
         self.stacked_widget.setCurrentIndex(0)
 
     def create_application_widget(self, username):
-        """Creates the main application interface with navigation."""
+        """
+        Creates the main application interface after successful login or registration.
+
+        Args:
+            username (str): The username of the logged-in user.
+        """
         app_widget = MainPage(username, self.logout)
         self.stacked_widget.addWidget(app_widget)  # Index 2
         self.stacked_widget.setCurrentWidget(app_widget)
@@ -47,12 +73,17 @@ class MainWindow(QMainWindow):
         self.create_application_widget(username)
 
     def show_login(self):
+        """Switches to the login page."""
         self.stacked_widget.setCurrentIndex(0)
 
     def show_registration(self):
+        """Switches to the registration page."""
         self.stacked_widget.setCurrentIndex(1)
 
     def logout(self):
+        """
+        Logs the user out, asking for confirmation and returning to the login page if confirmed.
+        """
         reply = QMessageBox.question(
             self,
             'Log Out',
@@ -68,13 +99,16 @@ class MainWindow(QMainWindow):
                 main_app_widget.deleteLater()
             self.stacked_widget.setCurrentIndex(0)
 
-    def closeEvent(self, event):
-        """Handle the window close event to ensure the database is closed."""
+    def close_event(self, event):
+        """
+        Ensures the database connection is closed before closing the application.
+        """
         self.db_manager.close()
         event.accept()
 
 
 def main():
+    """Main entry point for the application."""
     app = QApplication(sys.argv)
     window = MainWindow()
     window.show()

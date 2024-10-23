@@ -1,12 +1,32 @@
+"""
+This module defines the `RegistrationPage` class, which handles user registration.
+
+Key functionalities:
+- Displaying a form to collect user data for registration.
+- Validating user inputs, such as ensuring password confirmation.
+- Registering new users by saving their information to the database.
+- Switching to the main application page upon successful registration.
+"""
+
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QFormLayout, QLineEdit, QSpinBox, QLabel,
+    QWidget, QVBoxLayout, QFormLayout, QLineEdit, QSpinBox, QLabel, QSlider,
     QComboBox, QPushButton, QGridLayout, QHBoxLayout, QMessageBox
 )
 from PySide6.QtCore import Qt
 
 
 class RegistrationPage(QWidget):
+    """
+    A class representing the registration page of the application.
+
+    Methods:
+        setup_ui: Sets up the user interface for the registration page.
+        handle_registration: Handles the registration process, validating user input and saving data.
+        validate_inputs: Validates the user inputs to ensure completeness and correctness.
+    """
+
     def __init__(self, switch_to_main, switch_to_login, db_manager):
+        """Initializes the registration page with references to the switch function and db_manager."""
         super().__init__()
         self.switch_to_main = switch_to_main
         self.switch_to_login = switch_to_login
@@ -14,6 +34,7 @@ class RegistrationPage(QWidget):
         self.setup_ui()
 
     def setup_ui(self):
+        """Sets up the layout and widgets for the registration page."""
         layout = QVBoxLayout()
         layout.setAlignment(Qt.AlignCenter)
 
@@ -39,9 +60,6 @@ class RegistrationPage(QWidget):
         self.dominant_arm_combo = QComboBox()
         self.dominant_arm_combo.addItems(["-", "Left", "Right"])
 
-        # self.arm_tested_combo = QComboBox()
-        # self.arm_tested_combo.addItems(["Dominant", "Non-Dominant"])
-
         # Weight, Height, Age
         self.weight_input = QSpinBox()
         self.weight_input.setMinimum(0)
@@ -57,32 +75,15 @@ class RegistrationPage(QWidget):
 
         # French Scale Level
         self.french_scale_combo = QComboBox()
-        self.french_scale_combo.addItems(["-", "5", "6a", "6a+", "6b", "6b+", "6c", "7a", "7a+", "7b", "7b+", "7c",
-                                          "7c+", "8a", "8a+", "8b", "8b+", "8c", "8c+", "9a", "9a+", "9b", "9b+", "9c"])
+        self.french_scale_combo.addItems([
+            "-", "5", "6a", "6a+", "6b", "6b+", "6c", "7a", "7a+", "7b", "7b+", "7c", "7c+",
+            "8a", "8a+", "8b", "8b+", "8c", "8c+", "9a", "9a+", "9b", "9b+", "9c"
+        ])
 
         # Years of Climbing
         self.years_climbing_input = QSpinBox()
         self.years_climbing_input.setMinimum(0)
         self.years_climbing_input.setMaximum(30)
-
-        # Time spent climbing indoors (%)
-        self.climbing_indoor_input = QSpinBox()
-        self.climbing_indoor_input.setMinimum(0)
-        self.climbing_indoor_input.setMaximum(100)
-
-        # Time spent lead climbing (%)
-        self.lead_climbing_slider = QSpinBox()
-        self.lead_climbing_slider.setMinimum(0)
-        self.lead_climbing_slider.setMaximum(100)
-
-        # Time spent bouldering (%)
-        self.bouldering_input = QSpinBox()
-        self.bouldering_input.setMinimum(0)
-        self.bouldering_input.setMaximum(100)
-
-        self.sport_other = QLineEdit()
-        # self.sport_other.addItems(["Running", "Cycling", "Swimming", "Ski mountaineering", "Skiing", "Snowboarding",
-        #                            "Surfing", "Yoga", "Volleyball", "Basketball", "Other"])
 
         # Climbing Frequency, Hours per week, Sport Frequency, Sport Activity Hours
         self.climbing_freq_input = QSpinBox()
@@ -93,6 +94,8 @@ class RegistrationPage(QWidget):
         self.climbing_hours_input.setMinimum(0)
         self.climbing_hours_input.setMaximum(50)
 
+        self.sport_other = QLineEdit()
+
         self.sport_freq_input = QSpinBox()
         self.sport_freq_input.setMinimum(0)
         self.sport_freq_input.setMaximum(7)
@@ -101,9 +104,27 @@ class RegistrationPage(QWidget):
         self.sport_activity_input.setMinimum(0)
         self.sport_activity_input.setMaximum(50)
 
-        # Organize the inputs into a 2-column layout using grid layout
+        # Sliders for Bouldering/Lead Climbing and Indoor/Outdoor Climbing percentages
+        self.bouldering_lead_slider = QSlider(Qt.Horizontal)
+        self.bouldering_lead_slider.setRange(0, 100)
+        self.bouldering_lead_slider.setSingleStep(5)  # Step of 5%
+        self.bouldering_lead_slider.setValue(50)  # Default: 50% Bouldering, 50% Lead Climbing
+        self.bouldering_lead_slider.valueChanged.connect(self.update_bouldering_lead)
 
-        # First column
+        self.climbing_indoor_outdoor_slider = QSlider(Qt.Horizontal)
+        self.climbing_indoor_outdoor_slider.setRange(0, 100)
+        self.climbing_indoor_outdoor_slider.setSingleStep(5)  # Step of 5%
+        self.climbing_indoor_outdoor_slider.setValue(50)  # Default: 50% Indoor, 50% Outdoor
+        self.climbing_indoor_outdoor_slider.valueChanged.connect(self.update_indoor_outdoor)
+
+        # Labels for showing the percentages
+        self.bouldering_label = QLabel("Bouldering: 50%")
+        self.lead_climbing_label = QLabel("Lead Climbing: 50%")
+
+        self.indoor_label = QLabel("Climbing Indoor: 50%")
+        self.outdoor_label = QLabel("Climbing Outdoor: 50%")
+
+        # First column (left side)
         grid_layout.addWidget(QLabel("Username:"), 0, 0)
         grid_layout.addWidget(self.username_input, 0, 1)
 
@@ -128,50 +149,57 @@ class RegistrationPage(QWidget):
         grid_layout.addWidget(QLabel("Dominant Arm:"), 7, 0)
         grid_layout.addWidget(self.dominant_arm_combo, 7, 1)
 
-        grid_layout.addWidget(QLabel("Weight (kg):"), 0, 2)
-        grid_layout.addWidget(self.weight_input, 0, 3)
+        # Weight, Height, Age on the left side
+        grid_layout.addWidget(QLabel("Weight (kg):"), 8, 0)
+        grid_layout.addWidget(self.weight_input, 8, 1)
 
-        grid_layout.addWidget(QLabel("Height (cm):"), 1, 2)
-        grid_layout.addWidget(self.height_input, 1, 3)
+        grid_layout.addWidget(QLabel("Height (cm):"), 9, 0)
+        grid_layout.addWidget(self.height_input, 9, 1)
 
-        grid_layout.addWidget(QLabel("Age (years):"), 2, 2)
-        grid_layout.addWidget(self.age_input, 2, 3)
+        grid_layout.addWidget(QLabel("Age (years):"), 10, 0)
+        grid_layout.addWidget(self.age_input, 10, 1)
 
-        # Second column
+        # Second column (right side)
+        grid_layout.addWidget(QLabel("French Scale Level:"), 0, 2)
+        grid_layout.addWidget(self.french_scale_combo, 0, 3)
 
-        grid_layout.addWidget(QLabel("French Scale Level:"), 3, 2)
-        grid_layout.addWidget(self.french_scale_combo, 3, 3)
+        grid_layout.addWidget(QLabel("Years of Climbing:"), 1, 2)
+        grid_layout.addWidget(self.years_climbing_input, 1, 3)
 
-        grid_layout.addWidget(QLabel("Years of Climbing:"), 4, 2)
-        grid_layout.addWidget(self.years_climbing_input, 4, 3)
+        grid_layout.addWidget(QLabel("Climbing Frequency/week:"), 2, 2)
+        grid_layout.addWidget(self.climbing_freq_input, 2, 3)
 
-        grid_layout.addWidget(QLabel("Time spent climbing indoor (%):"), 5, 2)
-        grid_layout.addWidget(self.climbing_indoor_input, 5, 3)
+        grid_layout.addWidget(QLabel("Climbing Hours/week:"), 3, 2)
+        grid_layout.addWidget(self.climbing_hours_input, 3, 3)
 
-        grid_layout.addWidget(QLabel("Time spent lead climbing (%):"), 6, 2)
-        grid_layout.addWidget(self.lead_climbing_slider, 6, 3)
+        # Add sliders for Bouldering/Lead Climbing and Indoor/Outdoor Climbing
+        grid_layout.addWidget(QLabel("Bouldering and Lead Climbing:"), 4, 2)
+        grid_layout.addWidget(self.bouldering_lead_slider, 4, 3)
+        grid_layout.addWidget(self.bouldering_label, 5, 2)
+        grid_layout.addWidget(self.lead_climbing_label, 5, 3)
 
-        grid_layout.addWidget(QLabel("Time spent bouldering (%):"), 7, 2)
-        grid_layout.addWidget(self.bouldering_input, 7, 3)
+        grid_layout.addWidget(QLabel("Indoor and Outdoor Climbing:"), 6, 2)
+        grid_layout.addWidget(self.climbing_indoor_outdoor_slider, 6, 3)
+        grid_layout.addWidget(self.indoor_label, 7, 2)
+        grid_layout.addWidget(self.outdoor_label, 7, 3)
 
-        grid_layout.addWidget(QLabel("Other sports:"), 8, 2)
+        grid_layout.addWidget(QLabel("Other sports (excluding climbing):"), 8, 2)
         grid_layout.addWidget(self.sport_other, 8, 3)
 
-        grid_layout.addWidget(QLabel("Climbing Frequency/week:"), 9, 2)
-        grid_layout.addWidget(self.climbing_freq_input, 9, 3)
+        grid_layout.addWidget(QLabel("Sport Frequency/week (excluding climbing):"), 9, 2)
+        grid_layout.addWidget(self.sport_freq_input, 9, 3)
 
-        grid_layout.addWidget(QLabel("Climbing Hours/week:"), 10, 2)
-        grid_layout.addWidget(self.climbing_hours_input, 10, 3)
-
-        grid_layout.addWidget(QLabel("Sport Frequency/week (excluding climbing):"), 11, 2)
-        grid_layout.addWidget(self.sport_freq_input, 11, 3)
-
-        grid_layout.addWidget(QLabel("Sport Activity (hours/week):"), 12, 2)
-        grid_layout.addWidget(self.sport_activity_input, 12, 3)
+        grid_layout.addWidget(QLabel("Sport Activity (hours/week):"), 10, 2)
+        grid_layout.addWidget(self.sport_activity_input, 10, 3)
 
         # Submit button
-        submit_button = QPushButton("Submit")
+        submit_button = QPushButton("Register")
         submit_button.clicked.connect(self.handle_registration)
+
+        switch_button = QPushButton("Already have an account? Log In")
+        switch_button.setFlat(True)
+        switch_button.clicked.connect(self.switch_to_login)
+        layout.addWidget(switch_button)
 
         # Add the grid layout and the button to the main layout
         layout.addLayout(grid_layout)
@@ -179,7 +207,27 @@ class RegistrationPage(QWidget):
 
         self.setLayout(layout)
 
+    def update_bouldering_lead(self):
+        """Update the bouldering and lead climbing percentages based on the slider value."""
+        bouldering_percentage = self.bouldering_lead_slider.value()
+        lead_climbing_percentage = 100 - bouldering_percentage
+        self.bouldering_label.setText(f"Bouldering: {bouldering_percentage}%")
+        self.lead_climbing_label.setText(f"Lead Climbing: {lead_climbing_percentage}%")
+
+    def update_indoor_outdoor(self):
+        """Update the climbing indoor and outdoor percentages based on the slider value."""
+        indoor_percentage = self.climbing_indoor_outdoor_slider.value()
+        outdoor_percentage = 100 - indoor_percentage
+        self.indoor_label.setText(f"Climbing Indoor: {indoor_percentage}%")
+        self.outdoor_label.setText(f"Climbing Outdoor: {outdoor_percentage}%")
+
     def validate_inputs(self):
+        """
+        Validates that all input fields are filled and the passwords match.
+
+        Returns:
+            bool: True if all inputs are valid, False otherwise.
+        """
         errors = []
 
         # Dictionary holding the input widgets and their corresponding validation checks
@@ -240,8 +288,19 @@ class RegistrationPage(QWidget):
         return True  # Validation passed
 
     def handle_registration(self):
+        """
+        Handles the registration process by collecting user data, validating inputs,
+        and registering the user in the database.
+        """
         username = self.username_input.text().strip()
         password = self.password_input.text()
+
+        # Collect the percentages from the sliders
+        climbing_indoor_percentage = self.bouldering_lead_slider.value()
+        climbing_outdoor_percentage = 100 - climbing_indoor_percentage
+
+        bouldering_percentage = self.climbing_indoor_outdoor_slider.value()
+        lead_climbing_percentage = 100 - bouldering_percentage
 
         user_data = {
             "confirm_password": self.confirm_password_input.text(),
@@ -255,12 +314,13 @@ class RegistrationPage(QWidget):
             "age": self.age_input.value(),
             "french_scale": self.french_scale_combo.currentText(),
             "years_climbing": self.years_climbing_input.value(),
-            "climbing_indoor": self.climbing_indoor_input.value(),
-            "lead_climbing": self.lead_climbing_slider.value(),
-            "bouldering": self.bouldering_input.value(),
-            "sport_other": self.sport_other.text(),
             "climbing_freq": self.climbing_freq_input.value(),
             "climbing_hours": self.climbing_hours_input.value(),
+            "climbing_indoor": climbing_indoor_percentage,
+            "climbing_outdoor": climbing_outdoor_percentage,
+            "bouldering": bouldering_percentage,
+            "lead_climbing": lead_climbing_percentage,
+            "sport_other": self.sport_other.text(),
             "sport_freq": self.sport_freq_input.value(),
             "sport_activity_hours": self.sport_activity_input.value()
         }
@@ -276,4 +336,3 @@ class RegistrationPage(QWidget):
             self.switch_to_main(username)  # Redirect to the main page or next step
         else:
             QMessageBox.warning(self, "Error", "Username already exists or registration failed.")
-
