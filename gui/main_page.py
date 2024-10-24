@@ -7,13 +7,15 @@ Key functionalities:
 - Handles user logout functionality through a callback.
 """
 
+# pylint: disable=E1101
+
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
     QStackedWidget, QSizePolicy, QMessageBox
 )
 from PySide6.QtGui import QPixmap
 from PySide6.QtCore import Qt
-from test_page import TestPage
+from test_page.test_page import TestPage
 
 
 def create_placeholder_page(title):
@@ -41,7 +43,7 @@ def create_placeholder_page(title):
 
 class MainAppPage(QWidget):
     """
-    The main application page where users navigate to different sections like Calibration, Testing, etc.
+    The main application page where users navigate to different pages like Calibration or Testing.
 
     Args:
         username (str): The username of the currently logged-in user.
@@ -100,12 +102,24 @@ class MainPage(QWidget):
         Args:
             username (str): The username of the logged-in user.
             logout_callback (function): The function to call when the user logs out.
-            switch_to_test_page (function): The function to switch to the Test Page.
         """
         super().__init__()
         self.username = username
         self.logout_callback = logout_callback
+        # Stacked widget to hold different application pages
+        self.app_stacked_widget = QStackedWidget()
         self.setup_ui()
+        # Add various sections (pages) to the stacked widget
+        self.main_app_page = MainAppPage(self.username, self.logout_callback)
+        self.test_page = TestPage(self.username, self.logout_callback)
+
+        self.app_stacked_widget.addWidget(self.main_app_page)  # Index 0
+        self.app_stacked_widget.addWidget(create_placeholder_page("Calibration"))  # Index 1
+        self.app_stacked_widget.addWidget(self.test_page)      # Index 2
+        self.app_stacked_widget.addWidget(create_placeholder_page("Training"))     # Index 3
+        self.app_stacked_widget.addWidget(create_placeholder_page("Results"))      # Index 4
+        self.app_stacked_widget.addWidget(create_placeholder_page("Settings"))     # Index 5
+        self.app_stacked_widget.addWidget(create_placeholder_page("About"))        # Index 6
 
     def setup_ui(self):
         """
@@ -144,19 +158,13 @@ class MainPage(QWidget):
         # Add stretch to push buttons to the top (except Log Out)
         nav_layout.addStretch()
 
-        # Stacked widget to hold different application pages
-        self.app_stacked_widget = QStackedWidget()
-
-        # Add various sections (pages) to the stacked widget
-        self.main_app_page = MainAppPage(self.username, self.logout_callback)
-        self.test_page = TestPage(self.username, self.logout_callback)
-        self.app_stacked_widget.addWidget(self.main_app_page)  # Index 0
-        self.app_stacked_widget.addWidget(create_placeholder_page("Calibration"))  # Index 1
-        self.app_stacked_widget.addWidget(self.test_page)      # Index 2
-        self.app_stacked_widget.addWidget(create_placeholder_page("Training"))     # Index 3
-        self.app_stacked_widget.addWidget(create_placeholder_page("Results"))      # Index 4
-        self.app_stacked_widget.addWidget(create_placeholder_page("Settings"))     # Index 5
-        self.app_stacked_widget.addWidget(create_placeholder_page("About"))        # Index 6
+        # self.app_stacked_widget.addWidget(self.main_app_page)  # Index 0
+        # self.app_stacked_widget.addWidget(create_placeholder_page("Calibration"))  # Index 1
+        # self.app_stacked_widget.addWidget(self.test_page)      # Index 2
+        # self.app_stacked_widget.addWidget(create_placeholder_page("Training"))     # Index 3
+        # self.app_stacked_widget.addWidget(create_placeholder_page("Results"))      # Index 4
+        # self.app_stacked_widget.addWidget(create_placeholder_page("Settings"))     # Index 5
+        # self.app_stacked_widget.addWidget(create_placeholder_page("About"))        # Index 6
 
         # Add navigation and stacked widget to the main layout
         main_layout.addWidget(nav_widget)
@@ -199,4 +207,3 @@ class MainPage(QWidget):
         Switches the current view to the About section (index 6).
         """
         self.app_stacked_widget.setCurrentIndex(6)
-

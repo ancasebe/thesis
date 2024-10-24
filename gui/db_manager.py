@@ -10,7 +10,7 @@ Key functionalities:
 """
 
 import sqlite3
-import bcrypt
+import hashlib
 
 
 class DatabaseManager:
@@ -19,7 +19,7 @@ class DatabaseManager:
 
     Methods:
         create_users_table: Creates the users table in the database.
-        register_user: Registers a new user with a hashed password.
+        register_user: Registers a new user with a hashed password using SHA-512 with salt.
         verify_user: Verifies if the username and password match.
         close: Closes the database connection.
     """
@@ -42,7 +42,6 @@ class DatabaseManager:
                     email TEXT,
                     gender TEXT,
                     dominant_arm TEXT,
-                    arm_tested TEXT,
                     weight INTEGER,
                     height INTEGER,
                     age INTEGER,
@@ -50,19 +49,38 @@ class DatabaseManager:
                     climbing_freq INTEGER,
                     climbing_hours INTEGER,
                     years_climbing INTEGER,
-                    climbing_indoor INTEGER,
-                    climbing_outdoor INTEGER,
                     bouldering INTEGER,
                     lead_climbing INTEGER,
+                    climbing_indoor INTEGER,
+                    climbing_outdoor INTEGER,
                     sport_other TEXT,
                     sport_freq INTEGER,
                     sport_activity_hours INTEGER
                 );
             """)
 
+    @staticmethod
+    def hash_password(password, salt):
+        """
+        Hashes the password using SHA-512 and salts it with the user ID.
+
+        Args:
+            password (str): The plain text password.
+            salt (str): The salt (usually the user's ID) to combine with the password.
+
+        Returns:
+            str: The resulting salted SHA-512 hash.
+        """
+        # Combine password and salt, then apply SHA-512
+        salted_password = password + salt
+        hash_object = hashlib.sha512(salted_password.encode('utf-8'))
+        hashed_password = hash_object.hexdigest()
+        return hashed_password
+
     def register_user(self, username, password, **user_data):
         """
-        Registers a new user in the database with hashed password and additional user data.
+        Registers a new user in the database with salted SHA-512 hashed password
+        and additional user data.
 
         Args:
             username (str): The username for the user.
@@ -73,36 +91,54 @@ class DatabaseManager:
             bool: True if registration is successful, False if the username already exists.
         """
         try:
-            hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
-            with self.connection:
-                self.connection.execute("""
-                    INSERT INTO users (username, password, name, surname, email, gender, dominant_arm, 
-                    arm_tested, weight, height, age, french_scale, years_climbing, climbing_indoor, 
-                    lead_climbing, bouldering, climbing_freq, climbing_hours, sport_freq, sport_activity_hours) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-                """, (
-                    username, hashed_password,
-                    user_data.get('name'),
-                    user_data.get('surname'),
-                    user_data.get('email'),
-                    user_data.get('gender'),
-                    user_data.get('dominant_arm'),
-                    user_data.get('arm_tested'),
-                    user_data.get('weight'),
-                    user_data.get('height'),
-                    user_data.get('age'),
-                    user_data.get('french_scale'),
-                    user_data.get('years_climbing'),
-                    user_data.get('climbing_freq'),
-                    user_data.get('climbing_hours'),
-                    user_data.get('climbing_indoor'),
-                    user_data.get('climbing_outdoor'),
-                    user_data.get('bouldering'),
-                    user_data.get('lead_climbing'),
-                    user_data.get('sport_other'),
-                    user_data.get('sport_freq'),
-                    user_data.get('sport_activity_hours')
-                ))
+            # Step 1: Insert the user with a temporary placeholder password
+            cursor = self.connection.cursor()
+            cursor.execute("""
+                INSERT INTO users (username, password, name, surname, email, gender, dominant_arm, 
+                weight, height, age, french_scale, years_climbing, climbing_freq, climbing_hours, 
+                climbing_indoor, climbing_outdoor, lead_climbing, bouldering, sport_other, 
+                sport_freq, sport_activity_hours)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+            """, (
+                username, 'placeholder_password',  # Temporary password, to be updated after hashing
+                user_data.get('name'),
+                user_data.get('surname'),
+                user_data.get('email'),
+                user_data.get('gender'),
+                user_data.get('dominant_arm'),
+                user_data.get('weight'),
+                user_data.get('height'),
+                user_data.get('age'),
+                user_data.get('french_scale'),
+                user_data.get('years_climbing'),
+                user_data.get('climbing_freq'),
+                user_data.get('climbing_hours'),
+                user_data.get('climbing_indoor'),
+                user_data.get('climbing_outdoor'),
+                user_data.get('bouldering'),
+                user_data.get('lead_climbing'),
+                user_data.get('sport_other'),
+                user_data.get('sport_freq'),
+                user_data.get('sport_activity_hours')
+            ))
+
+            # Commit the insertion
+            self.connection.commit()
+
+            # Step 2: Fetch the newly created user ID (for salting)
+            user_id = cursor.lastrowid
+            salt = str(user_id)
+
+            # Step 3: Hash the password with the user ID as the salt
+            hashed_password = self.hash_password(password, salt)
+
+            # Step 4: Update the user's password with the hashed value
+            cursor.execute("""
+                UPDATE users SET password = ? WHERE id = ?;
+            """, (hashed_password, user_id))
+
+            # Commit the update
+            self.connection.commit()
             return True
         except sqlite3.IntegrityError:
             return False
@@ -120,14 +156,17 @@ class DatabaseManager:
         """
         cursor = self.connection.cursor()
         cursor.execute("""
-            SELECT password FROM users WHERE username = ?;
+            SELECT id, password FROM users WHERE username = ?;
         """, (username,))
         result = cursor.fetchone()
         if result:
-            stored_password = result[0]
-            if isinstance(stored_password, str):
-                stored_password = stored_password.encode('utf-8')
-            return bcrypt.checkpw(password.encode('utf-8'), stored_password)
+            user_id, stored_password = result
+            salt = str(user_id)
+
+            # Hash the input password with the salt and compare to the stored hash
+            hashed_input_password = self.hash_password(password, salt)
+
+            return hashed_input_password == stored_password
         return False
 
     def get_user_data(self, username, field):

@@ -11,15 +11,15 @@ Key functionalities:
 import sys
 from PySide6.QtWidgets import QApplication, QMainWindow, QStackedWidget, QMessageBox
 from db_manager import DatabaseManager
-from login_page import LoginPage
-from registration_page import RegistrationPage
+from gui.user_info.login_page import LoginPage
+from gui.user_info.registration_page import RegistrationPage
 from main_page import MainPage
-from test_page import TestPage
 
 
 class MainWindow(QMainWindow):
     """
-    The main window class that handles page transitions between login, registration, and the main application interface.
+    The main window class that handles page transitions between login, registration,
+    and the main application interface.
 
     Attributes:
         db_manager (DatabaseManager): The database manager for handling user data.
