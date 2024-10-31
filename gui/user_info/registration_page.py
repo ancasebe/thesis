@@ -9,10 +9,8 @@ Key functionalities:
 """
 # pylint: disable=E1101
 import re
-from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QLineEdit, QSpinBox, QLabel, QSlider,
-    QComboBox, QPushButton, QGridLayout, QMessageBox
-)
+from PySide6.QtWidgets import (QWidget, QVBoxLayout, QLineEdit, QSpinBox, QLabel, QSlider,
+                               QComboBox, QPushButton, QGridLayout, QMessageBox, QHBoxLayout)
 from PySide6.QtCore import Qt
 
 
@@ -31,6 +29,8 @@ class RegistrationPage(QWidget):
         super().__init__()
         self.first_column_widgets = {}
         self.second_column_widgets = {}
+        self.bouldering_lead_slider = None
+        self.indoor_outdoor_slider = None
         self.switch_to_main = switch_to_main
         self.switch_to_login = switch_to_login
         self.db_manager = db_manager
@@ -64,8 +64,6 @@ class RegistrationPage(QWidget):
             "Years of Climbing:": QSpinBox(),
             "Climbing Frequency/week:": QSpinBox(),
             "Climbing Hours/week:": QSpinBox(),
-            "Bouldering and Lead Climbing:": QSlider(Qt.Horizontal),
-            "Indoor and Outdoor Climbing:": QSlider(Qt.Horizontal),
             "Other sports:": QLineEdit(),
             "Sport Frequency/week:": QSpinBox(),
             "Sport Activity (hours/week):": QSpinBox()
@@ -89,22 +87,24 @@ class RegistrationPage(QWidget):
         self.second_column_widgets["Climbing Hours/week:"].setRange(0, 50)
         self.second_column_widgets["Sport Frequency/week:"].setRange(0, 7)
         self.second_column_widgets["Sport Activity (hours/week):"].setRange(0, 50)
-        self.second_column_widgets["Bouldering and Lead Climbing:"].setRange(0, 100)
-        self.second_column_widgets["Bouldering and Lead Climbing:"].setSingleStep(5)
-        self.second_column_widgets["Bouldering and Lead Climbing:"].setValue(50)
-        self.second_column_widgets["Indoor and Outdoor Climbing:"].setRange(0, 100)
-        self.second_column_widgets["Indoor and Outdoor Climbing:"].setSingleStep(5)
-        self.second_column_widgets["Indoor and Outdoor Climbing:"].setValue(50)
 
         # Adding widgets to the grid layout in the first column (left)
         for i, (label, widget) in enumerate(self.first_column_widgets.items()):
             grid_layout.addWidget(QLabel(label), i, 0)
             grid_layout.addWidget(widget, i, 1)
 
-        # Adding widgets to the grid layout in the second column (right)
+        # Adding standard widgets to the grid layout in the second column (right)
         for i, (label, widget) in enumerate(self.second_column_widgets.items()):
             grid_layout.addWidget(QLabel(label), i, 2)
             grid_layout.addWidget(widget, i, 3)
+
+        # Add the custom slider layouts for Bouldering/Lead and Indoor/Outdoor climbing
+        bouldering_lead_layout, self.bouldering_lead_slider = self.create_slider_layout("Bouldering", "Lead Climbing")
+        indoor_outdoor_layout, self.indoor_outdoor_slider = self.create_slider_layout("Indoor", "Outdoor Climbing")
+
+        # Add these custom layouts directly into the grid layout without dictionary keys
+        grid_layout.addLayout(bouldering_lead_layout, len(self.second_column_widgets), 2, 1, 2)
+        grid_layout.addLayout(indoor_outdoor_layout, len(self.second_column_widgets) + 1, 2, 1, 2)
 
         # Submit and switch button
         submit_button = QPushButton("Register")
@@ -119,6 +119,40 @@ class RegistrationPage(QWidget):
         layout.addWidget(switch_button)
 
         self.setLayout(layout)
+
+    def create_slider_layout(self, left_label_text, right_label_text):
+        """Creates a layout for a slider with labels on either side to represent switched percentages."""
+        layout = QHBoxLayout()
+        left_label = QLabel(f"{left_label_text}: 50%")
+        right_label = QLabel(f"{right_label_text}: 50%")
+        slider = QSlider(Qt.Horizontal)
+        slider.setRange(0, 100)
+        slider.setSingleStep(5)
+        slider.setStyleSheet("""
+            QSlider::groove:horizontal {
+                height: 5px;
+                background: gray; /* Sets the entire slider track to blue */
+            }
+            QSlider::handle:horizontal {
+                background: white; /* Handle color */
+                border: 1px solid black;
+                width: 10px;
+                margin: -5px 0; /* Centers the handle on the groove */
+                border-radius: 7px;
+            }
+            """)
+        slider.setValue(50)
+        slider.valueChanged.connect(lambda value: self.update_slider_labels(value, left_label, right_label))
+        layout.addWidget(left_label)
+        layout.addWidget(slider)
+        layout.addWidget(right_label)
+        return layout, slider
+
+    @staticmethod
+    def update_slider_labels(value, left_label, right_label):
+        """Updates the labels for a slider to show switched percentage values."""
+        left_label.setText(f"{left_label.text().split(':')[0]}: {100 - value}%")
+        right_label.setText(f"{right_label.text().split(':')[0]}: {value}%")
 
     def validate_inputs(self):
         """
@@ -143,7 +177,6 @@ class RegistrationPage(QWidget):
             "weight": self.first_column_widgets["Weight (kg):"].value(),
             "height": self.first_column_widgets["Height (cm):"].value(),
             "age": self.first_column_widgets["Age (years):"].value(),
-            "years_climbing": self.second_column_widgets["Years of Climbing:"].value(),
             "climbing_freq": self.second_column_widgets["Climbing Frequency/week:"].value(),
             "climbing_hours": self.second_column_widgets["Climbing Hours/week:"].value(),
         }
@@ -196,12 +229,12 @@ class RegistrationPage(QWidget):
         username = self.first_column_widgets["Username:"].text().strip()
         password = self.first_column_widgets["Password:"].text()
 
-        # Collect the percentages from the sliders
-        bouldering_percentage = self.second_column_widgets["Bouldering and Lead Climbing:"].value()
-        lead_climbing_percentage = 100 - bouldering_percentage
+        # Collect the percentages from the sliders with switched values
+        bouldering_percentage = 100 - self.bouldering_lead_slider.value()
+        lead_climbing_percentage = self.bouldering_lead_slider.value()
 
-        climbing_indoor_percentage = self.second_column_widgets["Indoor and Outdoor Climbing:"].value()
-        climbing_outdoor_percentage = 100 - climbing_indoor_percentage
+        climbing_indoor_percentage = 100 - self.indoor_outdoor_slider.value()
+        climbing_outdoor_percentage = self.indoor_outdoor_slider.value()
 
         user_data = {
             "name": self.first_column_widgets["Name:"].text(),
@@ -226,9 +259,9 @@ class RegistrationPage(QWidget):
         }
 
         if not self.validate_inputs():
-            return  # Stop registration if validation fails
+            return
 
-        # Proceed with saving the user data if validation passes and username is unique
+        # Register the user data if validation passes
         success = self.db_manager.register_user(username, password, **user_data)
 
         if success:

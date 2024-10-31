@@ -16,6 +16,8 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QPixmap
 from PySide6.QtCore import Qt
 from test_page.test_page import TestPage
+from user_info.setting_page import SettingsPage
+from db_manager import DatabaseManager
 
 
 def create_placeholder_page(title):
@@ -111,14 +113,16 @@ class MainPage(QWidget):
         self.setup_ui()
         # Add various sections (pages) to the stacked widget
         self.main_app_page = MainAppPage(self.username, self.logout_callback)
+        self.db_manager = DatabaseManager
         self.test_page = TestPage(self.username, self.logout_callback)
+        self.setting_page = SettingsPage(self.username, self.db_manager)
 
         self.app_stacked_widget.addWidget(self.main_app_page)  # Index 0
         self.app_stacked_widget.addWidget(create_placeholder_page("Calibration"))  # Index 1
         self.app_stacked_widget.addWidget(self.test_page)      # Index 2
         self.app_stacked_widget.addWidget(create_placeholder_page("Training"))     # Index 3
         self.app_stacked_widget.addWidget(create_placeholder_page("Results"))      # Index 4
-        self.app_stacked_widget.addWidget(create_placeholder_page("Settings"))     # Index 5
+        self.app_stacked_widget.addWidget(self.setting_page)     # Index 5
         self.app_stacked_widget.addWidget(create_placeholder_page("About"))        # Index 6
 
     def setup_ui(self):
