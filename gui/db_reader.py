@@ -7,7 +7,7 @@ Key functionalities:
 - Uses `DatabaseManager.get_user_data()` to fetch the user data.
 """
 
-from db_manager import DatabaseManager
+from gui.admins.db_manager_additional import DatabaseManager
 
 db_manager = DatabaseManager()
 

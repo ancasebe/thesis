@@ -10,9 +10,9 @@ Key functionalities:
 
 import sys
 from PySide6.QtWidgets import QApplication, QMainWindow, QStackedWidget, QMessageBox
-from db_manager import DatabaseManager
-from gui.user_info.login_page import LoginPage
-from gui.user_info.registration_page import RegistrationPage
+from gui.superuser.db_manager import DatabaseManager
+from gui.login_page import LoginPage
+from gui.superuser.new_admin import RegistrationPage
 from main_page import MainPage
 
 
@@ -31,6 +31,9 @@ class MainWindow(QMainWindow):
 
         super().__init__()
         self.db_manager = DatabaseManager()
+        # self.super_db_manager = DatabaseManager()
+        self.db_manager.register_superuser()  # Ensure default superuser exists
+
         self.setWindowTitle("Log in page")
         self.setMinimumSize(800, 600)  # Suitable starting size
 
@@ -46,7 +49,6 @@ class MainWindow(QMainWindow):
         )
         self.registration_page = RegistrationPage(
             switch_to_main=self.show_main_app,
-            switch_to_login=self.show_login,
             db_manager=self.db_manager
         )
 
@@ -57,20 +59,30 @@ class MainWindow(QMainWindow):
         # Start with Login Page
         self.stacked_widget.setCurrentIndex(0)
 
-    def create_application_widget(self, username):
+    def create_application_widget(self, username, admin_id):
         """
         Creates the main application interface after successful login or registration.
 
         Args:
             username (str): The username of the logged-in user.
+            admin_id (int): The ID of the logged-in admin, passed to MainPage and other components.
         """
-        app_widget = MainPage(username, self.logout)
+        app_widget = MainPage(username, admin_id, self.logout)
         self.stacked_widget.addWidget(app_widget)  # Index 2
         self.stacked_widget.setCurrentWidget(app_widget)
 
     def show_main_app(self, username):
-        """Switches to the main application after login or registration."""
-        self.create_application_widget(username)
+        """
+        Switches to the main application after login or registration by retrieving the admin_id.
+
+        Args:
+            username (str): The username of the logged-in admin.
+        """
+        admin_id = self.db_manager.get_admin_id(username)
+        if admin_id is not None:
+            self.create_application_widget(username, admin_id)
+        else:
+            QMessageBox.warning(self, "Error", "Failed to retrieve admin ID.")
 
     def show_login(self):
         """Switches to the login page."""

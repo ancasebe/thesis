@@ -1,3 +1,13 @@
+"""
+This module defines the `TestPage` class, which provides an interface for conducting various
+tests with research members.
+
+Key functionalities:
+- Allows selection of a test and the arm to be tested.
+- Requires selection of a research member before a test can be started.
+- Integrates with the database to save test data linked to the chosen research member.
+"""
+
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
     QStackedWidget, QSizePolicy, QComboBox, QMessageBox, QFormLayout
@@ -7,52 +17,79 @@ from PySide6.QtCore import Qt
 
 class TestPage(QWidget):
     """
-    The Test Page represents the testing interface with a menu on the left and additional test options
-    in the center. It allows the user to select a test, choose the arm tested, and prepares the data
-    to be saved in a database.
+    The Test Page represents the testing interface, allowing the user to select a test,
+    choose a research member, specify the arm being tested, and save the data in a database.
+
+    Args:
+        db_manager (DatabaseManager): Database manager to handle data saving and retrieval.
+        admin_id (int): ID of the logged-in admin.
+        main_stacked_widget (QStackedWidget): The main stacked widget to manage page transitions.
     """
 
-    def __init__(self, username, logout_callback):
-        """Initializes the Test Page with a username and a logout callback."""
+    def __init__(self, db_manager, admin_id, main_stacked_widget):
         super().__init__()
-        self.username = username
-        self.logout_callback = logout_callback
+        self.db_manager = db_manager
+        self.admin_id = admin_id
+        self.main_stacked_widget = main_stacked_widget
+        self.selected_test = None  # Store the currently selected test
         self.setup_ui()
+        self.load_climbers()
 
     def setup_ui(self):
         """Sets up the user interface for the Test Page."""
-        main_layout = QHBoxLayout()
-        center_layout_wrapper = QVBoxLayout()  # This will hold the center layout and center it on the page
+        main_layout = QVBoxLayout()
+        main_layout.setAlignment(Qt.AlignCenter)
 
-        # Test buttons in the center
-        center_layout = QVBoxLayout()
-        center_layout.setAlignment(Qt.AlignCenter)  # Center the buttons vertically
+        # Title
+        title_label = QLabel("Testing Interface")
+        title_label.setStyleSheet("font-size: 24px;")
+        main_layout.addWidget(title_label)
 
-        # Test Options
-        self.add_test_button(center_layout, "Maximal Voluntary Contraction")
-        self.add_test_button(center_layout, "All Out")
-        self.add_test_button(center_layout, "Hang Test")
-        self.add_test_button(center_layout, "Test to Exhaustion")
+        # ComboBox for selecting a research member (climber)
+        self.climber_selector = QComboBox()
+        self.climber_selector.addItem("-")  # Default prompt
+        # main_layout.addWidget(self.climber_selector)
 
-        # ComboBox for Arm Tested selection
+        # Form layout for Research Member
+        form_layout = QFormLayout()
+        form_layout.addRow("Climber Tested:", self.climber_selector)
+        main_layout.addLayout(form_layout)
+
+        # Arm Tested ComboBox
         self.arm_tested_combo = QComboBox()
         self.arm_tested_combo.addItems(["-", "dominant", "non-dominant"])
 
-        # Create a layout for the combo box and label
+        # Form layout for Arm Tested
         form_layout = QFormLayout()
         form_layout.addRow("Arm Tested:", self.arm_tested_combo)
+        main_layout.addLayout(form_layout)
 
-        # Add everything to the center layout wrapper
-        center_layout.addLayout(form_layout)
+        # Add test selection buttons
+        button_layout = QVBoxLayout()
+        button_layout.setAlignment(Qt.AlignCenter)
+        self.add_test_button(button_layout, "Maximal Voluntary Contraction")
+        self.add_test_button(button_layout, "All Out")
+        self.add_test_button(button_layout, "Hang Test")
+        self.add_test_button(button_layout, "Test to Exhaustion")
 
-        # Add the center layout to the wrapper and align it in the middle
-        center_layout_wrapper.addLayout(center_layout)
-        center_layout_wrapper.setAlignment(Qt.AlignCenter)
+        main_layout.addLayout(button_layout)
 
-        # Add the wrapper layout to the main layout
-        main_layout.addLayout(center_layout_wrapper)
+        # # Save Button
+        # save_button = QPushButton("Save Selection")
+        # save_button.clicked.connect(self.save_test_selection)
+        # main_layout.addWidget(save_button)
 
         self.setLayout(main_layout)
+
+    def load_climbers(self):
+        """Loads all climbers registered by the current admin into the ComboBox."""
+        climbers = self.db_manager.get_climbers_by_admin(self.admin_id)
+        self.climber_selector.clear()
+        self.climber_selector.addItem("-")  # Default option
+        for climber in climbers:
+            display_name = f"{climber['name']} {climber['surname']}"
+            self.climber_selector.addItem(display_name, climber["email"])
+            print(f"Loaded climber: {display_name} with email {climber['email']}")  # Debugging
 
     def add_test_button(self, layout, test_name):
         """
@@ -64,41 +101,47 @@ class TestPage(QWidget):
         """
         button = QPushButton(test_name)
         button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        button.clicked.connect(lambda: self.save_test_selection(test_name))
+        button.clicked.connect(lambda: self.select_test(test_name))
         layout.addWidget(button)
 
-    def save_test_selection(self, test_name):
-        """
-        Prepares the selected test and arm option to be saved to the database.
-
-        Args:
-            test_name (str): The name of the selected test.
-        """
+    def select_test(self, test_name):
+        """Sets the selected test and validates the selections."""
+        selected_climber = self.climber_selector.currentData()
         selected_arm = self.arm_tested_combo.currentText()
 
-        # Display the chosen test and arm as a placeholder for saving to the database
-        QMessageBox.information(self, "Test Selection",
-                                f"Selected Test: {test_name}\nArm Tested: {selected_arm}")
+        # Validate climber and arm selections
+        if selected_climber == "Select a member" or selected_climber is None:
+            QMessageBox.warning(self, "No Climber Selected", "Please select a research member to proceed.")
+            return
+        if selected_arm == "-":
+            QMessageBox.warning(self, "No Arm Selected", "Please select an arm to test.")
+            return
 
-        # Here, you would prepare the data to be saved to the database for the current user.
+        self.selected_test = test_name
+        QMessageBox.information(self, "Test Selected", f"Selected Test: {test_name} for {selected_climber}")
 
-    def show_main_page(self):
-        """Placeholder for navigating to the main page."""
-        QMessageBox.information(self, "Main Page", "Navigating to the main page...")
+    def save_test_selection(self):
+        """
+        Saves the selected test, arm, and climber to the database.
+        """
+        selected_climber = self.climber_selector.currentData()
+        selected_arm = self.arm_tested_combo.currentText()
+        selected_test = self.selected_test
 
-    def show_settings(self):
-        """Placeholder for navigating to the settings page."""
-        QMessageBox.information(self, "Settings", "Navigating to the settings page...")
+        if not selected_climber or selected_climber == "Select a member":
+            QMessageBox.warning(self, "No Climber Selected", "Please select a research member before saving.")
+            return
+        if selected_arm == "Select Arm":
+            QMessageBox.warning(self, "No Arm Selected", "Please select an arm before saving.")
+            return
+        if not selected_test:
+            QMessageBox.warning(self, "No Test Selected", "Please select a test before saving.")
+            return
 
-    # def validate_inputs(self):
-    #     """
-    #     Validates that all input fields are filled.
-    #
-    #     Returns:
-    #         bool: True if all inputs are valid, False otherwise.
-    #     """
-    #     value = self.arm_tested_combo.currentText()
-    #
-    #     if isinstance(value, str) and value == "-":
-    #         errors.append(f"{field_name} must be filled.")
+        # Placeholder for saving to the database
+        QMessageBox.information(
+            self, "Save Confirmation",
+            f"Test: {selected_test}\nClimber: {selected_climber}\nArm: {selected_arm}\nData ready to be saved."
+        )
 
+        # Implement code to save `selected_test`, `selected_climber`, and `selected_arm` to the database here

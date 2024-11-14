@@ -26,6 +26,8 @@ class LoginPage(QWidget):
     def __init__(self, switch_to_main, switch_to_register, db_manager):
         """Initializes the login page with references to the switch functions and db_manager."""
         super().__init__()
+        self.username_input = QLineEdit()
+        self.password_input = QLineEdit()
         self.switch_to_main = switch_to_main
         self.switch_to_register = switch_to_register
         self.db_manager = db_manager
@@ -45,11 +47,9 @@ class LoginPage(QWidget):
         # Login Form
         form_layout = QFormLayout()
 
-        self.username_input = QLineEdit()
         self.username_input.setPlaceholderText("Enter your username")
         form_layout.addRow("Username:", self.username_input)
 
-        self.password_input = QLineEdit()
         self.password_input.setPlaceholderText("Enter your password")
         self.password_input.setEchoMode(QLineEdit.Password)
         form_layout.addRow("Password:", self.password_input)
@@ -63,7 +63,6 @@ class LoginPage(QWidget):
 
         # Switch to Registration
         switch_button = QPushButton("Don't have an account? Register")
-        switch_button.setFlat(True)
         switch_button.clicked.connect(self.switch_to_register)
         layout.addWidget(switch_button)
 
