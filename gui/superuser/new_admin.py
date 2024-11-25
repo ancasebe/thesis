@@ -1,10 +1,9 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
-    QLineEdit, QFormLayout, QMessageBox
+    QLineEdit, QFormLayout, QMessageBox, QSizePolicy, QTextEdit
 )
 from PySide6.QtGui import QPixmap
 from PySide6.QtCore import Qt
-
 
 class RegistrationPage(QWidget):
     """
@@ -44,7 +43,7 @@ class RegistrationPage(QWidget):
             "Username:": QLineEdit(),
             "Password:": QLineEdit(),
             "Confirm Password:": QLineEdit(),
-            "Research Name:": QLineEdit()
+            "Research Name:": QTextEdit()
         }
 
         # Adding widgets to the form layout
@@ -53,6 +52,12 @@ class RegistrationPage(QWidget):
 
         self.widgets_column["Password:"].setEchoMode(QLineEdit.Password)
         self.widgets_column["Confirm Password:"].setEchoMode(QLineEdit.Password)
+        research_name_edit = self.widgets_column["Research Name:"]
+        research_name_edit.setMaximumHeight(60)
+        research_name_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
+        # research_name_edit.setMinimumSize(200, 20)
+        # research_name_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
 
         layout.addLayout(form_layout)
 
@@ -62,7 +67,7 @@ class RegistrationPage(QWidget):
         layout.addWidget(register_button)
 
         # Switch to Login
-        switch_button = QPushButton("Back to all users")
+        switch_button = QPushButton("Back to all admins")
         switch_button.clicked.connect(self.switch_to_main)
         layout.addWidget(switch_button)
 
@@ -72,9 +77,9 @@ class RegistrationPage(QWidget):
 
         # Logo 1
         logo1 = QLabel()
-        pixmap1 = QPixmap('resources/university_logo1.png')
+        pixmap1 = QPixmap('gui/resources/logo_uibk.jpg')
         if pixmap1.isNull():
-            logo1.setText("Logo 1")
+            logo1.setText("UIBK")
             logo1.setAlignment(Qt.AlignCenter)
         else:
             pixmap1 = pixmap1.scaled(100, 100, Qt.KeepAspectRatio, Qt.SmoothTransformation)
@@ -84,9 +89,9 @@ class RegistrationPage(QWidget):
 
         # Logo 2
         logo2 = QLabel()
-        pixmap2 = QPixmap('resources/university_logo2.png')
+        pixmap2 = QPixmap('gui/resources/logo_uct.png')
         if pixmap2.isNull():
-            logo2.setText("Logo 2")
+            logo2.setText("UCT Prague")
             logo2.setAlignment(Qt.AlignCenter)
         else:
             pixmap2 = pixmap2.scaled(100, 100, Qt.KeepAspectRatio, Qt.SmoothTransformation)
@@ -109,7 +114,7 @@ class RegistrationPage(QWidget):
             "username": self.widgets_column["Username:"].text().strip(),
             "password": self.widgets_column["Password:"].text(),
             "confirm_password": self.widgets_column["Confirm Password:"].text(),
-            "research_name": self.widgets_column["Research Name:"].text(),
+            "research_name": self.widgets_column["Research Name:"].toPlainText(),
         }
 
         errors = []
@@ -137,7 +142,7 @@ class RegistrationPage(QWidget):
         password = self.widgets_column["Password:"].text()
 
         admin_data = {
-            "research_name": self.widgets_column["Research Name:"].text().strip(),
+            "research_name": self.widgets_column["Research Name:"].toPlainText().strip(),
         }
 
         if not self.validate_inputs():

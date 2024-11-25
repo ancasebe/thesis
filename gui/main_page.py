@@ -16,8 +16,10 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QPixmap
 from PySide6.QtCore import Qt
 from test_page.test_page import TestPage
-from gui.superuser.db_manager import DatabaseManager
-from gui.research_members_page.research_members_page import ResearchMembersPage
+from gui.superuser.login_db_manager import LoginDatabaseManager
+from gui.research_members.climber_db_manager import ClimberDatabaseManager
+from gui.superuser.new_admin import RegistrationPage
+# from gui.research_members.research_members import ResearchMembersPage
 
 
 def create_placeholder_page(title):
@@ -97,7 +99,7 @@ class MainPage(QWidget):
         logout_callback (function): The function to call when the user clicks the "Log Out" button.
     """
 
-    def __init__(self, username, admin_id, logout_callback):
+    def __init__(self, username, admin_id, logout_callback, is_superuser=False):
         """
         Initializes the MainPage with a username and a logout callback function.
 
@@ -109,21 +111,26 @@ class MainPage(QWidget):
         self.username = username
         self.admin_id = admin_id
         self.logout_callback = logout_callback
+        self.is_superuser = is_superuser
         # Stacked widget to hold different application pages
         self.app_stacked_widget = QStackedWidget()
         self.setup_ui()
         # Add various sections (pages) to the stacked widget
         self.main_app_page = MainAppPage(self.username, self.logout_callback)
-        self.db_manager = DatabaseManager()
-        self.test_page = TestPage(self.db_manager, self.admin_id, self.app_stacked_widget)
-        self.research_members_page = ResearchMembersPage(self.db_manager, self.admin_id, self.app_stacked_widget)
+        self.login_db_manager = LoginDatabaseManager()
+        self.climber_db_manager = ClimberDatabaseManager()
+        self.test_page = TestPage(self.climber_db_manager, self.admin_id, self.app_stacked_widget)
+        # self.new_admin = RegistrationPage(self.login_db_manager)
 
         self.app_stacked_widget.addWidget(self.main_app_page)  # Index 0
         self.app_stacked_widget.addWidget(create_placeholder_page("Calibration"))  # Index 1
         self.app_stacked_widget.addWidget(self.test_page)      # Index 2
         self.app_stacked_widget.addWidget(create_placeholder_page("Training"))     # Index 3
         self.app_stacked_widget.addWidget(create_placeholder_page("Results"))      # Index 4
-        self.app_stacked_widget.addWidget(self.research_members_page)    # Index 5
+        if self.is_superuser:
+            self.app_stacked_widget.addWidget(create_placeholder_page("Handle admins"))   # Index 5
+
+        # self.app_stacked_widget.addWidget(create_placeholder_page("Calibration"))    # Index 5
         self.app_stacked_widget.addWidget(create_placeholder_page("Setting"))  # Index 6
         self.app_stacked_widget.addWidget(create_placeholder_page("About"))        # Index 7
 
@@ -149,16 +156,22 @@ class MainPage(QWidget):
             "Testing": self.show_testing,
             "Training": self.show_training,
             "Results": self.show_results,
-            "Research Members": self.show_research_members,
+            # "Research Members": self.show_research_members,
             "Settings": self.show_settings,
             "About": self.show_about,
             "Log Out": self.logout_callback  # Log Out button at the end
         }
+        if self.is_superuser:
+            items = list(buttons.items())
+            items.insert(4, ("Handle Admins", self.show_handle_admins()))
+            # Recreate the dictionary
+            buttons = dict(items)
 
         # Add buttons to the navigation layout
         for btn_text, btn_slot in buttons.items():
             button = QPushButton(btn_text)
             button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+            button.setFocusPolicy(Qt.NoFocus)  # Disable focus for this button
             button.clicked.connect(btn_slot)
             nav_layout.addWidget(button)
 
@@ -195,9 +208,9 @@ class MainPage(QWidget):
         """
         self.app_stacked_widget.setCurrentIndex(4)
 
-    def show_research_members(self):
+    def show_handle_admins(self):
         """Shows the Research Members page."""
-        self.app_stacked_widget.setCurrentWidget(self.research_members_page)
+        self.app_stacked_widget.setCurrentIndex(5)
 
     def show_settings(self):
         """
@@ -210,16 +223,3 @@ class MainPage(QWidget):
         Switches the current view to the About section (index 7).
         """
         self.app_stacked_widget.setCurrentIndex(7)
-
-    # def show_settings_climber_page(self, email):
-    #     """Displays SettingsPage for a specific climber."""
-    #     settings_page = SettingsPage(self.admin_id, email, self.db_manager)
-    #     self.app_stacked_widget.addWidget(settings_page)
-    #     self.app_stacked_widget.setCurrentWidget(settings_page)
-    #
-    # def show_new_climber(self):
-    #     """Displays RegistrationPage to add a new climber."""
-    #     new_climber = NewClimber(self.admin_id, self.show_research_members, self.db_manager)
-    #     self.app_stacked_widget.addWidget(new_climber)
-    #     self.app_stacked_widget.setCurrentWidget(new_climber)
-

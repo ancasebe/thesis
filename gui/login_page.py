@@ -39,7 +39,7 @@ class LoginPage(QWidget):
         layout.setAlignment(Qt.AlignCenter)
 
         # Welcome Text
-        welcome_label = QLabel("Welcome to the Application!")
+        welcome_label = QLabel("Welcome to the testing climbers app!")
         welcome_label.setAlignment(Qt.AlignCenter)
         welcome_label.setStyleSheet("font-size: 24px;")
         layout.addWidget(welcome_label)
@@ -62,9 +62,9 @@ class LoginPage(QWidget):
         layout.addWidget(login_button)
 
         # Switch to Registration
-        switch_button = QPushButton("Don't have an account? Register")
-        switch_button.clicked.connect(self.switch_to_register)
-        layout.addWidget(switch_button)
+        #switch_button = QPushButton("Don't have an account? Register")
+        #switch_button.clicked.connect(self.switch_to_register)
+        #layout.addWidget(switch_button)
 
         # University Logos at the Bottom
         logos_layout = QHBoxLayout()

@@ -10,7 +10,7 @@ Key functionalities:
 
 import sys
 from PySide6.QtWidgets import QApplication, QMainWindow, QStackedWidget, QMessageBox
-from gui.superuser.db_manager import DatabaseManager
+from gui.superuser.login_db_manager import LoginDatabaseManager
 from gui.login_page import LoginPage
 from gui.superuser.new_admin import RegistrationPage
 from main_page import MainPage
@@ -22,7 +22,7 @@ class MainWindow(QMainWindow):
     and the main application interface.
 
     Attributes:
-        db_manager (DatabaseManager): The database manager for handling user data.
+        login_db_manager (DatabaseManager): The database manager for handling user data.
         stacked_widget (QStackedWidget): A stacked widget to switch between pages.
     """
 
@@ -30,11 +30,11 @@ class MainWindow(QMainWindow):
         """Initializes the main window, setting up page transitions and database connection."""
 
         super().__init__()
-        self.db_manager = DatabaseManager()
+        self.login_db_manager = LoginDatabaseManager()
         # self.super_db_manager = DatabaseManager()
-        self.db_manager.register_superuser()  # Ensure default superuser exists
+        self.login_db_manager.register_superuser()  # Ensure default superuser exists
 
-        self.setWindowTitle("Log in page")
+        self.setWindowTitle("Testing climbers app")
         self.setMinimumSize(800, 600)  # Suitable starting size
 
         # Stacked Widget to hold different pages
@@ -45,11 +45,11 @@ class MainWindow(QMainWindow):
         self.login_page = LoginPage(
             switch_to_main=self.show_main_app,
             switch_to_register=self.show_registration,
-            db_manager=self.db_manager
+            db_manager=self.login_db_manager
         )
         self.registration_page = RegistrationPage(
             switch_to_main=self.show_main_app,
-            db_manager=self.db_manager
+            db_manager=self.login_db_manager
         )
 
         # Add Pages to Stacked Widget
@@ -78,7 +78,7 @@ class MainWindow(QMainWindow):
         Args:
             username (str): The username of the logged-in admin.
         """
-        admin_id = self.db_manager.get_admin_id(username)
+        admin_id = self.login_db_manager.get_admin_id(username)
         if admin_id is not None:
             self.create_application_widget(username, admin_id)
         else:
@@ -115,7 +115,7 @@ class MainWindow(QMainWindow):
         """
         Ensures the database connection is closed before closing the application.
         """
-        self.db_manager.close()
+        self.login_db_manager.close()
         event.accept()
 
 
