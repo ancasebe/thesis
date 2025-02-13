@@ -887,15 +887,15 @@ class DataGenerator:
         if self.serial_force_def:
             self.serial_communicator.update_calibration_parameters(
                 slope=slope, intercept=intercept)
-        else:
-            self.ble_force_communicator.update_calibration_parameters(
-                slope=slope, intercept=intercept)
+        # else:
+        #     self.ble_force_communicator.update_calibration_parameters(
+        #         slope=slope, intercept=intercept)
 
     def show_raw_force(self, raw: bool) -> None:
         if self.serial_force_def:
             self.serial_communicator.show_raw = raw
-        else:
-            self.ble_force_communicator.show_raw = raw
+        # else:
+        #     self.ble_force_communicator.show_raw = raw
 
 
 if __name__ == '__main__':
