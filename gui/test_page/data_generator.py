@@ -18,250 +18,6 @@ O2HB_SENSOR_ID = 2
 SMO2_SENSOR_ID = 3
 FORCE_SENSOR_ID = 4
 
-# class ForceBluetoothCommunicator:
-#     """
-#     A class for managing Bluetooth Low Energy (BLE) communication with a specified device. This class connects to a BLE
-#     device, starts receiving notifications, and processes data for visualization and database logging. If the connection
-#     fails, it switches to a debug mode, generating synthetic data.
-#
-#     Attributes:
-#         db_queque (queue.Queue): Queue for sending data to the database.
-#         viz_queque (queue.Queue): Queue for sending data to the visualization.
-#         downsampling (int): Interval at which data is downsampled for visualization purposes.
-#         device_name (str): The name of the target BLE device.
-#         device_uuid (str): The UUID of the target BLE device for data notifications.
-#         reading (bool): Flag to indicate if the device is actively reading data.
-#         debugging (bool): Indicates if the class is generating debug data instead of Bluetooth data.
-#         data_collection_flag (bool): Indicates if data collection has started.
-#         start_reading_time (float): Timestamp for the start of the reading process.
-#         connection_attempts (int): Counts connection attempts made to the BLE device.
-#         valid_connection_attempts (int): Maximum number of valid connection attempts before switching to debug mode.
-#         bluetooth_thread (threading.Thread): Thread running the Bluetooth read operations.
-#         data_collection_thread (threading.Thread): Thread to manage data collection for Bluetooth or debug mode.
-#
-#     Methods:
-#
-#         - start_bluetooth_collector(): Initializes and starts data collection from the BLE device.
-#         - stop_bluetooth_collector(): Stops data collection from the BLE device or debug mode.
-#     """
-#
-#     def __init__(self, visualization_que: queue.Queue, database_que: queue.Queue) -> None:
-#         self.device_name = ""  # JSONCommunicator().get_ble_force_config()['dev_name']
-#         self.device_uuid = ""  # JSONCommunicator().get_ble_force_config()['dev_data_uuid']
-#         self.downsampling = ""  # JSONCommunicator().get_ble_force_config()['force_viz_ds']
-#         self.downsampling_counter = self.downsampling
-#         self.db_queque = database_que
-#         self.viz_queque = visualization_que
-#         self.valid_connection_attempts = ""  # JSONCommunicator().get_ble_force_config()['connection_attempts']
-#         self.__default_variables()
-#
-#     def __default_variables(self):
-#         self.client = None
-#         self.data_queue = queue.Queue()
-#         self.reading = False
-#         self.bluetooth_thread = None
-#         self.start_reading_time = None
-#         self.data_collection_flag = False
-#         self.connection_attempts = 0
-#         self.data_collection_thread = None
-#         self.debugging = False
-#         self.debugging_data = []
-#         self.last_datapoint = None
-#         self.intercept = 0
-#         self.slope = 0
-#         self.show_raw = True
-#         self.start_time = time.time()
-#         self.sample_counter = 0
-#
-#     def update_calibration_parameters(self, slope: float, intercept: float):
-#         self.slope = slope
-#         self.intercept = intercept
-#         self.show_raw = False
-#
-#     async def __async_connect(self):
-#         """Connects to the BLE device and ensures services are discovered."""
-#         devices = await BleakScanner.discover()
-#         for device in devices:
-#             if device.name == self.device_name:
-#                 self.client = BleakClient(device)
-#                 await self.client.connect()
-#                 return 1
-#         return
-#
-#     async def __async_start_notifications(self):
-#         """Starts receiving notifications from the Bluetooth device."""
-#         if self.client and self.client.is_connected:
-#             await self.client.start_notify(self.device_uuid, self.__async_notification_handler)
-#             self.last_datapoint = time.time()
-#             print(f'{time.strftime("%H:%M:%S")} - Started receiving data from {self.device_name}')
-#
-#     async def __async_stop_notifications(self):
-#         if self.client and self.client.is_connected:
-#             await self.client.stop_notify(self.device_uuid)
-#             print(f'{time.strftime("%H:%M:%S")} - Stopped receiving data from {self.device_name}')
-#
-#     def decode_unsigned_little_endian(self, data):
-#         """Decode 4-byte little-endian data into a float."""
-#         time.sleep(0.002)
-#         try:
-#             int_value = struct.unpack('<B', data)[0]
-#         except:
-#             int_value = None
-#
-#         return int_value
-#
-#     def __process_data(self, data):
-#         """Unpacks the data according to the expected format."""
-#         float_value = self.decode_unsigned_little_endian(data)
-#         if float_value is None:
-#             return None
-#         if not self.show_raw:
-#             float_value = (float_value-self.intercept)/self.slope
-#         timestamp = time.time()
-#         self.last_datapoint = timestamp
-#         formated_vals = f'{FORCE_SENSOR_ID}_{timestamp}_{float_value:.2f}'
-#         return formated_vals
-#
-#     async def __async_notification_handler(self, sender, data):
-#         try:
-#             data_str = self.__process_data(data)
-#             if data_str is None:
-#                 return
-#             self.data_queue.put(data_str)  # Send data to the queue
-#             if self.data_collection_flag == False:
-#                 self.data_collection_flag = True
-#         except Exception as e:
-#             print(f'{time.strftime("%H:%M:%S")} - {e}- Could not process data')
-#             print(data)
-#
-#     def __run(self):
-#         """Runs the asynchronous Bluetooth tasks in the thread."""
-#         loop = asyncio.new_event_loop()
-#         asyncio.set_event_loop(loop)
-#
-#         loop.run_until_complete(self.__async_connect())
-#         try:
-#             loop.run_until_complete(self.__async_start_notifications())
-#         except Exception as e:
-#             print(f'{time.strftime("%H:%M:%S")} - {e} - Could not start notifications')
-#         try:
-#             while self.reading:
-#                 loop.run_until_complete(asyncio.sleep(0.001))
-#         finally:
-#             if self.client is not None:
-#                 try:
-#                     loop.run_until_complete(self.__async_stop_notifications())
-#                     loop.run_until_complete(self.client.disconnect())
-#                     print(
-#                         f'{time.strftime("%H:%M:%S")} - Disconnected from {self.device_name}')
-#                 except Exception as e:
-#                     print(f'{time.strftime("%H:%M:%S")} - {e}')
-#
-#     def __start_asynchronous_thread(self):
-#         """Starts the Bluetooth communicator in a separate thread."""
-#         self.reading = True
-#         self.start_reading_time = time.time()
-#         self.bluetooth_thread = threading.Thread(target=self.__run)
-#         self.bluetooth_thread.daemon = True
-#         self.bluetooth_thread.start()
-#         while self.data_collection_flag == False:
-#             if self.start_reading_time+15 < time.time():
-#                 self.start_reading_time = time.time()
-#                 self.connection_attempts += 1
-#                 print(f'{time.strftime("%H:%M:%S")} - Could not Connect to  {self.device_name}. '
-#                       f'Reconnecting ({self.connection_attempts}/{self.valid_connection_attempts})')
-#                 self.bluetooth_thread.join(timeout=1)
-#                 self.bluetooth_thread = threading.Thread(target=self.__run)
-#                 self.bluetooth_thread.daemon = True
-#                 self.bluetooth_thread.start()
-#             if self.connection_attempts == self.valid_connection_attempts:
-#                 if self.bluetooth_thread is not None:
-#                     self.bluetooth_thread.join(1)
-#                 self.bluetooth_thread = None
-#                 # this should eventualy get to the data generator function
-#                 self.data_collection_flag = True
-#                 self.debugging = True
-#                 text = f'{time.strftime("%H:%M:%S")} - Could not connect to {self.device_name}, starting random generator mode'
-#                 print(text)
-#                 self.bluetooth_thread = threading.Thread(
-#                     target=self.__debugging_data_nirs_generator)
-#                 self.bluetooth_thread.daemon = True
-#                 self.bluetooth_thread.start()
-#             time.sleep(0.5)
-#         while self.reading:
-#             while not self.debugging and not self.data_queue.empty():
-#                 data = str(self.data_queue.get())
-#                 self.__data_generator_que_manager(
-#                     data)
-#             time.sleep(0.005)
-#
-#         if self.bluetooth_thread is None:
-#             return
-#         self.bluetooth_thread.join(1)
-#
-#     def __data_generator_que_manager(self, data):
-#         self.downsampling_counter -= 1
-#         viz_put = False
-#         if self.downsampling_counter == 0:
-#             self.downsampling_counter = self.downsampling
-#             viz_put = True
-#         try:
-#             self.db_queque.put(data)
-#             if viz_put:
-#                 self.viz_queque.put(data)
-#         except queue.Full:
-#             self.db_queque.get()
-#             self.db_queque.put(data)
-#
-#     def __debugging_generate_smo2_profile(self, noise_level=0.4):
-#         """Generates synthetic data that mimics a force profile on a hangboard."""
-#         n_samples = int(np.random.uniform(300, 800))
-#         t = np.linspace(0, np.pi, n_samples)
-#         max_force = np.random.uniform(30, 80)
-#         force_profile = max_force * np.sin(t)
-#         noise = np.random.normal(0, noise_level, n_samples)
-#         force_profile = np.clip(force_profile + noise, 20, max_force)
-#         return force_profile
-#
-#     def __debugging_data_nirs_generator(self):
-#         while self.reading:
-#             timestamp = time.time()
-#             if len(self.debugging_data) <= 1:
-#                 self.debugging_data = self.__debugging_generate_smo2_profile(
-#                     noise_level=np.random.uniform(0.2, 0.6)).tolist()
-#                 zeros_at_end = np.random.uniform(
-#                     self.debugging_data[-1], self.debugging_data[-1]*1.02, int(np.random.uniform(30, 400))).tolist()
-#                 self.debugging_data.extend(zeros_at_end)
-#             serial_data = self.debugging_data.pop(0)
-#             data = f'{FORCE_SENSOR_ID}_{timestamp:.3f}_{serial_data}'
-#             self.__data_generator_que_manager(data)
-#             time.sleep(0.005)
-#
-#     def start_bluetooth_collector(self):
-#         if self.data_collection_thread is not None:
-#             return
-#         self.__default_variables()
-#         self.data_collection_thread = threading.Thread(
-#             target=self.__start_asynchronous_thread)
-#         self.data_collection_thread.daemon = True
-#         self.data_collection_thread.start()
-#         return
-#
-#     def stop_bluetooth_collector(self):
-#         if self.data_collection_thread is not None:
-#             self.data_collection_flag = True
-#             self.reading = False
-#             self.data_collection_thread.join(timeout=2)
-#             self.data_collection_thread = None
-#             if self.debugging:
-#                 print(f'{time.strftime("%H:%M:%S")} - Random Data Generator Stopped')
-#             else:
-#                 text = f'{time.strftime("%H:%M:%S")} - Bluetooth communicator with {self.device_name} sucesfully closed'
-#                 print(text)
-#             return 1
-#         else:
-#             return
-
 
 class SerialCommunicator:
     """
@@ -370,7 +126,7 @@ class SerialCommunicator:
         """Generates synthetic data that mimics a force profile on a hangboard."""
         n_samples = int(np.random.uniform(300, 800))
         t = np.linspace(0, np.pi, n_samples)
-        max_force = np.random.uniform(1, 60)
+        max_force = np.random.uniform(40, 60)
         force_profile = max_force * np.sin(t)
         noise = np.random.normal(0, noise_level, n_samples)
         force_profile = np.clip(force_profile + noise, 0, max_force)
@@ -386,6 +142,7 @@ class SerialCommunicator:
                 self.debugging_data.extend(zeros_at_end)
             serial_data = self.debugging_data.pop(0)
             data = f'{FORCE_SENSOR_ID}_{time.time():.3f}_{serial_data}'
+            print(f"DEBUG: Generated Synthetic force Data - {data}")  # Debug print
             self.__data_generator_que_manager(data)
             time.sleep(0.01)
 
@@ -684,6 +441,8 @@ class BluetoothCommunicator:
             data = [f'{SMO2_SENSOR_ID}_{timestamp:.3f}_{serial_data}',
                     f'{HHB_SENSOR_ID}_{timestamp:.3f}_{np.random.randint(50, 100)}',
                     f'{O2HB_SENSOR_ID}_{timestamp:.3f}_{np.random.randint(120, 150)}']
+
+            print(f"DEBUG: Generated Synthetic NIRS Data - {data}")  # Debug print
             self.__data_generator_que_manager(data)
             if self.poll_battery_time < timestamp:
                 self.poll_battery_time = timestamp+self.battery_time
@@ -906,4 +665,3 @@ if __name__ == '__main__':
         time.sleep(0.1)
         print(db_queque.get())
     dg.stop_bluetooth_collector()
-#haha
