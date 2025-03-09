@@ -4,51 +4,58 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="8d114396-0b52-44aa-9fec-17fceb6230ba" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/thesis.iml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gui/climber_database.db" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gui/data_generator.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gui/db_reader.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gui/login_database.db" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gui/login_page.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gui/main.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gui/main_page.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gui/research_members/climber_db_manager.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gui/research_members/edit_climber_info.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gui/research_members/new_climber.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gui/research_members/old_research_members_page.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gui/resources/logo_uct.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gui/resources/logo_uct01.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gui/resources/logo_uibk.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gui/superuser/login_db_manager.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gui/superuser/new_admin.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gui/superuser/old_db_manager.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gui/test_page/data_gen.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gui/test_page/only_test_page.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gui/test_page/test_page.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gui/test_page/test_run.py" afterDir="false" />
+    <list default="true" id="8d114396-0b52-44aa-9fec-17fceb6230ba" name="Changes" comment="added data_communicator.py">
+      <change afterPath="$PROJECT_DIR$/gui/test_page/group2_ao_copy.xlsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gui/test_page/test_db_manager.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/climber_database.db" beforeDir="false" afterPath="$PROJECT_DIR$/gui/climber_database.db" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/login_database.db" beforeDir="false" afterPath="$PROJECT_DIR$/gui/login_database.db" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/main_page.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/main_page.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/requirements" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/research_members/climber_db_manager.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/research_members/climber_db_manager.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/research_members/edit_climber_info.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/research_members/edit_climber_info.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/test_page/data_communicator.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/test_page/data_communicator.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/test_page/data_gen.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/test_page/only_test_page.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/test_page/test_page.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/test_page/test_page.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/test_page/test_run.py" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
+  </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
+  "lastFilter": {
+    "state": "OPEN",
+    "assignee": "ancasebe"
+  }
+}]]></component>
+  <component name="GithubPullRequestsUISettings">
+    <option name="selectedUrlAndAccountId">
+      <UrlAndAccount>
+        <option name="accountId" value="44154db6-7e74-4bb1-a210-a26c7b7a14e0" />
+        <option name="url" value="https://github.com/ancasebe/thesis.git" />
+      </UrlAndAccount>
+    </option>
   </component>
   <component name="MarkdownSettingsMigration">
     <option name="stateVersion" value="1" />
   </component>
-  <component name="ProjectColorInfo"><![CDATA[{
-  "associatedIndex": 7
-}]]></component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 7
+}</component>
   <component name="ProjectId" id="2sxcbxTO6t1NABTN26ZpmfxK2nt" />
   <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
   <component name="ProjectViewState">
@@ -57,11 +64,36 @@
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
+    "Python.climber_db_manager.executor": "Run",
+    "Python.data_com_new.executor": "Run",
+    "Python.data_com_old.executor": "Run",
+    "Python.data_communicator.executor": "Run",
+    "Python.data_communicator_mocked.executor": "Run",
+    "Python.data_generator.executor": "Run",
+    "Python.data_visualisation.executor": "Run",
+    "Python.main.executor": "Run",
+    "Python.test_page.executor": "Run",
+    "Python.test_run.executor": "Run",
     "RunOnceActivity.OpenProjectViewOnStart": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
-    "git-widget-placeholder": "main"
+    "git-widget-placeholder": "main",
+    "last_opened_file_path": "/Users/annasebestikova/PycharmProjects/Diploma/txt",
+    "settings.editor.selected.configurable": "org.jetbrains.plugins.github.ui.GithubSettingsConfigurable"
   }
 }]]></component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/../Diploma/txt" />
+      <recent name="$PROJECT_DIR$/../Diploma/shit files" />
+      <recent name="$PROJECT_DIR$/gui/test_page" />
+      <recent name="$PROJECT_DIR$/gui/test_page/tests" />
+      <recent name="$PROJECT_DIR$/gui" />
+    </key>
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/../Diploma/shit files" />
+      <recent name="$PROJECT_DIR$/gui/test_page" />
+    </key>
+  </component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
@@ -78,6 +110,47 @@
       <option name="presentableId" value="Default" />
       <updated>1739400743136</updated>
     </task>
+    <task id="LOCAL-00001" summary="first commit">
+      <option name="closed" value="true" />
+      <created>1739436796066</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1739436796066</updated>
+    </task>
+    <task id="LOCAL-00002" summary="new data_generator.py po konzultaci s Tomasem">
+      <option name="closed" value="true" />
+      <created>1739456357057</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1739456357057</updated>
+    </task>
+    <task id="LOCAL-00003" summary="new data_generator.py po konzultaci s Tomasem">
+      <option name="closed" value="true" />
+      <created>1739457225798</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1739457225798</updated>
+    </task>
+    <task id="LOCAL-00004" summary="new data_generator.py zakomentovano nepotrebny kod">
+      <option name="closed" value="true" />
+      <created>1739457279646</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1739457279646</updated>
+    </task>
+    <task id="LOCAL-00005" summary="added data_communicator.py">
+      <option name="closed" value="true" />
+      <created>1741007831407</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1741007831407</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -90,5 +163,12 @@
         </entry>
       </map>
     </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="first commit" />
+    <MESSAGE value="new data_generator.py po konzultaci s Tomasem" />
+    <MESSAGE value="new data_generator.py zakomentovano nepotrebny kod" />
+    <MESSAGE value="added data_communicator.py" />
+    <option name="LAST_COMMIT_MESSAGE" value="added data_communicator.py" />
   </component>
 </project>

@@ -8,6 +8,7 @@ Key functionalities:
 - Ensures validation before conducting a test and saves test data to the database.
 """
 
+import os
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
     QComboBox, QMessageBox, QFormLayout, QStackedWidget, QSizePolicy, QDialog, QGridLayout
@@ -16,6 +17,8 @@ from PySide6.QtCore import Qt
 
 from gui.research_members.edit_climber_info import EditClimberInfoPage
 from gui.research_members.new_climber import NewClimber
+from gui.test_page.data_communicator import CombinedDataCommunicator
+import pandas as pd
 
 
 class TestPage(QWidget):
@@ -31,7 +34,6 @@ class TestPage(QWidget):
         admin_id (int): ID of the logged-in admin.
         main_stacked_widget (QStackedWidget): Manages page transitions.
     """
-
     def __init__(self, db_manager, admin_id, main_stacked_widget):
         super().__init__()
         self.db_manager = db_manager
@@ -41,129 +43,11 @@ class TestPage(QWidget):
         self.setup_ui()
         self.load_climbers()
 
-    '''
-    def setup_ui(self):
-        """Sets up the user interface."""
-        
-        main_layout = QVBoxLayout()
-        main_layout.setAlignment(Qt.AlignCenter)
-
-        # Title
-        # title_label = QLabel("Manage Research Members & Testing")
-        # title_label.setStyleSheet("font-size: 24px;")
-        # main_layout.addWidget(title_label)
-        
-        # Arm selection
-        self.arm_tested_combo = QComboBox()
-        self.arm_tested_combo.addItems(["Select Arm", "dominant", "non-dominant"])
-        form_layout = QFormLayout()
-        form_layout.addRow("Arm Tested:", self.arm_tested_combo)
-
-        # Climber selection
-        self.climber_selector = QComboBox()
-        self.climber_selector.addItem("Select a climber")  # Default option
-        form_layout.addRow("Climber Tested:", self.climber_selector)
-        main_layout.addLayout(form_layout)
-
-        # Climber management buttons
-        climber_button_layout = QHBoxLayout()
-        edit_button = QPushButton("Edit Climber Info")
-        edit_button.clicked.connect(self.edit_climber_info)
-        climber_button_layout.addWidget(edit_button)
-
-        delete_button = QPushButton("Delete Climber")
-        delete_button.clicked.connect(self.delete_climber)
-        climber_button_layout.addWidget(delete_button)
-
-        add_button = QPushButton("Add New Climber")
-        add_button.clicked.connect(self.add_new_climber)
-        climber_button_layout.addWidget(add_button)
-
-        main_layout.addLayout(climber_button_layout)
-
-        # Test selection buttons
-        button_layout = QVBoxLayout()
-        self.add_test_button(button_layout, "Maximal Voluntary Contraction")
-        self.add_test_button(button_layout, "All Out")
-        self.add_test_button(button_layout, "Hang Test")
-        self.add_test_button(button_layout, "Test to Exhaustion")
-
-        main_layout.addLayout(button_layout)
-        self.setLayout(main_layout)
-        
-        main_layout = QVBoxLayout()
-        main_layout.setAlignment(Qt.AlignTop)
-
-        # Title
-        title_label = QLabel("Handle with research members and test selection")
-        title_label.setStyleSheet("font-size: 24px;")
-        main_layout.addWidget(title_label)
-
-        # Form layout for arm and climber selection
-        form_layout = QGridLayout()
-        form_layout.setContentsMargins(10, 10, 10, 10)
-        form_layout.setHorizontalSpacing(20)
-
-        # Arm Tested ComboBox
-        self.arm_tested_combo = QComboBox()
-        self.arm_tested_combo.addItems(["Select Arm", "dominant", "non-dominant"])
-        form_layout.addWidget(QLabel("Arm Tested:"), 0, 0)
-        form_layout.addWidget(self.arm_tested_combo, 0, 1)
-
-        # Climber Tested ComboBox
-        self.climber_selector = QComboBox()
-        self.climber_selector.addItem("Select a climber")
-        form_layout.addWidget(QLabel("Climber Tested:"), 1, 0)
-        form_layout.addWidget(self.climber_selector, 1, 1)
-
-        main_layout.addLayout(form_layout)
-
-        # Climber management buttons
-        climber_button_layout = QHBoxLayout()
-        edit_button = QPushButton("Edit Climber Info")
-        edit_button.clicked.connect(self.edit_climber_info)
-        climber_button_layout.addWidget(edit_button)
-
-        delete_button = QPushButton("Delete Climber")
-        delete_button.clicked.connect(self.delete_climber)
-        climber_button_layout.addWidget(delete_button)
-
-        add_button = QPushButton("Add New Climber")
-        add_button.clicked.connect(self.add_new_climber)
-        climber_button_layout.addWidget(add_button)
-
-        main_layout.addLayout(climber_button_layout)
-
-        # Test selection buttons in two columns
-        button_layout = QGridLayout()
-        button_layout.setContentsMargins(10, 10, 10, 10)
-        button_layout.setHorizontalSpacing(20)
-        button_layout.setVerticalSpacing(10)
-
-        test_buttons = [
-            "Maximal Voluntary Contraction",
-            "All Out",
-            "Hang Test",
-            "Test to Exhaustion"
-        ]
-
-        for i, test_name in enumerate(test_buttons):
-            button = QPushButton(test_name)
-            button.setMinimumSize(150, 75)  # Make the buttons larger
-            button.clicked.connect(lambda _, name=test_name: self.select_test(name))
-            row, col = divmod(i, 2)  # Two columns
-            button_layout.addWidget(button, row, col)
-
-        main_layout.addLayout(button_layout)
-
-        self.setLayout(main_layout)
-    '''
     def setup_ui(self):
         """Sets up the user interface."""
         main_layout = QVBoxLayout()
         main_layout.setAlignment(Qt.AlignTop)
 
-        # Title
         title_label = QLabel("Manage Research Members & Testing")
         title_label.setStyleSheet("font-size: 24px;")
         main_layout.addWidget(title_label)
@@ -173,37 +57,39 @@ class TestPage(QWidget):
         form_layout.setContentsMargins(10, 10, 10, 10)
         form_layout.setHorizontalSpacing(20)
 
-        # Arm Tested ComboBox
+        self.climber_selector = QComboBox()
+        self.climber_selector.addItem("Select a climber", None)
+        form_layout.addWidget(QLabel("Climber Tested:"), 1, 0)
+        form_layout.addWidget(self.climber_selector, 1, 1)
+
         self.arm_tested_combo = QComboBox()
         self.arm_tested_combo.addItems(["Select Arm", "dominant", "non-dominant"])
         form_layout.addWidget(QLabel("Arm Tested:"), 0, 0)
         form_layout.addWidget(self.arm_tested_combo, 0, 1)
 
-        # Climber Tested ComboBox
-        self.climber_selector = QComboBox()
-        self.climber_selector.addItem("Select a climber")
-        form_layout.addWidget(QLabel("Climber Tested:"), 1, 0)
-        form_layout.addWidget(self.climber_selector, 1, 1)
+        # New ComboBox for Test Data Type
+        self.data_type_combo = QComboBox()
+        self.data_type_combo.addItems(["Select Data Type", "Force", "NIRS", "Force and NIRS"])
+        form_layout.addWidget(QLabel("Test Data Type:"), 2, 0)
+        form_layout.addWidget(self.data_type_combo, 2, 1)
 
         main_layout.addLayout(form_layout)
 
         # Climber management buttons
         climber_button_layout = QHBoxLayout()
-
-        # Define a common style for buttons
         button_style = """
             QPushButton {
-                font-size: 16px;  /* Larger text for readability */
-                padding: 10px;    /* Larger padding for a better click area */
-                border-radius: 5px;  /* Rounded corners */
-                background-color: #007BFF; /* Blue color */
-                color: white; /* White text */
+                font-size: 16px;
+                padding: 10px;
+                border-radius: 5px;
+                background-color: #007BFF;
+                color: white;
             }
             QPushButton:hover {
-                background-color: #0056b3; /* Darker blue on hover */
+                background-color: #0056b3;
             }
             QPushButton:pressed {
-                background-color: #003f7f; /* Even darker blue when pressed */
+                background-color: #003f7f;
             }
         """
 
@@ -239,10 +125,10 @@ class TestPage(QWidget):
 
         for i, test_name in enumerate(test_buttons):
             button = QPushButton(test_name)
-            button.setStyleSheet(button_style)  # Apply the same style
-            button.setMinimumSize(150, 75)  # Larger button size
+            button.setStyleSheet(button_style)
+            button.setMinimumSize(150, 75)
             button.clicked.connect(lambda _, name=test_name: self.select_test(name))
-            row, col = divmod(i, 2)  # Two columns
+            row, col = divmod(i, 2)
             button_layout.addWidget(button, row, col)
 
         main_layout.addLayout(button_layout)
@@ -250,27 +136,26 @@ class TestPage(QWidget):
         self.setLayout(main_layout)
 
     def load_climbers(self):
-        """Loads all climbers registered by the current admin into the ComboBox."""
+        """Loads climbers registered by the current admin into the ComboBox."""
         climbers = self.db_manager.get_climbers_by_admin(self.admin_id)
         self.climber_selector.clear()
-        self.climber_selector.addItem("Select a climber")
+        self.climber_selector.addItem("Select a climber", None)
         for climber in climbers:
             display_name = f"{climber['name']} {climber['surname']}"
-            self.climber_selector.addItem(display_name, climber["email"])
-
-    def add_test_button(self, layout, test_name):
-        """Adds a test button to the layout."""
-        button = QPushButton(test_name)
-        button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        button.clicked.connect(lambda: self.select_test(test_name))
-        layout.addWidget(button)
+            # Save both the id and email in a dict.
+            self.climber_selector.addItem(display_name, climber["id"])
 
     def select_test(self, test_name):
         """Sets the selected test and validates climber and arm selections."""
-        selected_climber = self.climber_selector.currentData()
+        climber_id = self.climber_selector.currentData()
         selected_arm = self.arm_tested_combo.currentText()
+        selected_data_type = self.data_type_combo.currentText()
 
-        if selected_climber == "Select a climber" or selected_climber is None:
+        if selected_data_type == "Select Data Type":
+            QMessageBox.warning(self, "No Data Type Selected", "Please select a test data type.")
+            return
+
+        if not climber_id:
             QMessageBox.warning(self, "No Climber Selected", "Please select a climber to proceed.")
             return
         if selected_arm == "Select Arm":
@@ -278,69 +163,116 @@ class TestPage(QWidget):
             return
 
         self.selected_test = test_name
-        QMessageBox.information(self, "Test Selected", f"Selected Test: {test_name} for {selected_climber}")
+        if test_name == "All Out":
+            self.launch_all_out_test_window(selected_data_type)
+        else:
+            QMessageBox.information(self, "Test Selected",
+                                    f"Selected Test: {test_name} for {climber_id}")
 
-    def save_test_selection(self):
-        """Saves the selected test, arm, and climber to the database."""
-        selected_climber = self.climber_selector.currentData()
-        selected_arm = self.arm_tested_combo.currentText()
-        selected_test = self.selected_test
-
-        if not selected_climber or selected_climber == "Select a climber":
-            QMessageBox.warning(self, "No Climber Selected", "Please select a climber before saving.")
-            return
-        if selected_arm == "Select Arm":
-            QMessageBox.warning(self, "No Arm Selected", "Please select an arm before saving.")
-            return
-        if not selected_test:
-            QMessageBox.warning(self, "No Test Selected", "Please select a test before saving.")
+    def launch_all_out_test_window(self, data_type):
+        """Launches a new window for the All Out Test."""
+        climber_id = self.climber_selector.currentData()
+        if not climber_id:
+            QMessageBox.warning(self, "No Climber Selected", "Please select a climber.")
             return
 
-        QMessageBox.information(
-            self, "Save Confirmation",
-            f"Test: {selected_test}\nClimber: {selected_climber}\nArm: {selected_arm}\nData ready to be saved."
+        # Compute a test label based on data type; using "ao" for All Out.
+        # if data_type.lower() == "force":
+        #     test_label = "ao_force"
+        elif data_type.lower() == "nirs":
+            test_label = "ao_nirs"
+        elif data_type.lower() == "force and nirs":
+            test_label = "ao_force_nirs"
+        else:
+            test_label = "ao_force"
+
+        # Load sensor data from Excel files.
+        script_dir = os.path.dirname(__file__)  # folder where test_page.py is located
+        force_file = os.path.join(script_dir, "group2_ao_copy.xlsx")
+        force_df = pd.read_excel(force_file).dropna()
+        force_timestamps = force_df.iloc[:, 0].values
+        force_values = force_df.iloc[:, 5].values
+
+        nirs_file = os.path.join(script_dir, "group3_ao_copy.xlsx")
+        nirs_df = pd.read_excel(nirs_file).dropna()
+        nirs_timestamps = nirs_df.iloc[:, 0].values
+        nirs_values = nirs_df.iloc[:, 4].values
+
+        # Create a dialog window for the test.
+        dialog = QDialog(self)
+        dialog.setWindowTitle("All Out Test")
+        dialog.setMinimumSize(800, 600)
+        layout = QVBoxLayout(dialog)
+
+        # Create the communicator instance with auto_start=False.
+        communicator = CombinedDataCommunicator(
+            force_timestamps, force_values,
+            nirs_timestamps, nirs_values,
+            admin_id=self.admin_id,
+            climber_id=climber_id,
+            window_size=60,
+            auto_start=True,
+            test_label=test_label
         )
+        layout.addWidget(communicator)
+
+        # Create Start and Stop buttons.
+        button_layout = QHBoxLayout()
+        start_button = QPushButton("Start")
+        stop_button = QPushButton("Stop")
+        button_layout.addWidget(start_button)
+        button_layout.addWidget(stop_button)
+        layout.addLayout(button_layout)
+
+        start_button.clicked.connect(communicator.start_acquisition)
+
+        def stop_and_close():
+            communicator.stop_acquisition()
+            dialog.accept()
+
+        stop_button.clicked.connect(stop_and_close)
+
+        # Override the closeEvent of the dialog to confirm before closing.
+        def dialog_close_event(event):
+            """Asks for confirmation before closing the All Out Test window."""
+            if not communicator.finalized:  # If data isn't finalized, user might lose progress
+                reply = QMessageBox.question(
+                    dialog,
+                    "Confirm Exit",
+                    "Are you sure you want to close this All Out Test window?",
+                    QMessageBox.Yes | QMessageBox.No,
+                    QMessageBox.No
+                )
+                if reply == QMessageBox.Yes:
+                    communicator.stop_acquisition()
+                    event.accept()
+                else:
+                    event.ignore()
+            else:
+                event.accept()
+
+        dialog.closeEvent = dialog_close_event
+
+        dialog.exec()
 
     def edit_climber_info(self):
         """Opens an edit dialog for the selected climber."""
-        email = self.climber_selector.currentData()
-        if email:
-            # Create a new dialog for editing climber info
+        climber_id = self.climber_selector.currentData()
+        if climber_id:
             edit_dialog = QDialog(self)
             edit_dialog.setWindowTitle("Edit Climber Info")
             edit_dialog.setMinimumSize(600, 400)
 
-            # Create an instance of EditClimberInfoPage and set it as the dialog's layout
-            edit_page = EditClimberInfoPage(self.admin_id, email, self.reload_climbers, self.db_manager)
-            edit_page.dialog = edit_dialog  # Pass the dialog reference to the page
+            # from gui.research_members.edit_climber_info import EditClimberInfoPage
+            edit_page = EditClimberInfoPage(self.admin_id, climber_id, self.reload_climbers, self.db_manager)
+            edit_page.dialog = edit_dialog
             layout = QVBoxLayout()
             layout.addWidget(edit_page)
             edit_dialog.setLayout(layout)
 
-            # Override the closeEvent of the dialog
             def dialog_close_event(event):
                 """Asks for confirmation before closing the dialog."""
-        #         reply = QMessageBox.question(
-        #             edit_dialog,
-        #             "Confirm Exit",
-        #             "Are you sure you want to leave without saving?",
-        #             QMessageBox.Yes | QMessageBox.No,
-        #             QMessageBox.No
-        #         )
-        #         if reply == QMessageBox.Yes:
-        #             self.reload_climbers()  # Reload climbers if needed
-        #             event.accept()  # Close the dialog
-        #         else:
-        #             event.ignore()  # Keep the dialog open
-        #
-        #     # Bind the close event to the custom function
-        #     edit_dialog.closeEvent = dialog_close_event
-        #
-        #     # Show the dialog modally
-        #     edit_dialog.exec()
-        # else:
-        #     QMessageBox.warning(self, "No Climber Selected", "Please select a climber to edit.")
-                if not edit_page.is_saving:  # Check if changes were saved
+                if not edit_page.is_saving:
                     reply = QMessageBox.question(
                         edit_dialog,
                         "Confirm Exit",
@@ -349,13 +281,12 @@ class TestPage(QWidget):
                         QMessageBox.No
                     )
                     if reply == QMessageBox.Yes:
-                        self.reload_climbers()  # Reload climbers
+                        self.reload_climbers()
                         event.accept()
                     else:
                         event.ignore()
                 else:
                     event.accept()
-
             edit_dialog.closeEvent = dialog_close_event
             edit_dialog.exec()
         else:
@@ -363,35 +294,20 @@ class TestPage(QWidget):
 
     def add_new_climber(self):
         """Opens a dialog to add a new climber."""
-        # Create a new dialog for adding a climber
         add_dialog = QDialog(self)
         add_dialog.setWindowTitle("Add New Climber")
         add_dialog.setMinimumSize(600, 400)
 
-        # Create an instance of NewClimber and set it as the dialog's layout
+        # from gui.research_members.new_climber import NewClimber
         add_page = NewClimber(self.admin_id, self.reload_climbers, self.db_manager)
-        add_page.dialog = add_dialog  # Pass the dialog reference to the page
-        add_page.show()  # Open as a standalone window
+        add_page.dialog = add_dialog
         layout = QVBoxLayout()
         layout.addWidget(add_page)
         add_dialog.setLayout(layout)
 
-        # Override the closeEvent of the dialog
         def dialog_close_event(event):
             """Asks for confirmation before closing the dialog."""
-            # reply = QMessageBox.question(
-            #     add_dialog,
-            #     "Confirm Exit",
-            #     "Are you sure you want to leave without saving?",
-            #     QMessageBox.Yes | QMessageBox.No,
-            #     QMessageBox.No
-            # )
-            # if reply == QMessageBox.Yes:
-            #     self.reload_climbers()  # Reload climbers if needed
-            #     event.accept()  # Close the dialog
-            # else:
-            #     event.ignore()  # Keep the dialog open
-            if not add_page.is_saving:  # Check if changes were saved
+            if not add_page.is_saving:
                 reply = QMessageBox.question(
                     add_dialog,
                     "Confirm Exit",
@@ -406,11 +322,7 @@ class TestPage(QWidget):
                     event.ignore()
             else:
                 event.accept()
-
-        # Bind the close event to the custom function
         add_dialog.closeEvent = dialog_close_event
-
-        # Show the dialog modally
         add_dialog.exec()
 
     def delete_climber(self):
@@ -423,7 +335,7 @@ class TestPage(QWidget):
                 QMessageBox.Yes | QMessageBox.No, QMessageBox.No
             )
             if reply == QMessageBox.Yes:
-                if self.db_manager.delete_climber(email, self.admin_id):
+                if self.db_manager.delete_climber(email["email"], self.admin_id):
                     QMessageBox.information(self, "Success", f"Climber {name} deleted successfully.")
                     self.load_climbers()
                 else:
@@ -433,18 +345,3 @@ class TestPage(QWidget):
         """Reloads the members list after adding a new member."""
         self.load_climbers()
         self.main_stacked_widget.setCurrentWidget(self)
-
-    # def dialog_close_event(self, event, dialog):
-    #     """Asks for confirmation before closing the dialog."""
-    #     reply = QMessageBox.question(
-    #         dialog,
-    #         "Confirm Exit",
-    #         "Are you sure you want to leave without saving?",
-    #         QMessageBox.Yes | QMessageBox.No,
-    #         QMessageBox.No
-    #     )
-    #     if reply == QMessageBox.Yes:
-    #         self.reload_climbers()  # Reload climbers if needed
-    #         event.accept()  # Close the dialog
-    #     else:
-    #         event.ignore()  # Keep the dialog open

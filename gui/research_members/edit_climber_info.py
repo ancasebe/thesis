@@ -22,11 +22,11 @@ class EditClimberInfoPage(QWidget):
         handle_save: Saves the updated user data into the database.
     """
 
-    def __init__(self, admin_id, email, switch_to_test_page, climber_db_manager):
+    def __init__(self, admin_id, climber_id, switch_to_test_page, climber_db_manager):
         """Initializes the settings page and pre-fills user data."""
         super().__init__()
         self.admin_id = admin_id  # ID of the admin to restrict access
-        self.email = email  # Climber's unique identifier
+        self.climber_id = climber_id  # Climber's unique identifier
         self.climber_db_manager = climber_db_manager
         self.switch_to_test_page = switch_to_test_page
         self.first_column_widgets = {}
@@ -170,7 +170,9 @@ class EditClimberInfoPage(QWidget):
             "sport_activity_hours": "Sport Activity (hours/week):"
         }
 
-        climber_data = self.climber_db_manager.get_user_data(self.admin_id, self.email)
+        print(self.admin_id)
+        print(self.climber_id)
+        climber_data = self.climber_db_manager.get_user_data(self.admin_id, self.climber_id)
 
         if climber_data:
             for field, widget_label in user_data_fields.items():
@@ -195,12 +197,12 @@ class EditClimberInfoPage(QWidget):
         """Handles saving the updated data into the database."""
 
         self.is_saving = True  # Set the flag to indicate saving is in progress
-        self.email = self.first_column_widgets["Email:"].text()
+        # self.climber_id = self.first_column_widgets["Email:"].text()
 
         updated_data = {
             "name": self.first_column_widgets["Name:"].text(),
             "surname": self.first_column_widgets["Surname:"].text(),
-            # "email": self.first_column_widgets["Email:"].text(),
+            "email": self.first_column_widgets["Email:"].text(),
             "gender": self.first_column_widgets["Gender:"].currentText(),
             "dominant_arm": self.first_column_widgets["Dominant Arm:"].currentText(),
             "weight": self.first_column_widgets["Weight (kg):"].value(),
@@ -220,7 +222,7 @@ class EditClimberInfoPage(QWidget):
         }
 
         # Save the updated data in the database
-        success = self.climber_db_manager.update_climber_data(self.admin_id, self.email, updated_data)
+        success = self.climber_db_manager.update_climber_data(self.admin_id, self.climber_id, updated_data)
 
         if success:
             QMessageBox.information(self, "Success", "Settings updated successfully!")

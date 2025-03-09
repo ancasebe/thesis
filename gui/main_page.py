@@ -110,7 +110,7 @@ class MainPage(QWidget):
         # Add main app page initially
         self.main_app_page = MainAppPage(self.username, self.logout_callback)
         self.add_widget_to_stack(self.main_app_page, "main")
-        print(self.admin_id)
+        # print(self.admin_id)
 
     def add_widget_to_stack(self, widget, key):
         """
