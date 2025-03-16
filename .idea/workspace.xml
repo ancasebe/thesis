@@ -4,22 +4,19 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="8d114396-0b52-44aa-9fec-17fceb6230ba" name="Changes" comment="added data_communicator.py">
-      <change afterPath="$PROJECT_DIR$/gui/test_page/group2_ao_copy.xlsx" afterDir="false" />
+    <list default="true" id="8d114396-0b52-44aa-9fec-17fceb6230ba" name="Changes" comment="added datA_COMMUNICATOR TO GUI">
+      <change afterPath="$PROJECT_DIR$/gui/results_page/results_page.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gui/test_page/data_communicator_split.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gui/test_page/evaluations/all_out.py" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/gui/test_page/test_db_manager.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gui/climber_database.db" beforeDir="false" afterPath="$PROJECT_DIR$/gui/climber_database.db" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gui/login_database.db" beforeDir="false" afterPath="$PROJECT_DIR$/gui/login_database.db" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/main_page.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/main_page.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/requirements" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/research_members/climber_db_manager.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/research_members/climber_db_manager.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/main.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gui/research_members/edit_climber_info.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/research_members/edit_climber_info.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/research_members/new_climber.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/research_members/new_climber.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gui/test_page/data_communicator.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/test_page/data_communicator.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/test_page/data_gen.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/test_page/only_test_page.py" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/gui/test_page/test_page.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/test_page/test_page.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/test_page/test_run.py" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -36,12 +33,12 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
-  "lastFilter": {
-    "state": "OPEN",
-    "assignee": "ancasebe"
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;ancasebe&quot;
   }
-}]]></component>
+}</component>
   <component name="GithubPullRequestsUISettings">
     <option name="selectedUrlAndAccountId">
       <UrlAndAccount>
@@ -64,6 +61,7 @@
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
+    "Python.all_out.executor": "Run",
     "Python.climber_db_manager.executor": "Run",
     "Python.data_com_new.executor": "Run",
     "Python.data_com_old.executor": "Run",
@@ -84,8 +82,8 @@
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/../Diploma/txt" />
-      <recent name="$PROJECT_DIR$/../Diploma/shit files" />
       <recent name="$PROJECT_DIR$/gui/test_page" />
+      <recent name="$PROJECT_DIR$/../Diploma/shit files" />
       <recent name="$PROJECT_DIR$/gui/test_page/tests" />
       <recent name="$PROJECT_DIR$/gui" />
     </key>
@@ -150,7 +148,15 @@
       <option name="project" value="LOCAL" />
       <updated>1741007831407</updated>
     </task>
-    <option name="localTasksCounter" value="6" />
+    <task id="LOCAL-00006" summary="added datA_COMMUNICATOR TO GUI">
+      <option name="closed" value="true" />
+      <created>1741564267803</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1741564267803</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -158,7 +164,19 @@
       <map>
         <entry key="MAIN">
           <value>
-            <State />
+            <State>
+              <option name="FILTERS">
+                <map>
+                  <entry key="branch">
+                    <value>
+                      <list>
+                        <option value="main" />
+                      </list>
+                    </value>
+                  </entry>
+                </map>
+              </option>
+            </State>
           </value>
         </entry>
       </map>
@@ -169,6 +187,7 @@
     <MESSAGE value="new data_generator.py po konzultaci s Tomasem" />
     <MESSAGE value="new data_generator.py zakomentovano nepotrebny kod" />
     <MESSAGE value="added data_communicator.py" />
-    <option name="LAST_COMMIT_MESSAGE" value="added data_communicator.py" />
+    <MESSAGE value="added datA_COMMUNICATOR TO GUI" />
+    <option name="LAST_COMMIT_MESSAGE" value="added datA_COMMUNICATOR TO GUI" />
   </component>
 </project>

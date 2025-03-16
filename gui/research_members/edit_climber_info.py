@@ -228,38 +228,13 @@ class EditClimberInfoPage(QWidget):
             QMessageBox.information(self, "Success", "Settings updated successfully!")
             if hasattr(self, 'dialog'):
                 self.dialog.close()
-            self.switch_to_test_page()  # Redirect to the main page or next step
+            editing = True
+            self.switch_to_test_page(editing)  # Redirect to the main page or next step
         else:
             # self.is_saving = False  # Reset the flag if saving fails
             QMessageBox.warning(self, "Error", "An error occurred while updating settings.")
 
     def close_event(self, event):
-        # """
-        # Intercepts the close event and prompts the user for confirmation.
-        # """
-        # print(self.is_saving)
-        # # If saving, allow the window to close without showing a dialog
-        # if self.is_saving:
-        #     self.main_stacked_widget.setCurrentWidget(self.switch_to_test_page)
-        #     # event.accept()
-        #     return
-        #
-        # reply = QMessageBox.question(
-        #     self,
-        #     "Confirm Exit",
-        #     "Are you sure you want to leave without saving?",
-        #     QMessageBox.Yes | QMessageBox.No,
-        #     QMessageBox.No
-        # )
-        # # if reply == QMessageBox.Yes:
-        # #     self.main_stacked_widget.setCurrentWidget(self.switch_to_test_page)  # Navigate back
-        # if reply == QMessageBox.Yes:
-        #     # self.switch_to_test_page()  # Redirect to the test page
-        #     self.main_stacked_widget.setCurrentWidget(self.switch_to_test_page)
-        #     # event.accept()  # Close the window
-        # else:
-        #     event.ignore()  # Cancel the close action
-
         """Intercepts the close event to confirm unsaved changes."""
         if not self.is_saving:
             reply = QMessageBox.question(

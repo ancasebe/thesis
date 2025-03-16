@@ -8,6 +8,7 @@ from PySide6.QtCore import QTimer
 import matplotlib.pyplot as plt
 from datetime import datetime
 from gui.test_page.test_db_manager import ClimbingTestManager
+from gui.test_page.evaluations.all_out import AllOutTest
 
 
 # --- CSV Logger Helper Class ---
@@ -23,8 +24,8 @@ class CSVLogger:
         # self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         script_dir = os.path.dirname(__file__)
         folder_path = os.path.join(script_dir, folder)
-        print(folder_path)
         filename = f"{folder_path}/{prefix}_{timestamp}.csv"
+        print(filename)
         self.filename = filename
         self.file = open(filename, "w", newline="")
         self.writer = csv.writer(self.file)
@@ -45,6 +46,42 @@ class CSVLogger:
         self.file.close()
 
 
+class BufferedBinaryLogger:
+    """
+    Logs data points into an in-memory buffer and writes them in batches to an HDF5 file.
+    """
+    def __init__(self, folder="tests", prefix="processed_data", timestamp="today", flush_interval=1000):
+        script_dir = os.path.dirname(__file__)
+        folder_path = os.path.join(script_dir, folder)
+        filename = f"{folder_path}/{prefix}_{timestamp}.h5"
+        self.filename = filename
+        self.buffer = []  # in-memory buffer for data points.
+        self.flush_interval = flush_interval
+        self.key = "data"
+        # Open an HDFStore in write mode with table format (to allow appending).
+        self.store = pd.HDFStore(self.filename, mode='w', complib='blosc', complevel=9)
+        # Initialize the table by writing an empty DataFrame with the proper columns.
+        self.store.put(self.key, pd.DataFrame(columns=["timestamp", "value"]), format='table', append=False)
+
+    def log(self, ts, val):
+        """Append a data point to the buffer and flush if necessary."""
+        self.buffer.append([f"timestamp_{ts}", val])
+        if len(self.buffer) >= self.flush_interval:
+            self.flush()
+
+    def flush(self):
+        """Write the buffered data to the HDF5 file and clear the buffer."""
+        if self.buffer:
+            df = pd.DataFrame(self.buffer, columns=["timestamp", "value"])
+            self.store.append(self.key, df, format='table', data_columns=True)
+            self.buffer = []
+
+    def close(self):
+        """Flush any remaining data and close the HDF5 store."""
+        self.flush()
+        self.store.close()
+
+
 # --- Combined Data Communicator Class ---
 class CombinedDataCommunicator(QMainWindow):
     """
@@ -60,63 +97,72 @@ class CombinedDataCommunicator(QMainWindow):
             window_size (int): Time window (in seconds) for the x-axis (default 60).
             fixed_offset_ratio (float): Ratio to determine where new points appear.
     """
-    def __init__(self, force_timestamps, force_values, nirs_timestamps, nirs_values,
-                 admin_id, climber_id, window_size=60, auto_start=False, test_label="ao_force"):
+    def __init__(self, admin_id, climber_id, arm_tested, window_size=60, auto_start=False, data_type="force", test_id="ao"):
+
         super().__init__()
         self.timestamp = None
-        self.force_csv = None
-        self.nirs_csv = None
+        self.force_file = None
+        self.nirs_file = None
+        self.force_timer = None
+        self.nirs_timer = None
 
         self.admin_id = admin_id
         self.climber_id = climber_id
-        self.auto_start = auto_start
-        self.test_label = test_label  # new parameter indicating the test and data type
+        self.test_id = test_id
+        if arm_tested == "Dominant":
+            self.arm_tested = "D"
+        elif arm_tested == "Non-dominant":
+            self.arm_tested = "N"
+        else:
+            self.arm_tested = "-"
+        self.data_type = data_type  # new parameter indicating the test and data type
 
         self.x_min = -window_size
         self.x_max = 0
-        # self.fixed_offset = self.x_min + window_size * fixed_offset_ratio
 
-        self.force_y_range = {"min": np.min(force_values) - 5, "max": np.max(force_values) + 5}
-        self.nirs_y_range = {"min": np.min(nirs_values) - 5, "max": np.max(nirs_values) + 5}
+        # Load sensor data from Excel files.
+        script_dir = os.path.dirname(__file__)  # folder where test_page.py is located
+        if self.data_type != "nirs":
+            force_file = os.path.join(script_dir, "group2_ao_copy.xlsx")
+            force_df = pd.read_excel(force_file).dropna()
+            force_timestamps = force_df.iloc[:, 0].values
+            force_values = force_df.iloc[:, 3].values
 
-        self.force_data = {
-            "timestamps": force_timestamps,
-            "values": force_values,
-            "index": 0,
-            "num_points": len(force_timestamps)
-        }
-        self.nirs_data = {
-            "timestamps": nirs_timestamps,
-            "values": nirs_values,
-            "index": 0,
-            "num_points": len(nirs_timestamps)
-        }
+            self.force_y_range = {"min": np.min(force_values) - 5, "max": np.max(force_values) + 5}
 
-        # self.force_csv = CSVLogger(folder="tests", prefix="processed_force")
-        # self.nirs_csv = CSVLogger(folder="tests", prefix="processed_nirs")
+            self.force_data = {
+                "timestamps": force_timestamps,
+                "values": force_values,
+                "index": 0,
+                "num_points": len(force_timestamps)
+            }
+
+        if self.data_type != "force":
+            nirs_file = os.path.join(script_dir, "group3_ao_copy.xlsx")
+            nirs_df = pd.read_excel(nirs_file).dropna()
+            nirs_timestamps = nirs_df.iloc[:, 0].values
+            nirs_values = nirs_df.iloc[:, 2].values
+
+            self.nirs_y_range = {"min": np.min(nirs_values) - 5, "max": np.max(nirs_values) + 5}
+
+            self.nirs_data = {
+                "timestamps": nirs_timestamps,
+                "values": nirs_values,
+                "index": 0,
+                "num_points": len(nirs_timestamps)
+            }
 
         self.finalized = False
         self._setup_ui()
 
-        # # Create curves and live text items.
-        # self.force_curve = self.plot_widget.plot([], [], pen='b', name="Force [kg]")
-        # self.nirs_curve = pg.PlotCurveItem(pen='r', name="NIRS (%)")
-        # self.nirs_view.addItem(self.nirs_curve)
-        #
-        # self.force_text = pg.TextItem("", anchor=(0, 0))
-        # self.force_text.setPos(self.x_min, self.force_y_range["max"])
-        # self.plot_widget.addItem(self.force_text)
-        # self.nirs_text = pg.TextItem("", anchor=(1, 0))
-        # self.nirs_text.setPos(self.x_max, self.nirs_y_range["max"])
-        # self.nirs_view.addItem(self.nirs_text)
+        if self.data_type != "nirs":
+            self.force_timer = QTimer()
+            self.force_timer.timeout.connect(self.update_force)
+        if self.data_type != "force":
+            self.nirs_timer = QTimer()
+            self.nirs_timer.timeout.connect(self.update_nirs)
 
-        # Set up timers but do not start automatically unless auto_start is True.
-        self.force_timer = QTimer()
-        self.force_timer.timeout.connect(self.update_force)
-        self.nirs_timer = QTimer()
-        self.nirs_timer.timeout.connect(self.update_nirs)
-
-        if self.auto_start:
+        if auto_start:
             self.start_acquisition()
 
     def _setup_ui(self):
@@ -129,52 +175,72 @@ class CombinedDataCommunicator(QMainWindow):
         # Main plot
         self.plot_widget = pg.PlotWidget()
         layout.addWidget(self.plot_widget)
-
-        # Force axis (left)
         self.plot_widget.setXRange(self.x_min, self.x_max)
-        self.plot_widget.setYRange(self.force_y_range["min"], self.force_y_range["max"])
-        self.plot_widget.getAxis('bottom').setLabel("Time (s)")
-        self.plot_widget.getAxis('left').setLabel("Force (kg)")  # <-- explicit label
-        self.plot_widget.showAxis('right')  # keep the right axis visible
-        self.plot_widget.getAxis('right').setLabel('NIRS (%)')
 
-        # Create a second ViewBox for NIRS data
-        self.nirs_view = pg.ViewBox()
-        self.plot_widget.scene().addItem(self.nirs_view)
-        # Link the right axis to the NIRS view
-        self.plot_widget.getAxis('right').linkToView(self.nirs_view)
+        # CASE 1: NIRS only.
+        if self.data_type == "nirs":
+            self.plot_widget.getAxis('bottom').setLabel("Time (s)")
+            # Clear left axis since force data is not used.
+            self.plot_widget.getAxis('left').setLabel("")
+            self.plot_widget.showAxis('right')
+            self.plot_widget.getAxis('right').setLabel('NIRS (%)')
 
-        # Set Y range for the NIRS axis
-        self.nirs_view.setYRange(self.nirs_y_range["min"], self.nirs_y_range["max"], padding=0)
-        # Set X range for the NIRS axis
-        self.nirs_view.setXRange(self.x_min, self.x_max, padding=0)
+            # Add NIRS curve and text directly to the main view.
+            self.nirs_curve = pg.PlotCurveItem(pen='r', name="NIRS (%)")
+            self.plot_widget.addItem(self.nirs_curve)
+            self.nirs_text = pg.TextItem("", anchor=(1, 0))
+            self.plot_widget.addItem(self.nirs_text)
 
-        # Make sure the NIRS view is resized with the main view
-        self.plot_widget.getViewBox().sigResized.connect(self._update_views)
+        # CASE 2: Force only.
+        elif self.data_type == "force":
+            self.plot_widget.getAxis('bottom').setLabel("Time (s)")
+            self.plot_widget.getAxis('left').setLabel("Force (kg)")
+            # Hide the right axis since no NIRS data will be shown.
+            self.plot_widget.hideAxis('right')
+            self.plot_widget.setYRange(self.force_y_range["min"], self.force_y_range["max"])
 
-        # Create curves
-        self.force_curve = self.plot_widget.plot([], [], pen='y', name="Force [kg]")
-        self.nirs_curve = pg.PlotCurveItem(pen='r', name="NIRS (%)")
-        self.nirs_view.addItem(self.nirs_curve)
+            # Add force curve and text to the main view.
+            self.force_curve = self.plot_widget.plot([], [], pen='y', name="Force [kg]")
+            self.force_text = pg.TextItem("", anchor=(0, 0))
+            self.plot_widget.addItem(self.force_text)
 
-        # Add a single legend to the main plot
+        # CASE 3: Combined (Force and NIRS).
+        else:
+            self.plot_widget.getAxis('bottom').setLabel("Time (s)")
+            self.plot_widget.getAxis('left').setLabel("Force (kg)")
+            self.plot_widget.showAxis('right')
+            self.plot_widget.getAxis('right').setLabel("NIRS (%)")
+            self.plot_widget.setYRange(self.force_y_range["min"], self.force_y_range["max"])
+
+            # Create a secondary view for NIRS data.
+            self.nirs_view = pg.ViewBox()
+            self.plot_widget.scene().addItem(self.nirs_view)
+            self.plot_widget.getAxis('right').linkToView(self.nirs_view)
+            self.nirs_view.setYRange(self.nirs_y_range["min"], self.nirs_y_range["max"], padding=0)
+            self.nirs_view.setXRange(self.x_min, self.x_max, padding=0)
+            self.plot_widget.getViewBox().sigResized.connect(self._update_views)
+
+            # Add Force and NIRS curves.
+            self.force_curve = self.plot_widget.plot([], [], pen='y', name="Force [kg]")
+            self.nirs_curve = pg.PlotCurveItem(pen='r', name="NIRS (%)")
+            self.nirs_view.addItem(self.nirs_curve)
+            # Add text items.
+            self.force_text = pg.TextItem("", anchor=(0, 0))
+            self.plot_widget.addItem(self.force_text)
+            self.nirs_text = pg.TextItem("", anchor=(1, 0))
+            self.nirs_view.addItem(self.nirs_text)
+
+        # Add a legend in the top center.
         legend = self.plot_widget.addLegend()
         legend.setParentItem(self.plot_widget.getViewBox())
         legend.anchor((0.5, 0), (0.5, 0))
-        # legend.setPos((self.x_min + self.x_max) / 2, self.force_y_range["max"])
-        # Manually register both curves with the legend
-        legend.addItem(self.force_curve, "Force [kg]")
-        legend.addItem(self.nirs_curve, "NIRS (%)")
-
-        # Force readout text
-        self.force_text = pg.TextItem("", anchor=(0, 0))
-        # self.force_text.setPos(self.x_min, self.force_y_range["max"])
-        self.plot_widget.addItem(self.force_text)
-
-        # NIRS readout text
-        self.nirs_text = pg.TextItem("", anchor=(1, 0))
-        # self.nirs_text.setPos(self.x_max, self.nirs_y_range["max"])
-        self.nirs_view.addItem(self.nirs_text)
+        if self.data_type == "nirs":
+            legend.addItem(self.nirs_curve, "NIRS (%)")
+        elif self.data_type == "force":
+            legend.addItem(self.force_curve, "Force [kg]")
+        else:
+            legend.addItem(self.force_curve, "Force [kg]")
+            legend.addItem(self.nirs_curve, "NIRS (%)")
 
     def _update_views(self):
         """Synchronize the geometry of the secondary NIRS view with the main view."""
@@ -185,27 +251,23 @@ class CombinedDataCommunicator(QMainWindow):
     def start_acquisition(self):
         """Starts the data acquisition by starting the timers."""
         self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        # Depending on test_label, create CSVLogger(s)
-        if self.test_label in ["ao_force", "ao_force_nirs"]:
-            self.force_csv = CSVLogger(folder="tests", prefix=f"ao_force",
-                                       timestamp=self.timestamp)
-        else:
-            self.force_csv = None
 
-        if self.test_label in ["ao_nirs", "ao_force_nirs"]:
-            self.nirs_csv = CSVLogger(folder="tests", prefix=f"ao_nirs",
-                                      timestamp=self.timestamp)
+        if self.data_type in ["force", "force_nirs"]:
+            self.force_file = BufferedBinaryLogger(folder="tests", prefix=f"{self.test_id}_force",
+                                                   timestamp=self.timestamp, flush_interval=1000)
         else:
-            self.nirs_csv = None
+            self.force_file = None
 
-        if self.force_csv is not None:
+        if self.data_type in ["nirs", "force_nirs"]:
+            self.nirs_file = BufferedBinaryLogger(folder="tests", prefix=f"{self.test_id}_nirs",
+                                                  timestamp=self.timestamp, flush_interval=1000)
+        else:
+            self.nirs_file = None
+
+        if self.force_file is not None:
             self.force_timer.start(10)
-        elif self.nirs_csv is not None:
+        if self.nirs_file is not None:
             self.nirs_timer.start(10)
-        # self.force_csv = CSVLogger(folder="tests", prefix="processed_force", timestamp=self.timestamp)
-        # self.nirs_csv = CSVLogger(folder="tests", prefix="processed_nirs", timestamp=self.timestamp)
-        # self.force_timer.start(10)
-        # self.nirs_timer.start(10)
 
     def update_force(self):
         """
@@ -214,7 +276,7 @@ class CombinedDataCommunicator(QMainWindow):
         Logs the current Force data point, transforms its x value so that the newest point appears at the fixed offset,
         and updates the force curve and live text readout.
         """
-        if self.force_csv is None:
+        if self.force_file is None:
             return
         if self.force_data["index"] >= (self.force_data["num_points"] - 1):
             self.force_timer.stop()
@@ -222,7 +284,7 @@ class CombinedDataCommunicator(QMainWindow):
         else:
             current_ts = self.force_data["timestamps"][self.force_data["index"]]
             current_val = self.force_data["values"][self.force_data["index"]]
-            self.force_csv.log(current_ts, current_val)
+            self.force_file.log(current_ts, current_val)
             x_data = (self.force_data["timestamps"][:self.force_data["index"] + 1] - current_ts)
             y_data = self.force_data["values"][:self.force_data["index"] + 1]
             mask = (x_data >= self.x_min) & (x_data <= self.x_max)
@@ -241,7 +303,7 @@ class CombinedDataCommunicator(QMainWindow):
         Logs the current NIRS data point, transforms its x value so that the newest point appears at the fixed offset,
         and updates the NIRS curve and live text readout.
         """
-        if self.nirs_csv is None:
+        if self.nirs_file is None:
             return
         if self.nirs_data["index"] >= (self.nirs_data["num_points"] - 1):
             self.nirs_timer.stop()
@@ -249,7 +311,7 @@ class CombinedDataCommunicator(QMainWindow):
         else:
             current_ts = self.nirs_data["timestamps"][self.nirs_data["index"]]
             current_val = self.nirs_data["values"][self.nirs_data["index"]]
-            self.nirs_csv.log(current_ts, current_val)
+            self.nirs_file.log(current_ts, current_val)
             x_data = (self.nirs_data["timestamps"][:self.nirs_data["index"] + 1] - current_ts)
             y_data = self.nirs_data["values"][:self.nirs_data["index"] + 1]
             mask = (x_data >= self.x_min) & (x_data <= self.x_max)
@@ -263,52 +325,53 @@ class CombinedDataCommunicator(QMainWindow):
 
     def stop_acquisition(self):
         """Stops the data acquisition and finalizes the test."""
-        if self.force_timer.isActive():
+        if self.force_timer is not None and self.force_timer.isActive():
             self.force_timer.stop()
-        if self.nirs_timer.isActive():
+        if self.nirs_timer is not None and self.nirs_timer.isActive():
             self.nirs_timer.stop()
+        if self.force_file is not None:
+            self.force_file.close()
+        if self.nirs_file is not None:
+            self.nirs_file.close()
         self.finalize_acquisition()
 
     def finalize_acquisition(self):
         """Generate the final graph and saves data to a database, if not done yet."""
+        # global test_results, evaluator
         if not self.finalized:
 
-            # Generate a final graph depending on selected test type.
-            if self.test_label == "ao_force":
-                generate_final_graph_force(self.force_csv.filename)
-            elif self.test_label == "ao_nirs":
-                generate_final_graph_nirs(self.nirs_csv.filename)
-            elif self.test_label == "ao_force_nirs":
-                generate_final_combined_graph(self.force_csv.filename, self.nirs_csv.filename)
+            if self.data_type == "force":
+                generate_final_graph_force(self.force_file.filename)
+                evaluator = AllOutTest(self.force_file.filename)
+                test_results = evaluator.evaluate()
+                print("Evaluation Results:")
+                print(test_results)
+            elif self.data_type == "nirs":
+                generate_final_graph_nirs(self.nirs_file.filename)
+                test_results = str({"evaluation": "placeholder"})
+            elif self.data_type == "force_nirs":
+                generate_final_combined_graph(self.force_file.filename, self.nirs_file.filename)
+                evaluator = AllOutTest(self.force_file.filename)
+                test_results = evaluator.evaluate()
+                print("Evaluation Results:")
+                print(test_results)
             else:
-                print("Unknown test type; skipping graph generation.")
+                print("Unknown test type; skipping graph generation and evaluation.")
             # Save CSV filenames in the database using the provided admin_id and climber_id.
             db_manager = ClimbingTestManager()
             # Here you could include the test type in the stored file_paths if desired.
             file_paths = ""
-            if self.force_csv is not None:
-                file_paths += self.force_csv.filename
-            if self.nirs_csv is not None:
-                file_paths += ("; " if file_paths else "") + self.nirs_csv.filename
-            print(file_paths)
+            if self.force_file is not None:
+                file_paths += self.force_file.filename
+            if self.nirs_file is not None:
+                file_paths += ("; " if file_paths else "") + self.nirs_file.filename
+            # print(file_paths)
             # For test_results, you can add further evaluation data.
-            test_results = str({"evaluation": "placeholder"})
-            db_manager.add_test_result(str(self.admin_id), str(self.climber_id), self.timestamp,
-                                       file_paths, test_results)
+            # if self.arm_tested == "Dominant":
+            db_manager.add_test_result(str(self.admin_id), str(self.climber_id), self.arm_tested,
+                                       self.timestamp, file_paths, str(test_results))
             db_manager.close_connection()
             self.finalized = True
-
-            # # Generate the final combined graph.
-            # generate_final_combined_graph(self.force_csv.filename, self.nirs_csv.filename)
-            # # Save CSV filenames in the database using the provided admin_id and climber_id.
-            # db_manager = ClimbingTestManager()
-            #
-            # test_results = str({"maximal_force": 65.34, "critical_force": 34.54, "w_prime": 6543.43})
-            # file_paths = str((self.force_csv.filename, self.nirs_csv.filename))
-            # db_manager.add_test_result(str(self.admin_id), str(self.climber_id), self.timestamp,
-            #                            file_paths, test_results)
-            # db_manager.close_connection()
-            # self.finalized = True
 
     def close_event(self, event):
         """
@@ -326,13 +389,26 @@ class CombinedDataCommunicator(QMainWindow):
             self.nirs_timer.stop()
         if not self.finalized:
             self.finalize_acquisition()
-        self.force_csv.close()
-        self.nirs_csv.close()
+        self.force_file.close()
+        self.nirs_file.close()
         event.accept()
-def generate_final_graph_force(force_csv):
+
+
+def generate_final_graph_force(force_file):
+    """
+    Generates a final static graph that plots force data.
+
+    Parameters:
+        force_file (str): Filename of the NIRS data h5.
+    """
     # Read Force data.
-    force_df = pd.read_csv(force_csv)
-    force_df['timestamp'] = force_df['force_timestamp'].str.replace("force_", "", regex=False).astype(float)
+    # force_df = pd.read_csv(force_file)
+    # force_df['timestamp'] = force_df['force_timestamp'].str.replace("force_", "", regex=False).astype(float)
+    # force_timestamps = force_df['timestamp'].values
+    # force_values = force_df['value'].values
+
+    force_df = pd.read_hdf(force_file, key="data")
+    force_df['timestamp'] = force_df['timestamp'].str.replace("timestamp_", "", regex=False).astype(float)
     force_timestamps = force_df['timestamp'].values
     force_values = force_df['value'].values
 
@@ -345,14 +421,26 @@ def generate_final_graph_force(force_csv):
     ax.grid(True)
     fig.tight_layout()
     plt.title("Final Force Data")
-    ax.legend(loc="upper left")
+    ax.legend(loc="upper right")
     plt.show()
 
 
-def generate_final_graph_nirs(nirs_csv):
+def generate_final_graph_nirs(nirs_file):
+    """
+    Generates a final static graph that plots NIRS data.
+
+    Parameters:
+        nirs_file (str): Filename of the NIRS data h5.
+    """
+    # # Read NIRS data.
+    # nirs_df = pd.read_csv(nirs_file)
+    # nirs_df['timestamp'] = nirs_df['force_timestamp'].str.replace("force_", "", regex=False).astype(float)
+    # nirs_timestamps = nirs_df['timestamp'].values
+    # nirs_values = nirs_df['value'].values
+
     # Read NIRS data.
-    nirs_df = pd.read_csv(nirs_csv)
-    nirs_df['timestamp'] = nirs_df['force_timestamp'].str.replace("force_", "", regex=False).astype(float)
+    nirs_df = pd.read_hdf(nirs_file, key="data")
+    nirs_df['timestamp'] = nirs_df['timestamp'].str.replace("timestamp_", "", regex=False).astype(float)
     nirs_timestamps = nirs_df['timestamp'].values
     nirs_values = nirs_df['value'].values
 
@@ -365,112 +453,39 @@ def generate_final_graph_nirs(nirs_csv):
     ax.grid(True)
     fig.tight_layout()
     plt.title("Final NIRS Data")
-    ax.legend(loc="upper left")
+    ax.legend(loc="upper right")
     plt.show()
 
 
-# def generate_final_graph(force_csv=None, nirs_csv=None, plot_type="combined"):
-#     """
-#     plot_type: "force", "nirs", or "combined"
-#     """
-#     if plot_type == "force":
-#         if force_csv is None:
-#             print("No force CSV provided")
-#             return
-#         # Read Force data.
-#         force_df = pd.read_csv(force_csv)
-#         force_df['timestamp'] = force_df['force_timestamp'].str.replace("force_", "", regex=False).astype(float)
-#         force_timestamps = force_df['timestamp'].values
-#         force_values = force_df['value'].values
-#
-#         fig, ax = plt.subplots()
-#         ax.plot(force_timestamps, force_values, 'b-', label="Force [kg]")
-#         ax.set_xlabel("Time (s)")
-#         ax.set_ylabel("Force (kg)", color='b')
-#         ax.tick_params(axis='y', labelcolor='b')
-#         ax.grid(True)
-#         fig.tight_layout()
-#         plt.title("Final Force Data")
-#         ax.legend(loc="upper left")
-#         plt.show()
-#
-#     elif plot_type == "nirs":
-#         if nirs_csv is None:
-#             print("No NIRS CSV provided")
-#             return
-#         # Read NIRS data.
-#         nirs_df = pd.read_csv(nirs_csv)
-#         nirs_df['timestamp'] = nirs_df['force_timestamp'].str.replace("force_", "", regex=False).astype(float)
-#         nirs_timestamps = nirs_df['timestamp'].values
-#         nirs_values = nirs_df['value'].values
-#
-#         fig, ax = plt.subplots()
-#         ax.plot(nirs_timestamps, nirs_values, 'r-', label="NIRS (%)")
-#         ax.set_xlabel("Time (s)")
-#         ax.set_ylabel("NIRS (%)", color='r')
-#         ax.tick_params(axis='y', labelcolor='r')
-#         ax.grid(True)
-#         fig.tight_layout()
-#         plt.title("Final NIRS Data")
-#         ax.legend(loc="upper left")
-#         plt.show()
-#
-#     elif plot_type == "combined":
-#         if force_csv is None or nirs_csv is None:
-#             print("Force CSV and/or NIRS CSV not provided")
-#             return
-#         # Read Force data.
-#         force_df = pd.read_csv(force_csv)
-#         force_df['timestamp'] = force_df['force_timestamp'].str.replace("force_", "", regex=False).astype(float)
-#         force_timestamps = force_df['timestamp'].values
-#         force_values = force_df['value'].values
-#
-#         # Read NIRS data.
-#         nirs_df = pd.read_csv(nirs_csv)
-#         nirs_df['timestamp'] = nirs_df['force_timestamp'].str.replace("force_", "", regex=False).astype(float)
-#         nirs_timestamps = nirs_df['timestamp'].values
-#         nirs_values = nirs_df['value'].values
-#
-#         fig, ax1 = plt.subplots()
-#         ax1.plot(force_timestamps, force_values, 'b-', label="Force [kg]")
-#         ax1.set_xlabel("Time (s)")
-#         ax1.set_ylabel("Force (kg)", color='b')
-#         ax1.tick_params(axis='y', labelcolor='b')
-#         ax1.grid(True)
-#
-#         ax2 = ax1.twinx()
-#         ax2.plot(nirs_timestamps, nirs_values, 'r-', label="NIRS (%)")
-#         ax2.set_ylabel("NIRS (%)", color='r')
-#         ax2.tick_params(axis='y', labelcolor='r')
-#
-#         lines1, labels1 = ax1.get_legend_handles_labels()
-#         lines2, labels2 = ax2.get_legend_handles_labels()
-#         ax1.legend(lines1 + lines2, labels1 + labels2, loc="upper left")
-#
-#         fig.tight_layout()
-#         plt.title("Final Combined Sensor Data")
-#         plt.show()
-#
-#     else:
-#         print("Unknown plot type.")
-
-def generate_final_combined_graph(force_csv, nirs_csv):
+def generate_final_combined_graph(force_file, nirs_file):
     """
     Generates a final static graph that plots both Force and NIRS data on a single figure with two y-axes.
 
     Parameters:
-        force_csv (str): Filename of the Force data CSV.
-        nirs_csv (str): Filename of the NIRS data CSV.
+        force_file (str): Filename of the Force data h5.
+        nirs_file (str): Filename of the NIRS data h5.
     """
+    # # Read Force data.
+    # force_df = pd.read_csv(force_file)
+    # force_df['timestamp'] = force_df['force_timestamp'].str.replace("force_", "", regex=False).astype(float)
+    # force_timestamps = force_df['timestamp'].values
+    # force_values = force_df['value'].values
+    #
+    # # Read NIRS data.
+    # nirs_df = pd.read_csv(nirs_file)
+    # nirs_df['timestamp'] = nirs_df['force_timestamp'].str.replace("force_", "", regex=False).astype(float)
+    # nirs_timestamps = nirs_df['timestamp'].values
+    # nirs_values = nirs_df['value'].values
+
     # Read Force data.
-    force_df = pd.read_csv(force_csv)
-    force_df['timestamp'] = force_df['force_timestamp'].str.replace("force_", "", regex=False).astype(float)
+    force_df = pd.read_hdf(force_file, key="data")
+    force_df['timestamp'] = force_df['timestamp'].str.replace("timestamp_", "", regex=False).astype(float)
     force_timestamps = force_df['timestamp'].values
     force_values = force_df['value'].values
 
     # Read NIRS data.
-    nirs_df = pd.read_csv(nirs_csv)
-    nirs_df['timestamp'] = nirs_df['force_timestamp'].str.replace("force_", "", regex=False).astype(float)
+    nirs_df = pd.read_hdf(nirs_file, key="data")
+    nirs_df['timestamp'] = nirs_df['timestamp'].str.replace("timestamp_", "", regex=False).astype(float)
     nirs_timestamps = nirs_df['timestamp'].values
     nirs_values = nirs_df['value'].values
 

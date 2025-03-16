@@ -66,6 +66,7 @@ class MainWindow(QMainWindow):
         Args:
             username (str): The username of the logged-in user.
             admin_id (int): The ID of the logged-in admin, passed to MainPage and other components.
+            is_superuser (bool): Is the logged-in user superuser?
         """
         app_widget = MainPage(username, admin_id, self.logout, is_superuser)
         self.stacked_widget.addWidget(app_widget)  # Index 2

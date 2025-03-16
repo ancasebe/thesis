@@ -39,7 +39,7 @@ class TestPage(QWidget):
         self.db_manager = db_manager
         self.admin_id = admin_id
         self.main_stacked_widget = main_stacked_widget
-        self.selected_test = None
+        # self.selected_test = None
         self.setup_ui()
         self.load_climbers()
 
@@ -63,7 +63,7 @@ class TestPage(QWidget):
         form_layout.addWidget(self.climber_selector, 1, 1)
 
         self.arm_tested_combo = QComboBox()
-        self.arm_tested_combo.addItems(["Select Arm", "dominant", "non-dominant"])
+        self.arm_tested_combo.addItems(["Select Arm", "Dominant", "Non-dominant"])
         form_layout.addWidget(QLabel("Arm Tested:"), 0, 0)
         form_layout.addWidget(self.arm_tested_combo, 0, 1)
 
@@ -117,10 +117,12 @@ class TestPage(QWidget):
         button_layout.setVerticalSpacing(10)
 
         test_buttons = [
-            "Maximal Voluntary Contraction",
-            "All Out",
-            "Hang Test",
-            "Test to Exhaustion"
+            "MVC",
+            "AO",
+            "IIT",
+            "DH",
+            "SIT",
+            "IIRT"
         ]
 
         for i, test_name in enumerate(test_buttons):
@@ -149,70 +151,65 @@ class TestPage(QWidget):
         """Sets the selected test and validates climber and arm selections."""
         climber_id = self.climber_selector.currentData()
         selected_arm = self.arm_tested_combo.currentText()
-        selected_data_type = self.data_type_combo.currentText()
+        data_type = self.data_type_combo.currentText()
 
-        if selected_data_type == "Select Data Type":
+        if data_type == "Select Data Type":
             QMessageBox.warning(self, "No Data Type Selected", "Please select a test data type.")
             return
 
         if not climber_id:
             QMessageBox.warning(self, "No Climber Selected", "Please select a climber to proceed.")
             return
+
         if selected_arm == "Select Arm":
             QMessageBox.warning(self, "No Arm Selected", "Please select an arm to test.")
             return
 
-        self.selected_test = test_name
-        if test_name == "All Out":
-            self.launch_all_out_test_window(selected_data_type)
-        else:
-            QMessageBox.information(self, "Test Selected",
-                                    f"Selected Test: {test_name} for {climber_id}")
+        # self.selected_test = test_name
+        test_id = test_name.lower()
+        data_type = data_type.lower()
+        if data_type == "force and nirs":
+            data_type = "force_nirs"
+        print(test_id, " _ ", data_type)
+        self.launch_test_window(data_type, selected_arm, test_id)
 
-    def launch_all_out_test_window(self, data_type):
-        """Launches a new window for the All Out Test."""
+    def launch_test_window(self, data_type, selected_arm, test_id):
+        """Launches a new window for a new test."""
         climber_id = self.climber_selector.currentData()
         if not climber_id:
             QMessageBox.warning(self, "No Climber Selected", "Please select a climber.")
             return
 
-        # Compute a test label based on data type; using "ao" for All Out.
+        # # Compute a test label based on data type; using "ao" for All Out.
         # if data_type.lower() == "force":
-        #     test_label = "ao_force"
-        elif data_type.lower() == "nirs":
-            test_label = "ao_nirs"
-        elif data_type.lower() == "force and nirs":
-            test_label = "ao_force_nirs"
-        else:
-            test_label = "ao_force"
-
-        # Load sensor data from Excel files.
-        script_dir = os.path.dirname(__file__)  # folder where test_page.py is located
-        force_file = os.path.join(script_dir, "group2_ao_copy.xlsx")
-        force_df = pd.read_excel(force_file).dropna()
-        force_timestamps = force_df.iloc[:, 0].values
-        force_values = force_df.iloc[:, 5].values
-
-        nirs_file = os.path.join(script_dir, "group3_ao_copy.xlsx")
-        nirs_df = pd.read_excel(nirs_file).dropna()
-        nirs_timestamps = nirs_df.iloc[:, 0].values
-        nirs_values = nirs_df.iloc[:, 4].values
+        #     test_label = f"{test_id}_force"
+        # elif data_type.lower() == "nirs":
+        #     test_label = f"{test_id}_nirs"
+        # elif data_type.lower() == "force and nirs":
+        #     test_label = f"{test_id}_force_nirs"
+        # else:
+        #     QMessageBox.warning(self, "Some problem occurred during data type selection.")
+        #     return
+        #
+        # print(test_label)
 
         # Create a dialog window for the test.
         dialog = QDialog(self)
-        dialog.setWindowTitle("All Out Test")
+        dialog.setWindowTitle("Test Window")
         dialog.setMinimumSize(800, 600)
         layout = QVBoxLayout(dialog)
 
         # Create the communicator instance with auto_start=False.
         communicator = CombinedDataCommunicator(
-            force_timestamps, force_values,
-            nirs_timestamps, nirs_values,
+            # force_timestamps, force_values,
+            # nirs_timestamps, nirs_values,
             admin_id=self.admin_id,
             climber_id=climber_id,
+            arm_tested=selected_arm,
             window_size=60,
             auto_start=True,
-            test_label=test_label
+            data_type=data_type,
+            test_id=test_id
         )
         layout.addWidget(communicator)
 
@@ -281,7 +278,7 @@ class TestPage(QWidget):
                         QMessageBox.No
                     )
                     if reply == QMessageBox.Yes:
-                        self.reload_climbers()
+                        self.reload_climbers(editing=True)
                         event.accept()
                     else:
                         event.ignore()
@@ -316,7 +313,7 @@ class TestPage(QWidget):
                     QMessageBox.No
                 )
                 if reply == QMessageBox.Yes:
-                    self.reload_climbers()
+                    self.reload_climbers(editing=False)
                     event.accept()
                 else:
                     event.ignore()
@@ -341,7 +338,8 @@ class TestPage(QWidget):
                 else:
                     QMessageBox.warning(self, "Error", "Failed to delete climber.")
 
-    def reload_climbers(self):
+    def reload_climbers(self, editing):
         """Reloads the members list after adding a new member."""
-        self.load_climbers()
+        if not editing:
+            self.load_climbers()
         self.main_stacked_widget.setCurrentWidget(self)

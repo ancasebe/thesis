@@ -285,7 +285,8 @@ class NewClimber(QWidget):
             QMessageBox.information(self, "Success", "Questioner successfully saved.")
             if hasattr(self, 'dialog'):
                 self.dialog.close()
-            self.switch_to_test_page()  # Redirect to the main page or next step
+            editing = False
+            self.switch_to_test_page(editing)  # Redirect to the main page or next step
 
         else:
             self.is_saving = False  # Reset the flag if saving fails
