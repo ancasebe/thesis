@@ -4,18 +4,19 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="8d114396-0b52-44aa-9fec-17fceb6230ba" name="Changes" comment="added datA_COMMUNICATOR TO GUI">
-      <change afterPath="$PROJECT_DIR$/gui/results_page/results_page.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gui/test_page/data_communicator_split.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gui/test_page/evaluations/all_out.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gui/test_page/test_db_manager.py" afterDir="false" />
+    <list default="true" id="8d114396-0b52-44aa-9fec-17fceb6230ba" name="Changes" comment="data_communication, h5 files, added tests">
+      <change afterPath="$PROJECT_DIR$/gui/results_page/report_window.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gui/test_page/evaluations/nirs_evaluation.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/climber_database.db" beforeDir="false" afterPath="$PROJECT_DIR$/gui/climber_database.db" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gui/login_database.db" beforeDir="false" afterPath="$PROJECT_DIR$/gui/login_database.db" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gui/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/main_page.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/main_page.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/research_members/climber_db_manager.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/research_members/climber_db_manager.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gui/research_members/edit_climber_info.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/research_members/edit_climber_info.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/research_members/new_climber.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/research_members/new_climber.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gui/test_page/data_communicator.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/test_page/data_communicator.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/test_page/data_communicator_split.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/test_page/data_communicator_split.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/test_page/evaluations/all_out.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/test_page/evaluations/force_evaluation.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gui/test_page/test_page.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/test_page/test_page.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -156,7 +157,15 @@
       <option name="project" value="LOCAL" />
       <updated>1741564267803</updated>
     </task>
-    <option name="localTasksCounter" value="7" />
+    <task id="LOCAL-00007" summary="data_communication, h5 files, added tests">
+      <option name="closed" value="true" />
+      <created>1742125572741</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1742125572742</updated>
+    </task>
+    <option name="localTasksCounter" value="8" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -188,6 +197,7 @@
     <MESSAGE value="new data_generator.py zakomentovano nepotrebny kod" />
     <MESSAGE value="added data_communicator.py" />
     <MESSAGE value="added datA_COMMUNICATOR TO GUI" />
-    <option name="LAST_COMMIT_MESSAGE" value="added datA_COMMUNICATOR TO GUI" />
+    <MESSAGE value="data_communication, h5 files, added tests" />
+    <option name="LAST_COMMIT_MESSAGE" value="data_communication, h5 files, added tests" />
   </component>
 </project>

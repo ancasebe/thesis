@@ -97,12 +97,12 @@ class MainPage(QWidget):
         username (str): The username of the logged-in user.
         logout_callback (function): The function to call when the user clicks the "Log Out" button.
     """
-    def __init__(self, username, admin_id, logout_callback, is_superuser):
+    def __init__(self, username, admin_id, logout_callback):
         super().__init__()
         self.username = username
         self.admin_id = admin_id
         self.logout_callback = logout_callback
-        self.is_superuser = is_superuser
+        # self.is_superuser = is_superuser
         self.app_stacked_widget = QStackedWidget()
         self.widget_mapping = {}  # To track added widgets
         self.setup_ui()
@@ -147,7 +147,7 @@ class MainPage(QWidget):
         }
 
         # Add the "Handle Admins" button only if the user is a superuser
-        if self.is_superuser:
+        if self.admin_id == 1:
             buttons["Handle Admins"] = self.show_handle_admins
 
         # Add buttons to the navigation layout
@@ -175,6 +175,7 @@ class MainPage(QWidget):
 
             test_page = TestPage(db_manager=climber_db_manager,
                                  admin_id=self.admin_id,
+                                 # is_superuser=self.is_superuser,
                                  main_stacked_widget=self.app_stacked_widget)
             self.add_widget_to_stack(test_page, "testing")
         self.app_stacked_widget.setCurrentWidget(self.widget_mapping["testing"])

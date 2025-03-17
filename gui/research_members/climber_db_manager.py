@@ -118,6 +118,12 @@ class ClimberDatabaseManager:
         cursor.execute("SELECT id, name, surname, email FROM climbers WHERE admin_id = ?;", (admin_id,))
         return [{"id": row[0], "name": row[1], "surname": row[2]} for row in cursor.fetchall()]
 
+    def get_all_climbers(self):
+        """Fetches all registered climbers."""
+        cursor = self.connection.cursor()
+        cursor.execute("SELECT id, name, surname, email FROM climbers;")
+        return [{"id": row[0], "name": row[1], "surname": row[2]} for row in cursor.fetchall()]
+
     def get_user_data(self, admin_id, climber_id):
         """
         Retrieves all field values for a registered climber based on email, accessible only by the admin

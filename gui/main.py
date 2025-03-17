@@ -59,16 +59,15 @@ class MainWindow(QMainWindow):
         # Start with Login Page
         self.stacked_widget.setCurrentIndex(0)
 
-    def create_application_widget(self, username, admin_id, is_superuser):
+    def create_application_widget(self, username, admin_id):
         """
         Creates the main application interface after successful login or registration.
 
         Args:
             username (str): The username of the logged-in user.
             admin_id (int): The ID of the logged-in admin, passed to MainPage and other components.
-            is_superuser (bool): Is the logged-in user superuser?
         """
-        app_widget = MainPage(username, admin_id, self.logout, is_superuser)
+        app_widget = MainPage(username, admin_id, self.logout)
         self.stacked_widget.addWidget(app_widget)  # Index 2
         self.stacked_widget.setCurrentWidget(app_widget)
 
@@ -80,12 +79,12 @@ class MainWindow(QMainWindow):
             username (str): The username of the logged-in admin.
         """
         admin_id = self.login_db_manager.get_admin_id(username)
-        if username == "superuser":
-            is_superuser = True
-        else:
-            is_superuser = False
+        # if username == "superuser":
+        #     is_superuser = True
+        # else:
+        #     is_superuser = False
         if admin_id is not None:
-            self.create_application_widget(username, admin_id, is_superuser)
+            self.create_application_widget(username, admin_id)
         else:
             QMessageBox.warning(self, "Error", "Failed to retrieve admin ID.")
 

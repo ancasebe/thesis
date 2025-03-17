@@ -38,6 +38,7 @@ class TestPage(QWidget):
         super().__init__()
         self.db_manager = db_manager
         self.admin_id = admin_id
+        # self.is_superuser = is_superuser
         self.main_stacked_widget = main_stacked_widget
         # self.selected_test = None
         self.setup_ui()
@@ -139,7 +140,10 @@ class TestPage(QWidget):
 
     def load_climbers(self):
         """Loads climbers registered by the current admin into the ComboBox."""
-        climbers = self.db_manager.get_climbers_by_admin(self.admin_id)
+        if self.admin_id == 1:
+            climbers = self.db_manager.get_all_climbers()
+        else:
+            climbers = self.db_manager.get_climbers_by_admin(self.admin_id)
         self.climber_selector.clear()
         self.climber_selector.addItem("Select a climber", None)
         for climber in climbers:

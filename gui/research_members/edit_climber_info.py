@@ -172,6 +172,7 @@ class EditClimberInfoPage(QWidget):
 
         print(self.admin_id)
         print(self.climber_id)
+        # if self.admin_id == 1:
         climber_data = self.climber_db_manager.get_user_data(self.admin_id, self.climber_id)
 
         if climber_data:
@@ -250,3 +251,4 @@ class EditClimberInfoPage(QWidget):
                 event.ignore()
         else:
             event.accept()
+# TOD: superuser handling - vybrani admina pro testovani, editace uzivatelu? pro jakeho admina pridat uzivatele?

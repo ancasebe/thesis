@@ -7,7 +7,7 @@ from PySide6.QtCore import QTimer
 import matplotlib.pyplot as plt
 from datetime import datetime
 from gui.test_page.test_db_manager import ClimbingTestManager
-from gui.test_page.evaluations.all_out import AllOutTest
+from gui.test_page.evaluations.force_evaluation import AllOutTest
 
 
 # ---------------------------

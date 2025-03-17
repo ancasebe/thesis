@@ -4,8 +4,10 @@ import numpy as np
 import peakutils
 import matplotlib.pyplot as plt
 
+# ao_force_20250316_125532.h5
 
-class AllOutTest:
+
+class ForceMetrics:
     """
     Class for evaluating all-out test data.
 
@@ -137,14 +139,14 @@ class AllOutTest:
         plt.show()
 
 
-# Example usage:
-if __name__ == "__main__":
-    # Assume the CSV file is in the current directory under a 'files' folder.
-    script_dir = os.path.dirname(__file__)
-    file_path = os.path.join(script_dir, '..', 'tests', 'ao_force_20250312_125046.csv')
-    evaluator = AllOutTest(file_path)
-    results = evaluator.evaluate()
-    print("Evaluation Results:")
-    print(results)
-    # Optionally, show a plot of the force data:
-    evaluator.plot_force()
+# # Example usage:
+# if __name__ == "__main__":
+#     # Assume the CSV file is in the current directory under a 'files' folder.
+#     script_dir = os.path.dirname(__file__)
+#     file_path = os.path.join(script_dir, '..', 'tests', 'ao_force_20250312_125046.csv')
+#     evaluator = ForceMetrics(file_path)
+#     results = evaluator.evaluate()
+#     print("Evaluation Results:")
+#     print(results)
+#     # Optionally, show a plot of the force data:
+#     evaluator.plot_force()

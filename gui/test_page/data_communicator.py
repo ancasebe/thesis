@@ -3,12 +3,14 @@ import csv
 import numpy as np
 import pandas as pd
 import pyqtgraph as pg
-from PySide6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QMessageBox
 from PySide6.QtCore import QTimer
 import matplotlib.pyplot as plt
 from datetime import datetime
 from gui.test_page.test_db_manager import ClimbingTestManager
-from gui.test_page.evaluations.all_out import AllOutTest
+from gui.test_page.evaluations.force_evaluation import ForceMetrics
+from gui.research_members.climber_db_manager import ClimberDatabaseManager
+from gui.results_page.report_window import TestReportWindow
 
 
 # --- CSV Logger Helper Class ---
@@ -341,23 +343,25 @@ class CombinedDataCommunicator(QMainWindow):
         if not self.finalized:
 
             if self.data_type == "force":
-                generate_final_graph_force(self.force_file.filename)
-                evaluator = AllOutTest(self.force_file.filename)
+                # final_graph = generate_final_graph_force(self.force_file.filename)
+                evaluator = ForceMetrics(self.force_file.filename)
                 test_results = evaluator.evaluate()
                 print("Evaluation Results:")
                 print(test_results)
             elif self.data_type == "nirs":
-                generate_final_graph_nirs(self.nirs_file.filename)
-                test_results = str({"evaluation": "placeholder"})
+                # final_graph = generate_final_graph_nirs(self.nirs_file.filename)
+                test_results = {"evaluation": "placeholder"}
             elif self.data_type == "force_nirs":
-                generate_final_combined_graph(self.force_file.filename, self.nirs_file.filename)
-                evaluator = AllOutTest(self.force_file.filename)
+                # final_graph = generate_final_combined_graph(self.force_file.filename, self.nirs_file.filename)
+                evaluator = ForceMetrics(self.force_file.filename)
                 test_results = evaluator.evaluate()
                 print("Evaluation Results:")
                 print(test_results)
             else:
-                print("Unknown test type; skipping graph generation and evaluation.")
-            # Save CSV filenames in the database using the provided admin_id and climber_id.
+                QMessageBox.warning(self, "Error", "Unknown test type; cannot generate report.")
+                raise ValueError("Unknown test type; cannot generate report.")
+
+            # Save filenames in the database using the provided admin_id and climber_id.
             db_manager = ClimbingTestManager()
             # Here you could include the test type in the stored file_paths if desired.
             file_paths = ""
@@ -365,13 +369,37 @@ class CombinedDataCommunicator(QMainWindow):
                 file_paths += self.force_file.filename
             if self.nirs_file is not None:
                 file_paths += ("; " if file_paths else "") + self.nirs_file.filename
-            # print(file_paths)
-            # For test_results, you can add further evaluation data.
-            # if self.arm_tested == "Dominant":
+
             db_manager.add_test_result(str(self.admin_id), str(self.climber_id), self.arm_tested,
                                        self.timestamp, file_paths, str(test_results))
             db_manager.close_connection()
             self.finalized = True
+
+            # --- Load Real Climber Data Using ClimberDatabaseManager ---
+            climber_db = ClimberDatabaseManager()
+            climber_data = climber_db.get_user_data(self.admin_id, self.climber_id)
+            climber_db.close()
+            if not climber_data:
+                climber_data = {
+                    "name": "Unknown",
+                    "surname": "Unknown",
+                    "email": "N/A",
+                    "gender": "N/A",
+                    "dominant_arm": "N/A"
+                }
+
+            # --- Create and Show the Report Window ---
+            # self.report_window = TestReportWindow(climber_data, test_results, final_graph)
+            report_window = TestReportWindow(
+                climber_data,
+                test_results,
+                data_type=self.data_type,
+                force_file=(self.force_file.filename if self.force_file else None),
+                nirs_file=(self.nirs_file.filename if self.nirs_file else None)
+            )
+            report_window.show()
+
+            # self.report_window.show()
 
     def close_event(self, event):
         """
@@ -422,7 +450,8 @@ def generate_final_graph_force(force_file):
     fig.tight_layout()
     plt.title("Final Force Data")
     ax.legend(loc="upper right")
-    plt.show()
+    return fig
+    # plt.show()
 
 
 def generate_final_graph_nirs(nirs_file):
@@ -454,7 +483,8 @@ def generate_final_graph_nirs(nirs_file):
     fig.tight_layout()
     plt.title("Final NIRS Data")
     ax.legend(loc="upper right")
-    plt.show()
+    return fig
+    # plt.show()
 
 
 def generate_final_combined_graph(force_file, nirs_file):
@@ -509,8 +539,8 @@ def generate_final_combined_graph(force_file, nirs_file):
 
     fig.tight_layout()
     plt.title("Final Combined Sensor Data")
-    # plt.legend(loc="upper left")
-    plt.show()
+    return fig
+    # plt.show()
 
 
 # The main function is omitted here since you now launch the CombinedDataCommunicator
