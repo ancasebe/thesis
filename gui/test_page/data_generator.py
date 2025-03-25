@@ -13,10 +13,10 @@ import asyncio
 # from backend_scripts.constants import HHB_SENSOR_ID, O2HB_SENSOR_ID, SMO2_SENSOR_ID, FORCE_SENSOR_ID
 # from backend_scripts.utils import JSONCommunicator
 
-HHB_SENSOR_ID = 1
-O2HB_SENSOR_ID = 2
-SMO2_SENSOR_ID = 3
-FORCE_SENSOR_ID = 4
+FORCE_SENSOR_ID = 1
+SMO2_SENSOR_ID = 2
+HHB_SENSOR_ID = 3
+O2HB_SENSOR_ID = 4
 
 
 class SerialCommunicator:
@@ -142,7 +142,7 @@ class SerialCommunicator:
                 self.debugging_data.extend(zeros_at_end)
             serial_data = self.debugging_data.pop(0)
             data = f'{FORCE_SENSOR_ID}_{time.time():.3f}_{serial_data}'
-            print(f"DEBUG: Generated Synthetic force Data - {data}")  # Debug print
+            # print(f"DEBUG: Generated Synthetic force Data - {data}")  # Debug print
             self.__data_generator_que_manager(data)
             time.sleep(0.01)
 
@@ -659,9 +659,12 @@ class DataGenerator:
 
 if __name__ == '__main__':
     db_queque = queue.Queue()
-    dg = BluetoothCommunicator(queue.Queue(), db_queque)
-    dg.start_bluetooth_collector()
+    dg_ble = BluetoothCommunicator(queue.Queue(), db_queque)
+    dg = SerialCommunicator(db_queque, db_queque)
+    dg.start_serial_collection()
+    dg_ble.start_bluetooth_collector()
     for i in range(500):
         time.sleep(0.1)
         print(db_queque.get())
-    dg.stop_bluetooth_collector()
+    dg.stop_serial_collection()
+    dg_ble.stop_bluetooth_collector()

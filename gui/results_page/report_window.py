@@ -1,11 +1,12 @@
 import pandas as pd
-from PySide6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QGroupBox, QFormLayout, QLabel, QPushButton
+from PySide6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QGroupBox, QFormLayout, QLabel, QPushButton, \
+    QMessageBox
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 
 
 class TestReportWindow(QMainWindow):
-    def __init__(self, participant_info, test_metrics, data_type, force_file=None, nirs_file=None, parent=None):
+    def __init__(self, participant_info, test_metrics, data_type, test_type, force_file=None, nirs_file=None, parent=None):
         """
         Creates a window displaying the test report summary with participant info,
         test metrics, and an embedded graph.
@@ -19,6 +20,8 @@ class TestReportWindow(QMainWindow):
         self.setWindowTitle("Test Report Summary")
         self.resize(800, 600)
 
+        self.test_metrics = test_metrics
+
         # Main container widget and layout.
         main_widget = QWidget()
         main_layout = QVBoxLayout(main_widget)
@@ -30,6 +33,51 @@ class TestReportWindow(QMainWindow):
             participant_layout.addRow(QLabel(f"{key}:"), QLabel(str(value)))
         participant_group.setLayout(participant_layout)
         main_layout.addWidget(participant_group)
+
+        # --- Graph Section ---
+        # This is where we create the figure from your single force file
+        figure_group = QGroupBox("Force-Time Graph")
+        figure_layout = QVBoxLayout()
+
+        # Retrieve time & force arrays from wherever you saved them
+        # For example, from test_metrics or from an external function
+        # Suppose we do:
+        # time_array = test_metrics.get("time_array", [])
+        # force_array = test_metrics.get("force_array", [])
+        # critical_force = test_metrics.get("critical_force", None)
+        # max_strength = test_metrics.get("max_strength", None)
+        # w_prime = test_metrics.get("w_prime", None)
+
+        # Create the matplotlib figure
+        fig = self.create_force_figure(
+            force_file=force_file,
+        )
+
+        # Embed the figure in a FigureCanvas
+        canvas = FigureCanvas(fig)
+        figure_layout.addWidget(canvas)
+        figure_group.setLayout(figure_layout)
+        main_layout.addWidget(figure_group)
+
+        # if data_type == "force":
+        #     self.figure = self.generate_final_graph_force(force_file)
+        # elif data_type == "nirs":
+        #     self.figure = self.generate_final_graph_nirs(nirs_file)
+        # elif data_type == "force_nirs":
+        #     self.figure = self.generate_final_combined_graph(force_file, nirs_file)
+        # else:
+        #     QMessageBox.warning(self, "Error", "Unknown test type; cannot generate graph.")
+        #     raise ValueError("Unknown test type; cannot generate graph.")
+        #
+        # if self.figure is not None:
+        #     self.canvas = FigureCanvas(self.figure)
+        #     self.canvas.draw()
+        #     graph_group = QGroupBox("Test Graph")
+        #     graph_layout = QVBoxLayout()
+        #     graph_layout.addWidget(self.canvas)
+        #     graph_group.setLayout(graph_layout)
+        #     main_layout.addWidget(graph_group)
+        #TODO: nirs
 
         # --- Test Metrics Section ---
         metrics_group = QGroupBox("Test Metrics")
@@ -48,16 +96,6 @@ class TestReportWindow(QMainWindow):
         #     graph_layout.addWidget(canvas)
         #     graph_group.setLayout(graph_layout)
         #     main_layout.addWidget(graph_group)
-        self.figure = self._generate_figure(data_type, force_file, nirs_file)
-
-        if self.figure is not None:
-            self.canvas = FigureCanvas(self.figure)
-            self.canvas.draw()
-            graph_group = QGroupBox("Test Graph")
-            graph_layout = QVBoxLayout()
-            graph_layout.addWidget(self.canvas)
-            graph_group.setLayout(graph_layout)
-            main_layout.addWidget(graph_group)
 
         # --- Close Button ---
         close_button = QPushButton("Close")
@@ -65,6 +103,65 @@ class TestReportWindow(QMainWindow):
         main_layout.addWidget(close_button)
 
         self.setCentralWidget(main_widget)
+
+    import matplotlib.pyplot as plt
+    import peakutils
+
+    def create_force_figure(self, force_file):
+        """
+        Creates a matplotlib Figure showing:
+          - The force vs. time curve
+          - A horizontal line for critical force
+          - A red dot & label for maximum strength
+          - A shaded area for w_prime
+        time_array and force_array should be NumPy arrays (or similar),
+        and times are in seconds from start (or however you store them).
+        """
+
+        # Read Force data
+        force_df = pd.read_feather(force_file)
+        force_df['timestamp'] = force_df['timestamp'].astype(float)
+        start_time_force = force_df['timestamp'].iloc[0]
+        time_array = force_df['timestamp'] - start_time_force
+        force_array = force_df['value'].values
+
+        critical_force = self.test_metrics.get("critical_force")
+        max_strength = self.test_metrics.get("max_strength")
+        w_prime = self.test_metrics.get("w_prime")
+
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.plot(time_array, force_array, label='Duration of test', color='darkblue')
+
+        # Plot critical force as a horizontal line
+        if critical_force is not None:
+            ax.axhline(critical_force, color='crimson',
+                       label=f'Critical force: {critical_force:.3f}')
+
+        # Find the index of maximum strength for labeling (if it exists)
+        if max_strength is not None:
+            max_index = force_array.argmax()
+            ax.plot(time_array[max_index], max_strength, 'r.',
+                    label=f'Maximum strength: {max_strength:.3f}')
+            # Optionally annotate the exact value near the point
+            ax.text(time_array[max_index], max_strength,
+                    f'{max_strength:.2f}', fontsize=10, ha='left', va='bottom')
+
+        # Shade area above critical force for w_prime
+        # only if critical_force is valid
+        if (critical_force is not None) and (w_prime is not None):
+            ax.fill_between(
+                time_array, force_array, critical_force,
+                where=(force_array > critical_force),
+                color='lightblue', alpha=0.8,
+                label=f'w prime: {w_prime:.3f} [kg/s]'
+            )
+
+        ax.set_xlabel('Time [s]', fontsize=14)
+        ax.set_ylabel('Force [kg]', fontsize=14)
+        ax.legend(fontsize=12, loc='upper right')
+        ax.grid(True)
+
+        return fig
 
     def generate_final_graph_force(self, force_file):
         """
@@ -94,6 +191,7 @@ class TestReportWindow(QMainWindow):
         fig.tight_layout()
         plt.title("Final Force Data")
         ax.legend(loc="upper right")
+        plt.show()
         return fig
         # plt.show()
 

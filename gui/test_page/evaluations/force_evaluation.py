@@ -27,19 +27,10 @@ class ForceMetrics:
             file_path (str): Path to the file containing force data.
                              Expected to have at least 'force_timestamp' and 'value' columns.
         """
-        # if not os.path.exists(file_path):
-        #     raise FileNotFoundError(f"File not found: {file_path}")
-        # self.df = pd.read_csv(file_path)
-        # # Ensure required columns exist
-        # required_columns = ['force_timestamp', 'value']
-        # for col in required_columns:
-        #     if col not in self.df.columns:
-        #         raise ValueError(f"Missing required column: {col}")
-
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"File not found: {file_path}")
             # Read from HDF5 using the key "data"
-        self.df = pd.read_hdf(file_path, key="data")
+        self.df = pd.read_feather(file_path)
         # Check for required columns.
         required_columns = ['timestamp', 'value']
         for col in required_columns:

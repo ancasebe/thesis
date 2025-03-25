@@ -1,18 +1,20 @@
 import os
 import csv
+import time
+
 import numpy as np
 import pandas as pd
 import pyqtgraph as pg
 from PySide6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QMessageBox
 from PySide6.QtCore import QTimer
 import matplotlib.pyplot as plt
-from datetime import datetime
+# from datetime import datetime
 from gui.test_page.test_db_manager import ClimbingTestManager
 from gui.test_page.evaluations.force_evaluation import ForceMetrics
 from gui.research_members.climber_db_manager import ClimberDatabaseManager
 from gui.results_page.report_window import TestReportWindow
 
-
+'''
 # --- CSV Logger Helper Class ---
 class CSVLogger:
     """
@@ -82,6 +84,41 @@ class BufferedBinaryLogger:
         """Flush any remaining data and close the HDF5 store."""
         self.flush()
         self.store.close()
+'''
+
+# Replace the HDF5-based BufferedBinaryLogger with this Feather version:
+
+
+class FeatherBinaryLogger:
+    """
+    Logs data points into an in-memory buffer and writes them to a Feather file.
+    Note: Feather does not support appending, so all data is stored in memory
+    and written out at once when close() is called.
+    """
+    def __init__(self, folder="tests", prefix="processed_data", timestamp="today"):
+        script_dir = os.path.dirname(__file__)
+        folder_path = os.path.join(script_dir, folder)
+        # Use a .feather extension
+        filename = f"{folder_path}/{prefix}_{timestamp}.feather"
+        self.filename = filename
+        self.buffer = []  # in-memory buffer for data points
+
+    def log(self, ts, val):
+        """Append a data point to the buffer."""
+        self.buffer.append([ts, val])
+        print(ts, "_", val)
+
+    def flush(self):
+        """Write the buffered data to the Feather file and clear the buffer."""
+        if self.buffer:
+            df = pd.DataFrame(self.buffer, columns=["timestamp", "value"])
+            # Write the entire DataFrame to a Feather file
+            df.reset_index(drop=True).to_feather(self.filename)
+            self.buffer = []
+
+    def close(self):
+        """Flush any remaining data and write to the Feather file."""
+        self.flush()
 
 
 # --- Combined Data Communicator Class ---
@@ -99,9 +136,10 @@ class CombinedDataCommunicator(QMainWindow):
             window_size (int): Time window (in seconds) for the x-axis (default 60).
             fixed_offset_ratio (float): Ratio to determine where new points appear.
     """
-    def __init__(self, admin_id, climber_id, arm_tested, window_size=60, auto_start=False, data_type="force", test_id="ao"):
+    def __init__(self, admin_id, climber_id, arm_tested, window_size=60, auto_start=False, data_type="force", test_type="ao"):
 
         super().__init__()
+        self.report_window = None
         self.timestamp = None
         self.force_file = None
         self.nirs_file = None
@@ -110,7 +148,7 @@ class CombinedDataCommunicator(QMainWindow):
 
         self.admin_id = admin_id
         self.climber_id = climber_id
-        self.test_id = test_id
+        self.test_type = test_type
         if arm_tested == "Dominant":
             self.arm_tested = "D"
         elif arm_tested == "Non-dominant":
@@ -125,7 +163,7 @@ class CombinedDataCommunicator(QMainWindow):
         # Load sensor data from Excel files.
         script_dir = os.path.dirname(__file__)  # folder where test_page.py is located
         if self.data_type != "nirs":
-            force_file = os.path.join(script_dir, "group2_ao_copy.xlsx")
+            force_file = os.path.join(script_dir, "group3_ao_copy.xlsx")
             force_df = pd.read_excel(force_file).dropna()
             force_timestamps = force_df.iloc[:, 0].values
             force_values = force_df.iloc[:, 3].values
@@ -252,17 +290,31 @@ class CombinedDataCommunicator(QMainWindow):
 
     def start_acquisition(self):
         """Starts the data acquisition by starting the timers."""
-        self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        # self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+        # if self.data_type in ["force", "force_nirs"]:
+        #     self.force_file = BufferedBinaryLogger(folder="tests", prefix=f"{self.test_type}_force",
+        #                                            timestamp=self.timestamp, flush_interval=1000)
+        # else:
+        #     self.force_file = None
+        #
+        # if self.data_type in ["nirs", "force_nirs"]:
+        #     self.nirs_file = BufferedBinaryLogger(folder="tests", prefix=f"{self.test_type}_nirs",
+        #                                           timestamp=self.timestamp, flush_interval=1000)
+        # else:
+        #     self.nirs_file = None
+
+        self.timestamp = str(time.time())
 
         if self.data_type in ["force", "force_nirs"]:
-            self.force_file = BufferedBinaryLogger(folder="tests", prefix=f"{self.test_id}_force",
-                                                   timestamp=self.timestamp, flush_interval=1000)
+            self.force_file = FeatherBinaryLogger(folder="tests", prefix=f"{self.test_type}_force",
+                                                  timestamp=self.timestamp)
         else:
             self.force_file = None
 
         if self.data_type in ["nirs", "force_nirs"]:
-            self.nirs_file = BufferedBinaryLogger(folder="tests", prefix=f"{self.test_id}_nirs",
-                                                  timestamp=self.timestamp, flush_interval=1000)
+            self.nirs_file = FeatherBinaryLogger(folder="tests", prefix=f"{self.test_type}_nirs",
+                                                 timestamp=self.timestamp)
         else:
             self.nirs_file = None
 
@@ -346,7 +398,7 @@ class CombinedDataCommunicator(QMainWindow):
                 # final_graph = generate_final_graph_force(self.force_file.filename)
                 evaluator = ForceMetrics(self.force_file.filename)
                 test_results = evaluator.evaluate()
-                print("Evaluation Results:")
+                print("Force Evaluation Results:")
                 print(test_results)
             elif self.data_type == "nirs":
                 # final_graph = generate_final_graph_nirs(self.nirs_file.filename)
@@ -355,7 +407,7 @@ class CombinedDataCommunicator(QMainWindow):
                 # final_graph = generate_final_combined_graph(self.force_file.filename, self.nirs_file.filename)
                 evaluator = ForceMetrics(self.force_file.filename)
                 test_results = evaluator.evaluate()
-                print("Evaluation Results:")
+                print("Mixed Evaluation Results:")
                 print(test_results)
             else:
                 QMessageBox.warning(self, "Error", "Unknown test type; cannot generate report.")
@@ -370,9 +422,18 @@ class CombinedDataCommunicator(QMainWindow):
             if self.nirs_file is not None:
                 file_paths += ("; " if file_paths else "") + self.nirs_file.filename
 
-            db_manager.add_test_result(str(self.admin_id), str(self.climber_id), self.arm_tested,
-                                       self.timestamp, file_paths, str(test_results))
+            db_data = {'arm_tested': self.arm_tested,
+                       'data_type': self.data_type,
+                       'test_type': self.test_type,
+                       'timestamp': self.timestamp,
+                       'file_paths': file_paths,
+                       'test_results': str(test_results)}
+
+            # db_manager.add_test_result(str(self.admin_id), str(self.climber_id), self.arm_tested,
+            #                            self.timestamp, file_paths, str(test_results))
+            db_manager.add_test_result(str(self.admin_id), str(self.climber_id), db_data)
             db_manager.close_connection()
+            QMessageBox.information(self, "Test saving", "Test was saved successfully.")
             self.finalized = True
 
             # --- Load Real Climber Data Using ClimberDatabaseManager ---
@@ -390,16 +451,15 @@ class CombinedDataCommunicator(QMainWindow):
 
             # --- Create and Show the Report Window ---
             # self.report_window = TestReportWindow(climber_data, test_results, final_graph)
-            report_window = TestReportWindow(
+            self.report_window = TestReportWindow(
                 climber_data,
                 test_results,
                 data_type=self.data_type,
+                test_type=self.test_type,
                 force_file=(self.force_file.filename if self.force_file else None),
                 nirs_file=(self.nirs_file.filename if self.nirs_file else None)
             )
-            report_window.show()
-
-            # self.report_window.show()
+            self.report_window.show()
 
     def close_event(self, event):
         """

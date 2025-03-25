@@ -15,10 +15,11 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtGui import QPixmap
 from PySide6.QtCore import Qt
-from test_page.test_page import TestPage
+from gui.test_page.test_page import TestPage
 from gui.superuser.login_db_manager import LoginDatabaseManager
 from gui.research_members.climber_db_manager import ClimberDatabaseManager
 from gui.superuser.new_admin import RegistrationPage
+from gui.results_page.results_page import ResultsPage
 
 
 def create_placeholder_page(title):
@@ -194,7 +195,10 @@ class MainPage(QWidget):
         Switch to the Results page.
         """
         if "results" not in self.widget_mapping:
-            results_page = create_placeholder_page("Results")
+            # results_page = create_placeholder_page("Results")
+            climber_db_manager = ClimberDatabaseManager()
+            results_page = ResultsPage(climber_db_manager=climber_db_manager,
+                                       admin_id=self.admin_id)
             self.add_widget_to_stack(results_page, "results")
         self.app_stacked_widget.setCurrentWidget(self.widget_mapping["results"])
 

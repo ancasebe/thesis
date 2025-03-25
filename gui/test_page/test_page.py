@@ -170,14 +170,14 @@ class TestPage(QWidget):
             return
 
         # self.selected_test = test_name
-        test_id = test_name.lower()
+        test_type = test_name.lower()
         data_type = data_type.lower()
         if data_type == "force and nirs":
             data_type = "force_nirs"
-        print(test_id, " _ ", data_type)
-        self.launch_test_window(data_type, selected_arm, test_id)
+        print(test_type, " _ ", data_type)
+        self.launch_test_window(data_type, selected_arm, test_type)
 
-    def launch_test_window(self, data_type, selected_arm, test_id):
+    def launch_test_window(self, data_type, selected_arm, test_type):
         """Launches a new window for a new test."""
         climber_id = self.climber_selector.currentData()
         if not climber_id:
@@ -186,11 +186,11 @@ class TestPage(QWidget):
 
         # # Compute a test label based on data type; using "ao" for All Out.
         # if data_type.lower() == "force":
-        #     test_label = f"{test_id}_force"
+        #     test_label = f"{test_type}_force"
         # elif data_type.lower() == "nirs":
-        #     test_label = f"{test_id}_nirs"
+        #     test_label = f"{test_type}_nirs"
         # elif data_type.lower() == "force and nirs":
-        #     test_label = f"{test_id}_force_nirs"
+        #     test_label = f"{test_type}_force_nirs"
         # else:
         #     QMessageBox.warning(self, "Some problem occurred during data type selection.")
         #     return
@@ -213,7 +213,7 @@ class TestPage(QWidget):
             window_size=60,
             auto_start=True,
             data_type=data_type,
-            test_id=test_id
+            test_type=test_type
         )
         layout.addWidget(communicator)
 

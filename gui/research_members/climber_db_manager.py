@@ -88,7 +88,7 @@ class ClimberDatabaseManager:
             return False
 
     def update_climber_data(self, admin_id, climber_id, updated_data):
-        """Updates climber information based on admin_id and email."""
+        """Updates climber information based on admin_id and climber_id."""
         try:
             cursor = self.connection.cursor()
             cursor.execute("""

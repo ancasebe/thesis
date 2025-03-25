@@ -10,7 +10,8 @@ class ClimbingTestManager:
     Parameters:
         db_name (str): SQLite database filename.
     """
-    def __init__(self, db_name="climbing_tests.db"):
+
+    def __init__(self, db_name="tests_database.db"):
         script_dir = os.path.dirname(__file__)
         # This is the folder where the current .py file (e.g. test_page.py) resides
 
@@ -31,13 +32,15 @@ class ClimbingTestManager:
                     admin_id TEXT NOT NULL,
                     participant_id TEXT NOT NULL,
                     arm_tested TEXT,
+                    data_type TEXT,
+                    test_type TEXT,
                     timestamp TEXT,
                     file_paths TEXT,
                     test_results TEXT
                 )
             ''')
 
-    def add_test_result(self, admin_id, participant_id, arm_tested, timestamp, file_paths, test_results):
+    def add_test_result(self, admin_id, participant_id, db_data):
         """
         Adds a new test result to the database.
 
@@ -51,10 +54,13 @@ class ClimbingTestManager:
         """
         with self.connection:
             self.connection.execute('''
-                INSERT INTO climbing_tests (admin_id, participant_id, arm_tested, timestamp, file_paths, test_results)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', (admin_id, participant_id, arm_tested, timestamp, file_paths, test_results))
-            print(admin_id, participant_id, arm_tested, timestamp, file_paths, test_results)
+                INSERT INTO climbing_tests (admin_id, participant_id, arm_tested, data_type, test_type, timestamp, file_paths, test_results)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (admin_id, participant_id, db_data['arm_tested'], db_data['data_type'], db_data['test_type'],
+                  db_data['timestamp'], db_data['file_paths'], db_data['test_results']))
+
+            print(admin_id, participant_id, db_data['arm_tested'], db_data['data_type'], db_data['test_type'],
+                  db_data['timestamp'], db_data['file_paths'], db_data['test_results'])
             print("Test result saved successfully.")
 
     def fetch_all_results(self):
