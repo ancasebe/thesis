@@ -136,9 +136,10 @@ class CombinedDataCommunicator(QMainWindow):
             window_size (int): Time window (in seconds) for the x-axis (default 60).
             fixed_offset_ratio (float): Ratio to determine where new points appear.
     """
-    def __init__(self, admin_id, climber_id, arm_tested, window_size=60, auto_start=False, data_type="force", test_type="ao"):
+    def __init__(self, admin_id, climber_id, arm_tested, window_size=60, auto_start=False,
+                 data_type="force", test_type="ao", parent=None):
 
-        super().__init__()
+        super().__init__(parent)
         self.report_window = None
         self.timestamp = None
         self.force_file = None
@@ -451,13 +452,19 @@ class CombinedDataCommunicator(QMainWindow):
 
             # --- Create and Show the Report Window ---
             # self.report_window = TestReportWindow(climber_data, test_results, final_graph)
+            # self.report_window = TestReportWindow(
+            #     participant_info=climber_data,
+            #     test_metrics=test_results,
+            #     data_type=self.data_type,
+            #     test_type=self.test_type,
+            #     force_file=(self.force_file.filename if self.force_file else None),
+            #     nirs_file=(self.nirs_file.filename if self.nirs_file else None),
+            #     parent=True
+            # )
             self.report_window = TestReportWindow(
-                climber_data,
-                test_results,
-                data_type=self.data_type,
-                test_type=self.test_type,
-                force_file=(self.force_file.filename if self.force_file else None),
-                nirs_file=(self.nirs_file.filename if self.nirs_file else None)
+                participant_info=climber_data,
+                db_data=db_data,
+                parent=self
             )
             self.report_window.show()
 

@@ -213,7 +213,8 @@ class TestPage(QWidget):
             window_size=60,
             auto_start=True,
             data_type=data_type,
-            test_type=test_type
+            test_type=test_type,
+            parent=self
         )
         layout.addWidget(communicator)
 

@@ -34,6 +34,7 @@ class ResultsPage(QWidget):
             test_db_manager (ClimbingTestManager): Manager for test result data.
         """
         super().__init__()
+        self.selected_data_type = None
         self.admin_id = admin_id
         self.climber_db_manager = climber_db_manager
         self.test_db_manager = ClimbingTestManager()
@@ -64,6 +65,15 @@ class ResultsPage(QWidget):
         self.test_selector.currentIndexChanged.connect(self.on_test_filter_changed)
         top_layout.addWidget(QLabel("Test:"))
         top_layout.addWidget(self.test_selector)
+
+        # Data type selection combo box
+        self.data_type_selector = QComboBox()
+        self.data_type_selector.addItem("All Data")
+        for data in ["Force", "NIRS", "Force and NIRS"]:
+            self.data_type_selector.addItem(data)
+        self.data_type_selector.currentIndexChanged.connect(self.on_data_type_changed)
+        top_layout.addWidget(QLabel("Data type:"))
+        top_layout.addWidget(self.data_type_selector)
 
         main_layout.addLayout(top_layout)
 
@@ -142,6 +152,10 @@ class ResultsPage(QWidget):
         self.selected_test_label = self.test_selector.currentText()
         self.load_tests()
 
+    def on_data_type_changed(self, index):
+        self.selected_data_type = self.data_type_selector.currentText()
+        self.load_tests()
+
     def load_tests(self):
         """
         Retrieves tests for the selected climber from the test database.
@@ -158,33 +172,26 @@ class ResultsPage(QWidget):
             8: test_results
         """
         self.tests_table.setRowCount(0)
-        if not self.selected_climber_id:
-            return
-        tests = self.test_db_manager.fetch_results_by_participant(self.selected_climber_id)
+        if self.selected_climber_id:
+            tests = self.test_db_manager.fetch_results_by_participant(admin_id=str(self.admin_id),
+                                                                      participant_id=self.selected_climber_id)
+        elif self.admin_id == 1:
+            tests = self.test_db_manager.fetch_all_results()  # superuser
+        else:
+            tests = self.test_db_manager.fetch_results_by_admin(admin_id=str(self.admin_id))
         # If filtering by test label (other than "All Tests"), filter test rows.
         if self.selected_test_label and self.selected_test_label != "All Tests":
             filter_text = self.selected_test_label.lower()
-            # Assuming test name is stored at index 7
-            tests = [t for t in tests if len(t) > 7 and filter_text in str(t[7]).lower()]
+            # Assuming test name is stored at index 5
+            tests = [t for t in tests if len(t) > 5 and filter_text in str(t[5]).lower()]
+
+        if self.selected_data_type and self.selected_data_type != "All Data":
+            filter_text = self.selected_data_type.lower()
+            # Assuming data type is stored at index 4
+            tests = [t for t in tests if len(t) > 4 and filter_text in str(t[4]).lower()]
 
         for row_index, test in enumerate(tests):
             self.tests_table.insertRow(row_index)
-            # # Extract columns
-            # test_id = str(test[0])
-            # test_name = str(test[7]) if len(test) > 7 else "N/A"
-            # nirs = str(test[8]) if len(test) > 8 else "N/A"
-            # arm_tested = str(test[3])
-            #
-            # # Format timestamp to Date (YYYY-MM-DD) and Time (HH:MM)
-            # date_str, time_str = self.format_timestamp(str(test[4]))
-            #
-            # # Populate table
-            # self.tests_table.setItem(row_index, 0, QTableWidgetItem(test_id))
-            # self.tests_table.setItem(row_index, 1, QTableWidgetItem(test_name))
-            # self.tests_table.setItem(row_index, 2, QTableWidgetItem(nirs))
-            # self.tests_table.setItem(row_index, 3, QTableWidgetItem(arm_tested))
-            # self.tests_table.setItem(row_index, 4, QTableWidgetItem(date_str))
-            # self.tests_table.setItem(row_index, 5, QTableWidgetItem(time_str))
 
             test_id = str(test[0])  # ID
             arm_tested = str(test[3])  # arm_tested
@@ -201,32 +208,6 @@ class ResultsPage(QWidget):
             self.tests_table.setItem(row_index, 3, QTableWidgetItem(arm_tested))
             self.tests_table.setItem(row_index, 4, QTableWidgetItem(date_str))
             self.tests_table.setItem(row_index, 5, QTableWidgetItem(time_str))
-
-    # def format_timestamp(self, raw_timestamp):
-    #     """
-    #     Given a string like '20250319_132045',
-    #     returns ('2025-03-19', '13:20') if possible.
-    #     Otherwise returns (raw_timestamp, '') if we can't parse.
-    #     """
-    #     if "_" not in raw_timestamp:
-    #         return raw_timestamp, ""
-    #     date_part, time_part = raw_timestamp.split("_", 1)
-    #     if len(date_part) == 8 and len(time_part) >= 4:
-    #         # date_part: YYYYMMDD
-    #         # time_part: HHMMSS or HHMM
-    #         year = date_part[:4]
-    #         month = date_part[4:6]
-    #         day = date_part[6:8]
-    #         date_str = f"{year}-{month}-{day}"
-    #
-    #         # If HHMMSS => keep only HH:MM
-    #         hour = time_part[:2]
-    #         minute = time_part[2:4]
-    #         time_str = f"{hour}:{minute}"
-    #         return date_str, time_str
-    #     else:
-    #         # fallback
-    #         return date_part, time_part
 
     @staticmethod
     def format_timestamp(raw_timestamp):
@@ -260,7 +241,8 @@ class ResultsPage(QWidget):
             return None
         test_id = int(test_id_item.text())
         # Look up the full test information by test id.
-        tests = self.test_db_manager.fetch_results_by_participant(self.selected_climber_id)
+        tests = self.test_db_manager.fetch_results_by_participant(admin_id=str(self.admin_id),
+                                                                  participant_id=self.selected_climber_id)
         for t in tests:
             if t[0] == test_id:
                 return t
@@ -280,14 +262,6 @@ class ResultsPage(QWidget):
 
         # Basic fields
         layout.addRow("Test ID:", QLabel(str(test[0])))
-        # layout.addRow("Test Name:", QLabel(str(test[7]) if len(test) > 7 else "N/A"))
-        # layout.addRow("NIRS:", QLabel(str(test[8]) if len(test) > 8 else "N/A"))
-        # layout.addRow("Arm Tested:", QLabel(str(test[3])))
-        #
-        # # Format date/time for info window
-        # date_str, time_str = self.format_timestamp(str(test[4]))
-        # layout.addRow("Date:", QLabel(date_str))
-        # layout.addRow("Time:", QLabel(time_str))
 
         layout.addRow("Test Name:", QLabel(str(test[5])))  # test_type
         layout.addRow("Data Type:", QLabel(str(test[4])))  # data_type
@@ -296,10 +270,6 @@ class ResultsPage(QWidget):
         date_str, time_str = self.format_timestamp(str(test[6]))  # timestamp
         layout.addRow("Date:", QLabel(date_str))
         layout.addRow("Time:", QLabel(time_str))
-
-        # Show the raw file paths or test results if desired
-        # layout.addRow("File Paths:", QLabel(str(test[5])))
-        # layout.addRow("Test Results:", QLabel(str(test[6])))
 
         close_button = QPushButton("Close")
         close_button.clicked.connect(dialog.accept)
@@ -318,17 +288,12 @@ class ResultsPage(QWidget):
         participant_info = self.climber_db_manager.get_user_data(self.admin_id, self.selected_climber_id)
         if not participant_info:
             participant_info = {"Name": "Unknown"}
-        test_metrics = {"Max Strength": "N/A", "Critical Force": "N/A", "W Prime": "N/A"}
-        # fig, ax = plt.subplots()
-        # ax.plot([0, 1, 2], [0, 1, 0])  # dummy data
-        # ax.set_title("Test Graph")
+        db_data = self.test_db_manager.fetch_results_by_participant(admin_id=str(self.admin_id),
+                                                                    participant_id=self.selected_climber_id)
+        # test_metrics = {"Max Strength": "N/A", "Critical Force": "N/A", "W Prime": "N/A"}
         report_window = TestReportWindow(participant_info=participant_info,
-                                         test_metrics=test_metrics,
-                                         data_type="force",
-                                         test_type="ao",
-                                         force_file=None,
-                                         nirs_file=None,
-                                         parent=None)
+                                         db_data=None,
+                                         parent=self)
         report_window.show()
 
     def show_units(self):

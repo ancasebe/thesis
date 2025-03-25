@@ -134,7 +134,7 @@ class ForceMetrics:
 # if __name__ == "__main__":
 #     # Assume the CSV file is in the current directory under a 'files' folder.
 #     script_dir = os.path.dirname(__file__)
-#     file_path = os.path.join(script_dir, '..', 'tests', 'ao_force_20250312_125046.csv')
+#     file_path = os.path.join(script_dir, '..', 'tests', 'ao_force_1742935662.375135.feather')
 #     evaluator = ForceMetrics(file_path)
 #     results = evaluator.evaluate()
 #     print("Evaluation Results:")

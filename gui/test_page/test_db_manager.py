@@ -74,18 +74,34 @@ class ClimbingTestManager:
             cursor = self.connection.execute('SELECT * FROM climbing_tests')
             return cursor.fetchall()
 
-    def fetch_results_by_participant(self, participant_id):
+    def fetch_results_by_participant(self, admin_id, participant_id):
         """
         Fetches test results for a specific participant.
 
         Parameters:
+            admin_id (str): Admin ID.
             participant_id (str): Participant ID.
 
         Returns:
             list: Matching rows from the climbing_tests table.
         """
         with self.connection:
-            cursor = self.connection.execute('SELECT * FROM climbing_tests WHERE participant_id = ?', (participant_id,))
+            cursor = self.connection.execute('SELECT * FROM climbing_tests WHERE admin_id = ? AND participant_id = ?',
+                                             (admin_id, participant_id,))
+            return cursor.fetchall()
+
+    def fetch_results_by_admin(self, admin_id):
+        """
+        Fetches test results for a specific participant.
+
+        Parameters:
+            admin_id (str): Admin ID.
+
+        Returns:
+            list: Matching rows from the climbing_tests table.
+        """
+        with self.connection:
+            cursor = self.connection.execute('SELECT * FROM climbing_tests WHERE admin_id = ?', (admin_id,))
             return cursor.fetchall()
 
     def close_connection(self):
