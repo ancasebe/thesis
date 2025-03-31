@@ -21,77 +21,95 @@ O2HB_SENSOR_ID = 4
 
 class SerialCommunicator:
     """
-    Class to facilitate communication with serial interface for data collection.
+    Manages communication with a serial device for collecting force sensor data.
 
-    This class manages the connection to a serial device, handles data retrieval
-    and command writing, and allows for asynchronous data collection using threads.
+    This class establishes a connection with a serial device, continuously reads incoming data,
+    applies optional calibration, and pushes parsed data strings to two queues:
+    one for database storage and one (downsampled) for visualization.
 
-    Attributes:
-
-        - db_queque (queue.Queue): Queue for storing raw data from the serial interface.
-        - visualization_que (queue.Queue): Queue for downsampled data intended for visualization.
-        - baudrate (int): Baud rate for the serial communication (default is 19200).
-        - data_viz_downsampling: (int): Factor for downsampling data for visualization.
-        - show_raw (bool): Attribute to set whether calibration profile is applied to data or none
-
-    Methods:
-        - send_serial_command(command: str):
-            - Sends a command to the serial device.
-
-        - start_serial_collection():
-            - Starts the data collection process in a separate thread.
-
-        - stop_serial_collection():
-            - Stops the data collection and terminates the serial connection.
-
-        - update_calibration_parameters(slope, intercept):
-            - Sets "show_raw" attribute to False, and input calibration profile
-
+    If no serial port is set, the class automatically switches to debugging mode,
+    generating synthetic data at ~100 Hz.
 
     Exceptions:
         If no serial devices are connected, class enters automatically into debugging mode (generating data with 100hz frequency).
     """
 
-    def __init__(self, visualization_que: queue.Queue, database_que: queue.Queue, baudrate: int = 19200, data_viz_downsampling: int = 5) -> None:
+    def __init__(self, visualization_que: queue.Queue, database_que: queue.Queue,
+                 baudrate: int = 19200, data_viz_downsampling: int = 5) -> None:
+        """
+        Initializes the SerialCommunicator.
+
+        Parameters:
+            visualization_que (queue.Queue): Queue for sending downsampled visualization data.
+            database_que (queue.Queue): Queue for sending raw data to be stored in the database.
+            baudrate (int): Baud rate for the serial communication (default is 19200).
+            data_viz_downsampling (int): Factor for downsampling data for visualization (default is 5).
+        """
         self.db_queque = database_que
         self.viz_queque = visualization_que
         self.baudrate = baudrate
         self.downsampling = data_viz_downsampling
         self.downsampling_counter = data_viz_downsampling
-        self.port = None
-        self.data_collection_thread = None
+        self.port = None  # Serial port identifier (e.g., "COM3"), to be set later.
+        self.data_collection_thread = None  # Thread that will continuously collect data.
+        # self.__default_variables()  # Initialize internal state variables.
 
     def __default_variables(self):
-        self.connection = False
-        self.sercon = None
-        self.collect_data = False
-        self.writing_command = False
-        self.data_collection_thread = None
-        self.show_raw = True
-        self.calibration_slope = 0
-        self.calibration_intercept = 0
-        self.command = None
-        self.reset_timer = None
-        self.debugging = False
-        self.debugging_data = []
+        """
+        Initializes or resets default internal variables used for managing the serial connection
+        and data collection.
+        """
+        self.connection = False  # True if the serial connection is active.
+        self.sercon = None  # Will hold the serial.Serial object.
+        self.collect_data = False  # Flag to control the data collection loop.
+        self.writing_command = False  # True if a command is being sent to the device.
+        self.data_collection_thread = None  # Reference to the data collection thread.
+        self.show_raw = True  # If False, calibration parameters are applied.
+        self.calibration_slope = 0  # Calibration slope used when show_raw is False.
+        self.calibration_intercept = 0  # Calibration intercept used when show_raw is False.
+        self.command = None  # Command string to be sent to the serial device.
+        self.reset_timer = None  # Timer to help detect connection timeouts.
+        self.debugging = False  # If True, synthetic data is generated (no serial port).
+        self.debugging_data = []  # Buffer for synthetic data.
 
     def set_port(self, port: str):
+        """
+        Sets the serial port identifier.
+
+        Parameters:
+            port (str): The serial port to be used (e.g., "COM3").
+        """
         self.port = port
 
     def __serial_get_force_data(self) -> str:
+        """
+        Reads a single line of force data from the serial device.
+
+        The method waits for data to be available in the serial buffer. If a command is pending,
+        it sends the command instead. If calibration parameters have been set (i.e. show_raw is False),
+        the raw data is calibrated accordingly.
+
+        Returns:
+            A formatted string in the form 'sensorID_timestamp_value' (or None if no data is available).
+        """
         if self.port is None:
             return
-        if self.connection == False:
+        # If not yet connected, attempt to open the connection.
+        if not self.connection:
             self.sercon = self.__serial_start_connection()
         sercon = self.sercon
         try:
+            # If data is waiting and no command is being sent, read a line from the serial port.
             if sercon.in_waiting > 0 and self.writing_command == False:
                 serial_data = sercon.readline().decode('utf-8').rstrip()
-                serial_data = int(serial_data)
+                serial_data = int(serial_data)  # Convert the received string to an integer.
+                # Apply calibration if required.
                 if self.show_raw == False and self.calibration_intercept != 0:
                     serial_data = (
                         serial_data-self.calibration_intercept)/self.calibration_slope
+                # Format the data string with sensor ID, current timestamp, and the force value.
                 return f'{FORCE_SENSOR_ID}_{time.time():.3f}_{serial_data}'
+            # If a command needs to be sent, write it to the serial port.
             elif self.writing_command and self.command is not None:
                 sercon.write(self.command.encode())
                 self.command = None
@@ -99,12 +117,20 @@ class SerialCommunicator:
             elif self.writing_command and self.command is None:
                 self.writing_command = False
         except ValueError:
+            # Handle conversion errors if the received data cannot be parsed as an integer.
             pass
         except serial.serialutil.SerialException:
+            # On a serial exception, stop data collection and reset the port.
             self.collect_data = False
             self.port = None
 
     def __serial_start_connection(self) -> serial.Serial:
+        """
+        Opens the serial connection with the given port and baudrate.
+
+        Returns:
+            The serial.Serial connection object.
+        """
         if self.connection:
             return
         connection = serial.Serial(
@@ -116,37 +142,71 @@ class SerialCommunicator:
         return connection
 
     def __serial_terminate_connection(self):
+        """
+        Terminates the serial connection and closes the port.
+
+        Returns:
+            1 upon successful termination.
+        """
         connection = self.sercon
         port = connection.port
         connection.close()
         print(f'{time.strftime("%H:%M:%S")} - Connection {port} closed')
         return 1
 
-    def __debugging_generate_force_profile(self, noise_level=0.4):
-        """Generates synthetic data that mimics a force profile on a hangboard."""
+    @staticmethod
+    def __debugging_generate_force_profile(noise_level=0.4):
+        """
+        Generates synthetic force data mimicking a force profile on a hangboard.
+
+        Parameters:
+            noise_level (float): The noise level (standard deviation) added to the signal.
+
+        Returns:
+            A NumPy array of synthetic force values.
+        """
         n_samples = int(np.random.uniform(300, 800))
         t = np.linspace(0, np.pi, n_samples)
         max_force = np.random.uniform(40, 60)
         force_profile = max_force * np.sin(t)
         noise = np.random.normal(0, noise_level, n_samples)
+        # Ensure that the synthetic force values stay within [0, max_force].
         force_profile = np.clip(force_profile + noise, 0, max_force)
         return force_profile
 
     def __debugging_data_force_generator(self):
+        """
+        Continuously generates synthetic force data for debugging purposes.
+
+        When running in debugging mode (i.e. no valid serial port), this method generates synthetic
+        data and sends it to both the database and visualization queues.
+        """
         while self.collect_data:
             if len(self.debugging_data) <= 1:
                 self.debugging_data = self.__debugging_generate_force_profile(
                     noise_level=np.random.uniform(0.2, 0.6)).tolist()
+                # Append additional near-zero values to simulate a trailing off signal.
                 zeros_at_end = np.random.uniform(
                     0, 0.8, int(np.random.uniform(100, 1000))).tolist()
                 self.debugging_data.extend(zeros_at_end)
+            # Retrieve the next synthetic data point.
             serial_data = self.debugging_data.pop(0)
             data = f'{FORCE_SENSOR_ID}_{time.time():.3f}_{serial_data}'
             # print(f"DEBUG: Generated Synthetic force Data - {data}")  # Debug print
+            # Pass the data to the queue manager.
             self.__data_generator_que_manager(data)
             time.sleep(0.01)
 
     def __data_generator_que_manager(self, data):
+        """
+        Manages insertion of data into the database and visualization queues.
+
+        Implements a simple downsampling strategy: every Nth data point (as determined by the downsampling
+        factor) is sent to the visualization queue. Data is always sent to the database queue.
+
+        Parameters:
+            data (str): The formatted data string.
+        """
         try:
             self.db_queque.put_nowait(data)
         except queue.Full:
@@ -160,14 +220,22 @@ class SerialCommunicator:
             self.downsampling_counter = self.downsampling
 
     def __data_generator(self):
+        """
+        Main loop for data collection from the serial device.
+
+        Continuously reads data using __serial_get_force_data() and pushes valid data to the queues.
+        Also implements a reset mechanism if data is not received for a certain time period.
+        """
         while self.collect_data:
             data = self.__serial_get_force_data()
             if data is not None:
                 self.__data_generator_que_manager(data)
                 continue
+            # If no data, start a reset timer.
             elif self.reset_timer is None or self.reset_timer + 10 > time.time():
                 self.reset_timer = time.time()
             elif self.reset_timer + 10 < time.time():
+                # If more than 10 seconds pass without data, reset the connection.
                 self.connection = False
                 self.sercon = None
                 self.reset_timer = None
@@ -176,6 +244,12 @@ class SerialCommunicator:
             time.sleep(0.025)
 
     def start_serial_collection(self):
+        """
+        Starts the serial data collection process.
+
+        If a port is set, it starts reading real data; otherwise, it switches to debugging mode
+        and generates synthetic data.
+        """
         self.__default_variables()
         if self.port is None:
             self.debugging = True
@@ -193,6 +267,12 @@ class SerialCommunicator:
         return
 
     def stop_serial_collection(self):
+        """
+        Stops the serial data collection process and terminates the connection.
+
+        Returns:
+            1 if the collection thread was active and is now stopped; otherwise, None.
+        """
         if self.data_collection_thread is not None:
             self.collect_data = False
             self.data_collection_thread.join()
@@ -205,11 +285,30 @@ class SerialCommunicator:
             return
 
     def send_serial_command(self, command: str):
+        """
+        Sends a command string to the serial device.
+
+        Parameters:
+            command (str): The command to be sent.
+
+        Returns:
+            1 after setting up the command for transmission.
+        """
         self.writing_command = True
         self.command = command
         return 1
 
     def update_calibration_parameters(self, slope: float, intercept: float):
+        """
+        Updates the calibration parameters for the force sensor data.
+
+        After calibration is applied, raw data will be converted using the formula:
+            calibrated_value = (raw_value - intercept) / slope
+
+        Parameters:
+            slope (float): The calibration slope.
+            intercept (float): The calibration intercept.
+        """
         self.show_raw = False
         self.calibration_intercept = intercept
         self.calibration_slope = slope
@@ -243,33 +342,46 @@ class BluetoothCommunicator:
     """
 
     def __init__(self, visualization_que: queue.Queue, database_que: queue.Queue, data_viz_downsampling: int = 1) -> None:
+        """
+        Initializes the BluetoothCommunicator.
+
+        Parameters:
+            visualization_que (queue.Queue): Queue for sending downsampled visualization data.
+            database_que (queue.Queue): Queue for sending raw data for database storage.
+            data_viz_downsampling (int): Factor for downsampling data for visualization (default is 1).
+        """
         # config = JSONCommunicator().get_ble_nirs_config()
-        self.device_name = ""  # config['dev_name']
-        self.device_uuid = ""  # config['dev_data_uuid']
+        self.device_name = ""  # config['dev_name']  # BLE device name.
+        self.device_uuid = ""  # config['dev_data_uuid']  # UUID for the BLE device notifications.
         self.downsampling = data_viz_downsampling
         self.downsampling_counter = data_viz_downsampling
         self.db_queque = database_que
         self.viz_queque = visualization_que
-        self.valid_connection_attempts = 1  # config['connection_attempts']
-        self.__default_variables()
+        self.valid_connection_attempts = 1  # config['connection_attempts']  # Maximum allowed connection attempts.
+        self.__default_variables()  # Initialize internal state variables.
 
     def __default_variables(self):
-        self.client = None
-        self.data_queue = queue.Queue()
-        self.reading = False
-        self.bluetooth_thread = None
-        self.start_reading_time = None
-        self.data_collection_flag = False
-        self.connection_attempts = 0
-        self.data_collection_thread = None
-        self.debugging = False
-        self.debugging_data = []
-        self.poll_battery_time = time.time()
-        self.battery_time = 30
-        self.last_datapoint = None
+        self.client = None                # Instance of BleakClient after connection.
+        self.data_queue = queue.Queue()   # Internal queue for data from notifications.
+        self.reading = False              # Flag indicating if data is being read.
+        self.bluetooth_thread = None      # Thread for running BLE operations.
+        self.start_reading_time = None      # Timestamp when reading started.
+        self.data_collection_flag = False  # Indicates when data collection has begun.
+        self.connection_attempts = 0      # Number of connection attempts made.
+        self.data_collection_thread = None  # Thread managing data collection.
+        self.debugging = False            # Flag for synthetic data generation.
+        self.debugging_data = []          # Buffer for synthetic NIRS data.
+        self.poll_battery_time = time.time()  # Next scheduled time for battery polling.
+        self.battery_time = 30            # Battery polling interval (seconds).
+        self.last_datapoint = None        # Timestamp of the last received data.
 
     async def __async_connect(self):
-        """Connects to the BLE device and ensures services are discovered."""
+        """
+        Asynchronously scans for BLE devices and connects to the one matching self.device_name.
+
+        Returns:
+            1 if connection is successful, otherwise None.
+        """
         devices = await BleakScanner.discover()
         for device in devices:
             if device.name == self.device_name:
@@ -280,20 +392,36 @@ class BluetoothCommunicator:
         return
 
     async def __async_start_notifications(self):
-        """Starts receiving notifications from the Bluetooth device."""
+        """
+        Asynchronously starts notifications from the BLE device.
+
+        Registers the __async_notification_handler to process incoming data.
+        """
         if self.client and self.client.is_connected:
             await self.client.start_notify(self.device_uuid, self.__async_notification_handler)
             self.last_datapoint = time.time()
             print(f'{time.strftime("%H:%M:%S")} - Started receiving data from {self.device_name}')
 
     async def __async_stop_notifications(self):
+        """
+        Asynchronously stops notifications from the BLE device.
+        """
         if self.client and self.client.is_connected:
             await self.client.stop_notify(self.device_uuid)
             print(f'{time.strftime("%H:%M:%S")} - Stopped receiving data from {self.device_name}')
 
     def __process_data(self, data):
-        """Unpacks the data according to the expected format."""
+        """
+        Processes the raw binary data received from the BLE device.
 
+        Unpacks the data using a predefined format and returns a formatted string.
+
+        Parameters:
+            data (bytes): Raw binary data from the device.
+
+        Returns:
+            A formatted string in the form '2_timestamp_value1_value2_value3'.
+        """
         timestamp = time.time()
         format_string = '<fffB I'
         values = struct.unpack(format_string, data)
@@ -303,11 +431,17 @@ class BluetoothCommunicator:
         return formated_vals
 
     async def __async_notification_handler(self, sender, data):
+        """
+        Asynchronous callback to handle BLE notifications.
+
+        Processes the raw data, pushes the formatted data string into an internal queue,
+        and polls the battery level periodically.
+        """
         try:
             data_str = self.__process_data(data)
             self.data_queue.put(data_str)  # Send data to the queue
             time.sleep(0.05)
-            if self.data_collection_flag == False:
+            if not self.data_collection_flag:
                 self.data_collection_flag = True
             if time.time() > self.poll_battery_time:
                 await self.__poll_battery_level()
@@ -317,7 +451,12 @@ class BluetoothCommunicator:
                 f'{time.strftime("%H:%M:%S")} - BLECOM __Async not. handler: {data} - {e}')
 
     async def __read_battery_level(self):
-        """Reads the battery level from the device."""
+        """
+        Reads the battery level from the BLE device.
+
+        Retrieves the battery level using a GATT characteristic read, unpacks the value,
+        and sends it to the visualization queue.
+        """
         if self.client and self.client.is_connected:
             try:
                 battery_data = await self.client.read_gatt_char()  # JSONCommunicator().get_ble_nirs_config()['dev_battery_uuid'])
@@ -329,13 +468,20 @@ class BluetoothCommunicator:
                 print(f'{time.strftime("%H:%M:%S")} - Failed to read battery level: {e}')
 
     async def __poll_battery_level(self):
-        """Periodically reads battery level at the specified interval (in seconds)."""
+        """
+        Periodically reads battery level at the specified interval (in seconds).
+        """
         if self.client and self.client.is_connected:
             await self.__read_battery_level()
             return
 
     def __run(self):
-        """Runs the asynchronous Bluetooth tasks in the thread."""
+        """
+        Runs the asynchronous BLE tasks within a dedicated thread.
+
+        Creates a new event loop, connects to the device, starts notifications, and keeps the loop
+        running until the reading flag is set to False. On termination, stops notifications and disconnects.
+        """
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
@@ -357,13 +503,18 @@ class BluetoothCommunicator:
                     print(f'{time.strftime("%H:%M:%S")} - BLECOM.__run: {e}')
 
     def __start_asynchronous_thread(self):
-        """Starts the Bluetooth communicator in a separate thread."""
+        """
+        Starts BLE communication in a separate thread.
+
+        Continuously attempts to establish a connection; if connection fails after a set number of attempts,
+        switches to debugging mode to generate synthetic data.
+        """
         self.reading = True
         self.start_reading_time = time.time()
         self.bluetooth_thread = threading.Thread(target=self.__run)
         self.bluetooth_thread.daemon = True
         self.bluetooth_thread.start()
-        while self.data_collection_flag == False:
+        while not self.data_collection_flag:
             if self.start_reading_time+15 < time.time():
                 self.start_reading_time = time.time()
                 self.connection_attempts += 1
@@ -377,7 +528,7 @@ class BluetoothCommunicator:
                 if self.bluetooth_thread is not None:
                     self.bluetooth_thread.join(1)
                 self.bluetooth_thread = None
-                # this should eventualy get to the data generator function
+                # Switch to debugging mode: generate synthetic data.
                 self.data_collection_flag = True
                 self.debugging = True
                 text = f'{time.strftime("%H:%M:%S")} - Could not connect to {self.device_name}, starting random generator mode'
@@ -387,7 +538,8 @@ class BluetoothCommunicator:
                 self.bluetooth_thread.daemon = True
                 self.bluetooth_thread.start()
             time.sleep(0.5)
-        while self.reading == True:
+        # Process data from the internal queue.
+        while self.reading:
             if not self.debugging and not self.data_queue.empty():
                 data = str(self.data_queue.get())
                 _, timestamp, smo2, o2hb, hhb = data.split('_')
@@ -403,6 +555,12 @@ class BluetoothCommunicator:
         self.bluetooth_thread.join(1)
 
     def __data_generator_que_manager(self, data):
+        """
+        Manages insertion of data strings into the database and visualization queues with downsampling.
+
+        Parameters:
+            data (list of str): List of formatted data strings.
+        """
         self.downsampling_counter -= 1
         viz_put = False
         if self.downsampling_counter == 0:
@@ -418,8 +576,17 @@ class BluetoothCommunicator:
                 self.db_queque.get()
                 self.db_queque.put(i)
 
-    def __debugging_generate_smo2_profile(self, noise_level=0.4):
-        """Generates synthetic data that mimics a force profile on a hangboard."""
+    @staticmethod
+    def __debugging_generate_smo2_profile(noise_level=0.4):
+        """
+        Generates synthetic NIRS data to mimic real sensor readings.
+
+        Parameters:
+            noise_level (float): The noise level added to the synthetic signal.
+
+        Returns:
+            A NumPy array of synthetic NIRS values.
+        """
         n_samples = int(np.random.uniform(300, 800))
         t = np.linspace(0, np.pi, n_samples)
         max_force = np.random.uniform(30, 80)
@@ -429,6 +596,12 @@ class BluetoothCommunicator:
         return force_profile
 
     def __debugging_data_nirs_generator(self):
+        """
+        Continuously generates synthetic NIRS data for debugging purposes.
+
+        Synthetic data for three NIRS metrics is generated and pushed to the queues.
+        Also, battery level data is generated periodically.
+        """
         while self.reading:
             timestamp = time.time()
             if len(self.debugging_data) <= 1:
@@ -452,6 +625,9 @@ class BluetoothCommunicator:
             time.sleep(0.1)
 
     def start_bluetooth_collector(self):
+        """
+        Starts the Bluetooth data collection process in a separate thread.
+        """
         if self.data_collection_thread is not None:
             return
         self.__default_variables()
@@ -462,6 +638,12 @@ class BluetoothCommunicator:
         return
 
     def stop_bluetooth_collector(self):
+        """
+        Stops the Bluetooth data collection process and cleans up resources.
+
+        Returns:
+            1 if the collector was active and has now stopped; otherwise, None.
+        """
         if self.data_collection_thread is not None:
             self.data_collection_flag = True
             self.reading = False

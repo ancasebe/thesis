@@ -35,8 +35,10 @@ class ClimbingTestManager:
                     data_type TEXT,
                     test_type TEXT,
                     timestamp TEXT,
-                    file_paths TEXT,
-                    test_results TEXT
+                    force_file TEXT,
+                    nirs_file TEXT,
+                    test_results TEXT,
+                    rep_results TEXT
                 )
             ''')
 
@@ -47,52 +49,41 @@ class ClimbingTestManager:
         Parameters:
             admin_id (str): Administrator ID.
             participant_id (str): Participant ID.
-            arm_tested (str): Actually tested arm.
-            timestamp (str): Date of the test.
-            file_paths (str): CSV filenames for Force and/or NIRS data.
-            test_results (str): Individual test results.
+            db_data (dict): Actually tested arm.
         """
         with self.connection:
             self.connection.execute('''
-                INSERT INTO climbing_tests (admin_id, participant_id, arm_tested, data_type, test_type, timestamp, file_paths, test_results)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (admin_id, participant_id, db_data['arm_tested'], db_data['data_type'], db_data['test_type'],
-                  db_data['timestamp'], db_data['file_paths'], db_data['test_results']))
+                INSERT INTO climbing_tests (admin_id, participant_id, arm_tested, data_type, test_type, 
+                timestamp, force_file, nirs_file, test_results, rep_results)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (admin_id, participant_id, db_data['arm_tested'], db_data['data_type'],
+                  db_data['test_type'], db_data['timestamp'], db_data['force_file'], db_data['nirs_file'],
+                  db_data['test_results'], db_data['rep_results']))
 
-            print(admin_id, participant_id, db_data['arm_tested'], db_data['data_type'], db_data['test_type'],
-                  db_data['timestamp'], db_data['file_paths'], db_data['test_results'])
             print("Test result saved successfully.")
+            # seems to be working alright
 
-    def fetch_all_results(self):
-        """
-        Fetches all test results from the database.
-
-        Returns:
-            list: Rows from the climbing_tests table.
-        """
-        with self.connection:
-            cursor = self.connection.execute('SELECT * FROM climbing_tests')
-            return cursor.fetchall()
-
-    def fetch_results_by_participant(self, admin_id, participant_id):
+    def fetch_results_by_participant(self, participant_id):
         """
         Fetches test results for a specific participant.
 
         Parameters:
-            admin_id (str): Admin ID.
             participant_id (str): Participant ID.
 
         Returns:
             list: Matching rows from the climbing_tests table.
         """
         with self.connection:
-            cursor = self.connection.execute('SELECT * FROM climbing_tests WHERE admin_id = ? AND participant_id = ?',
-                                             (admin_id, participant_id,))
-            return cursor.fetchall()
+            cursor = self.connection.execute(
+                'SELECT * FROM climbing_tests WHERE participant_id = ?',
+                (participant_id,)
+            )
+            columns = [desc[0] for desc in cursor.description]
+            return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
     def fetch_results_by_admin(self, admin_id):
         """
-        Fetches test results for a specific participant.
+        Fetches test results for a specific admin.
 
         Parameters:
             admin_id (str): Admin ID.
@@ -101,8 +92,52 @@ class ClimbingTestManager:
             list: Matching rows from the climbing_tests table.
         """
         with self.connection:
-            cursor = self.connection.execute('SELECT * FROM climbing_tests WHERE admin_id = ?', (admin_id,))
-            return cursor.fetchall()
+            # Ensure admin_id is compared as an integer
+            if admin_id == "1":
+                cursor = self.connection.execute('SELECT * FROM climbing_tests')
+            else:
+                cursor = self.connection.execute(
+                    'SELECT * FROM climbing_tests WHERE admin_id = ?',
+                    (admin_id,)
+                )
+            columns = [desc[0] for desc in cursor.description]
+            return [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+    def fetch_result_by_test_id(self, test_id):
+        """
+        Fetches test results for a specific test id.
+
+        Parameters:
+            test_id (str): Test ID.
+
+        Returns:
+            list: Matching rows from the climbing_tests table.
+        """
+        with self.connection:
+            cursor = self.connection.execute('SELECT * FROM climbing_tests WHERE id = ?', (test_id,))
+            columns = [desc[0] for desc in cursor.description]
+            return [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+    def get_test_data(self, test_id):
+        """
+        Retrieves all field values for a test record based on test_id.
+
+        Returns:
+            dict: A dictionary of the test's field values if found; None otherwise.
+        """
+        cursor = self.connection.cursor()
+        cursor.execute("""
+            SELECT admin_id, participant_id, arm_tested, data_type, test_type, timestamp, 
+            force_file, nirs_file, test_results, rep_results
+            FROM climbing_tests
+            WHERE id = ?;
+        """, (test_id,))
+        result = cursor.fetchone()
+        if result:
+            fields = ["admin_id", "participant_id", "arm_tested", "data_type", "test_type", "timestamp",
+                      "force_file", "nirs_file", "test_results", "rep_results"]
+            return dict(zip(fields, result))
+        return None
 
     def close_connection(self):
         """Closes the database connection."""

@@ -4,12 +4,17 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="8d114396-0b52-44aa-9fec-17fceb6230ba" name="Changes" comment="results_page.py a dalsi featury">
+    <list default="true" id="8d114396-0b52-44aa-9fec-17fceb6230ba" name="Changes" comment="report_window.py edited so far">
+      <change afterPath="$PROJECT_DIR$/gui/results_page/rep_report_window.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gui/test_page/evaluations/force_metrics.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gui/test_page/evaluations/rep_metrics.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gui/login_database.db" beforeDir="false" afterPath="$PROJECT_DIR$/gui/login_database.db" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/research_members/climber_db_manager.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/research_members/climber_db_manager.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gui/results_page/report_window.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/results_page/report_window.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gui/results_page/results_page.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/results_page/results_page.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gui/test_page/data_communicator.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/test_page/data_communicator.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/test_page/data_generator.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/test_page/data_generator.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gui/test_page/evaluations/force_evaluation.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/test_page/evaluations/force_evaluation.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gui/test_page/test_db_manager.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/test_page/test_db_manager.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gui/test_page/test_page.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/test_page/test_page.py" afterDir="false" />
@@ -55,33 +60,33 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "Python.all_out.executor": "Run",
-    "Python.climber_db_manager.executor": "Run",
-    "Python.data_com_new.executor": "Run",
-    "Python.data_com_old.executor": "Run",
-    "Python.data_communicator.executor": "Run",
-    "Python.data_communicator_mocked.executor": "Run",
-    "Python.data_generator.executor": "Run",
-    "Python.data_visualisation.executor": "Run",
-    "Python.force_evaluation.executor": "Run",
-    "Python.main.executor": "Run",
-    "Python.rep_another.executor": "Run",
-    "Python.report_window.executor": "Run",
-    "Python.reps.executor": "Run",
-    "Python.reps_excel.executor": "Run",
-    "Python.reps_hdf5.executor": "Run",
-    "Python.test_page.executor": "Run",
-    "Python.test_run.executor": "Run",
-    "Python.try_report.executor": "Run",
-    "RunOnceActivity.OpenProjectViewOnStart": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "git-widget-placeholder": "main",
-    "last_opened_file_path": "/Users/annasebestikova/PycharmProjects/Diploma/txt",
-    "settings.editor.selected.configurable": "org.jetbrains.plugins.github.ui.GithubSettingsConfigurable"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Python.all_out.executor&quot;: &quot;Run&quot;,
+    &quot;Python.climber_db_manager.executor&quot;: &quot;Run&quot;,
+    &quot;Python.data_com_new.executor&quot;: &quot;Run&quot;,
+    &quot;Python.data_com_old.executor&quot;: &quot;Run&quot;,
+    &quot;Python.data_communicator.executor&quot;: &quot;Run&quot;,
+    &quot;Python.data_communicator_mocked.executor&quot;: &quot;Run&quot;,
+    &quot;Python.data_generator.executor&quot;: &quot;Run&quot;,
+    &quot;Python.data_visualisation.executor&quot;: &quot;Run&quot;,
+    &quot;Python.force_evaluation.executor&quot;: &quot;Run&quot;,
+    &quot;Python.main.executor&quot;: &quot;Run&quot;,
+    &quot;Python.rep_another.executor&quot;: &quot;Run&quot;,
+    &quot;Python.report_window.executor&quot;: &quot;Run&quot;,
+    &quot;Python.reps.executor&quot;: &quot;Run&quot;,
+    &quot;Python.reps_excel.executor&quot;: &quot;Run&quot;,
+    &quot;Python.reps_hdf5.executor&quot;: &quot;Run&quot;,
+    &quot;Python.test_page.executor&quot;: &quot;Run&quot;,
+    &quot;Python.test_run.executor&quot;: &quot;Run&quot;,
+    &quot;Python.try_report.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/Users/annasebestikova/PycharmProjects/Diploma/txt&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;org.jetbrains.plugins.github.ui.GithubSettingsConfigurable&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/../Diploma/txt" />
@@ -183,7 +188,15 @@
       <option name="project" value="LOCAL" />
       <updated>1742931082098</updated>
     </task>
-    <option name="localTasksCounter" value="10" />
+    <task id="LOCAL-00010" summary="report_window.py edited so far">
+      <option name="closed" value="true" />
+      <created>1742942449733</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1742942449733</updated>
+    </task>
+    <option name="localTasksCounter" value="11" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -218,6 +231,7 @@
     <MESSAGE value="data_communication, h5 files, added tests" />
     <MESSAGE value="report_window.py added, some communication problems todo" />
     <MESSAGE value="results_page.py a dalsi featury" />
-    <option name="LAST_COMMIT_MESSAGE" value="results_page.py a dalsi featury" />
+    <MESSAGE value="report_window.py edited so far" />
+    <option name="LAST_COMMIT_MESSAGE" value="report_window.py edited so far" />
   </component>
 </project>

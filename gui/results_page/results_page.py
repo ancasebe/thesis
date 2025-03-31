@@ -79,11 +79,12 @@ class ResultsPage(QWidget):
 
         # Middle area: Table to display tests for the chosen climber
         self.tests_table = QTableWidget()
-        self.tests_table.setColumnCount(6)
+        self.tests_table.setColumnCount(9)
         self.tests_table.setHorizontalHeaderLabels(
-            ["Test ID", "Test Name", "NIRS", "Arm Tested", "Date", "Time"]
+            ["AdminID", "Test ID", "Name", "Surname", "Test Name", "NIRS", "Arm Tested", "Date", "Time"]
         )
         self.tests_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.tests_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.tests_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.tests_table.setSelectionMode(QTableWidget.SingleSelection)
         main_layout.addWidget(self.tests_table)
@@ -134,13 +135,18 @@ class ResultsPage(QWidget):
         Normal admins see only climbers registered with their admin_id;
         superuser (admin_id == 1) sees all climbers.
         """
-        if self.admin_id == 1:
-            climbers = self.climber_db_manager.get_all_climbers()
-        else:
-            climbers = self.climber_db_manager.get_climbers_by_admin(self.admin_id)
+        # if self.admin_id == 1:
+        #     climbers = self.climber_db_manager.get_all_climbers()
+        # else:
+        climbers = self.climber_db_manager.get_climbers_by_admin(self.admin_id)
         self.climber_selector.clear()
-        self.climber_selector.addItem("Select a climber", None)
+        self.climber_selector.addItem("All climbers", None)
+        seen = set()
         for climber in climbers:
+            # Only add if we haven't seen this climber's id
+            if climber["id"] in seen:
+                continue
+            seen.add(climber["id"])
             display_name = f"{climber['name']} {climber['surname']}"
             self.climber_selector.addItem(display_name, climber["id"])
 
@@ -172,42 +178,56 @@ class ResultsPage(QWidget):
             8: test_results
         """
         self.tests_table.setRowCount(0)
+        # participant_info = self.climber_db_manager.get_user_data(self.admin_id, self.selected_climber_id)
         if self.selected_climber_id:
-            tests = self.test_db_manager.fetch_results_by_participant(admin_id=str(self.admin_id),
-                                                                      participant_id=self.selected_climber_id)
-        elif self.admin_id == 1:
-            tests = self.test_db_manager.fetch_all_results()  # superuser
+            tests = self.test_db_manager.fetch_results_by_participant(participant_id=self.selected_climber_id)
+        # elif self.admin_id == 1:
+        #     tests = self.test_db_manager.fetch_all_results()  # superuser
         else:
             tests = self.test_db_manager.fetch_results_by_admin(admin_id=str(self.admin_id))
         # If filtering by test label (other than "All Tests"), filter test rows.
         if self.selected_test_label and self.selected_test_label != "All Tests":
             filter_text = self.selected_test_label.lower()
-            # Assuming test name is stored at index 5
-            tests = [t for t in tests if len(t) > 5 and filter_text in str(t[5]).lower()]
+            tests = [t for t in tests if filter_text in str(t["test_type"]).lower()]
 
         if self.selected_data_type and self.selected_data_type != "All Data":
             filter_text = self.selected_data_type.lower()
-            # Assuming data type is stored at index 4
-            tests = [t for t in tests if len(t) > 4 and filter_text in str(t[4]).lower()]
+            tests = [t for t in tests if filter_text in str(t["data_type"]).lower()]
 
         for row_index, test in enumerate(tests):
             self.tests_table.insertRow(row_index)
+            # Test tuple structure:
+            # 0: id, 1: admin_id, 2: participant_id, 3: arm_tested, 4: data_type, 5: test_type,
+            # 6: timestamp, 7: file_paths, 8: test_results
 
-            test_id = str(test[0])  # ID
-            arm_tested = str(test[3])  # arm_tested
-            data_type = str(test[4])  # data_type
-            test_name = str(test[5])  # test_type
-            raw_timestamp = str(test[6])  # timestamp
+            # Retrieve participant info using test[2] (participant_id)
+            # participant_id = test[2]
+            climber_data = self.climber_db_manager.get_user_data(str(self.admin_id), test["participant_id"])
+            name = climber_data.get("name", "") if climber_data else ""
+            surname = climber_data.get("surname", "") if climber_data else ""
+
+            # Extract values from the test dictionary
+            admin_id = str(test["admin_id"])
+            test_id = str(test["id"])
+            test_name = str(test["test_type"])
+            data_type = str(test["data_type"])
+            arm_tested = str(test["arm_tested"])
+            raw_timestamp = str(test["timestamp"])
 
             date_str, time_str = self.format_timestamp(raw_timestamp)
 
-            # Populate the table
-            self.tests_table.setItem(row_index, 0, QTableWidgetItem(test_id))
-            self.tests_table.setItem(row_index, 1, QTableWidgetItem(test_name))  # "Test Name"
-            self.tests_table.setItem(row_index, 2, QTableWidgetItem(data_type))  # "NIRS"
-            self.tests_table.setItem(row_index, 3, QTableWidgetItem(arm_tested))
-            self.tests_table.setItem(row_index, 4, QTableWidgetItem(date_str))
-            self.tests_table.setItem(row_index, 5, QTableWidgetItem(time_str))
+            # Populate table columns:
+            # Column 0: Admin ID, 1: Test ID, 2: Name, 3: Surname,
+            # 4: Test Name, 5: NIRS (data_type), 6: Arm Tested, 7: Date, 8: Time.
+            self.tests_table.setItem(row_index, 0, QTableWidgetItem(admin_id))
+            self.tests_table.setItem(row_index, 1, QTableWidgetItem(test_id))
+            self.tests_table.setItem(row_index, 2, QTableWidgetItem(name))
+            self.tests_table.setItem(row_index, 3, QTableWidgetItem(surname))
+            self.tests_table.setItem(row_index, 4, QTableWidgetItem(test_name))
+            self.tests_table.setItem(row_index, 5, QTableWidgetItem(data_type))
+            self.tests_table.setItem(row_index, 6, QTableWidgetItem(arm_tested))
+            self.tests_table.setItem(row_index, 7, QTableWidgetItem(date_str))
+            self.tests_table.setItem(row_index, 8, QTableWidgetItem(time_str))
 
     @staticmethod
     def format_timestamp(raw_timestamp):
@@ -236,15 +256,18 @@ class ResultsPage(QWidget):
             QMessageBox.warning(self, "No Test Selected", "Please select a test from the table.")
             return None
         row = selected_items[0].row()
-        test_id_item = self.tests_table.item(row, 0)
+        test_id_item = self.tests_table.item(row, 1)
         if not test_id_item:
             return None
         test_id = int(test_id_item.text())
         # Look up the full test information by test id.
-        tests = self.test_db_manager.fetch_results_by_participant(admin_id=str(self.admin_id),
-                                                                  participant_id=self.selected_climber_id)
+        # tests = self.test_db_manager.fetch_results_by_participant(participant_id=self.selected_climber_id)
+        # if self.admin_id == 1:
+        #     tests = self.test_db_manager.fetch_all_results()
+        # else:
+        tests = self.test_db_manager.fetch_results_by_admin(admin_id=str(self.admin_id))
         for t in tests:
-            if t[0] == test_id:
+            if t["id"] == test_id:
                 return t
         return None
 
@@ -260,14 +283,21 @@ class ResultsPage(QWidget):
         dialog.setWindowTitle("Test Info")
         layout = QFormLayout(dialog)
 
+        # Retrieve participant info from test[2]
+        participant_id = test["participant_id"]
+        climber_data = self.climber_db_manager.get_user_data(str(self.admin_id), participant_id)
+        name = climber_data.get("name", "") if climber_data else ""
+        surname = climber_data.get("surname", "") if climber_data else ""
+
         # Basic fields
-        layout.addRow("Test ID:", QLabel(str(test[0])))
+        layout.addRow("Test ID:", QLabel(str(test["id"])))
+        layout.addRow("Name:", QLabel(name))
+        layout.addRow("Surname:", QLabel(surname))
+        layout.addRow("Test Name:", QLabel(str(test["test_type"])))
+        layout.addRow("Data Type:", QLabel(str(test["data_type"])))
+        layout.addRow("Arm Tested:", QLabel(str(test["arm_tested"])))
 
-        layout.addRow("Test Name:", QLabel(str(test[5])))  # test_type
-        layout.addRow("Data Type:", QLabel(str(test[4])))  # data_type
-        layout.addRow("Arm Tested:", QLabel(str(test[3])))
-
-        date_str, time_str = self.format_timestamp(str(test[6]))  # timestamp
+        date_str, time_str = self.format_timestamp(str(test["timestamp"]))
         layout.addRow("Date:", QLabel(date_str))
         layout.addRow("Time:", QLabel(time_str))
 
@@ -285,14 +315,18 @@ class ResultsPage(QWidget):
         test = self.get_selected_test()
         if not test:
             return
-        participant_info = self.climber_db_manager.get_user_data(self.admin_id, self.selected_climber_id)
+        print("the test:", test)
+        participant_id = test["participant_id"]
+        participant_info = self.climber_db_manager.get_user_data(self.admin_id, participant_id)
+        print("participant info:", participant_info)
         if not participant_info:
             participant_info = {"Name": "Unknown"}
-        db_data = self.test_db_manager.fetch_results_by_participant(admin_id=str(self.admin_id),
-                                                                    participant_id=self.selected_climber_id)
+        print("test id:", test['id'])
+        db_data = self.test_db_manager.get_test_data(test_id=test['id'])
+        print(db_data)
         # test_metrics = {"Max Strength": "N/A", "Critical Force": "N/A", "W Prime": "N/A"}
         report_window = TestReportWindow(participant_info=participant_info,
-                                         db_data=None,
+                                         db_data=db_data,
                                          parent=self)
         report_window.show()
 
@@ -313,7 +347,7 @@ class ResultsPage(QWidget):
         if not test:
             return
 
-        file_paths_str = str(test[5])  # The 'file_paths' column
+        file_paths_str = str(test['force_file'])  # The 'file_paths' column
         if not file_paths_str.strip():
             QMessageBox.warning(self, "No Data Files", "No data file is associated with this test.")
             return

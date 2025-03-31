@@ -140,10 +140,10 @@ class TestPage(QWidget):
 
     def load_climbers(self):
         """Loads climbers registered by the current admin into the ComboBox."""
-        if self.admin_id == 1:
-            climbers = self.db_manager.get_all_climbers()
-        else:
-            climbers = self.db_manager.get_climbers_by_admin(self.admin_id)
+        # if self.admin_id == 1:
+        #     climbers = self.db_manager.get_all_climbers()
+        # else:
+        climbers = self.db_manager.get_climbers_by_admin(self.admin_id)
         self.climber_selector.clear()
         self.climber_selector.addItem("Select a climber", None)
         for climber in climbers:
@@ -329,15 +329,15 @@ class TestPage(QWidget):
 
     def delete_climber(self):
         """Deletes the selected climber after confirmation."""
-        email = self.climber_selector.currentData()
+        climber_id = self.climber_selector.currentData()
         name = self.climber_selector.currentText()
-        if email:
+        if climber_id:
             reply = QMessageBox.question(
                 self, "Delete Climber", f"Are you sure you want to delete climber {name}?",
                 QMessageBox.Yes | QMessageBox.No, QMessageBox.No
             )
             if reply == QMessageBox.Yes:
-                if self.db_manager.delete_climber(email["email"], self.admin_id):
+                if self.db_manager.delete_climber(climber_id):
                     QMessageBox.information(self, "Success", f"Climber {name} deleted successfully.")
                     self.load_climbers()
                 else:

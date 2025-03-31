@@ -1,5 +1,5 @@
 import os
-import csv
+import queue
 import time
 
 import numpy as np
@@ -7,86 +7,13 @@ import pandas as pd
 import pyqtgraph as pg
 from PySide6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QMessageBox
 from PySide6.QtCore import QTimer
-import matplotlib.pyplot as plt
-# from datetime import datetime
+
+from gui.test_page.data_generator import BluetoothCommunicator, SerialCommunicator
 from gui.test_page.test_db_manager import ClimbingTestManager
 from gui.test_page.evaluations.force_evaluation import ForceMetrics
+from gui.test_page.evaluations.rep_metrics import RepMetrics
 from gui.research_members.climber_db_manager import ClimberDatabaseManager
 from gui.results_page.report_window import TestReportWindow
-
-'''
-# --- CSV Logger Helper Class ---
-class CSVLogger:
-    """
-    Handles CSV logging with a timestamped filename.
-
-    Parameters:
-        folder (str): Directory in which to save the CSV file.
-        prefix (str): Prefix for the filename.
-    """
-    def __init__(self, folder="tests", prefix="processed_data", timestamp="today"):
-        # self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        script_dir = os.path.dirname(__file__)
-        folder_path = os.path.join(script_dir, folder)
-        filename = f"{folder_path}/{prefix}_{timestamp}.csv"
-        print(filename)
-        self.filename = filename
-        self.file = open(filename, "w", newline="")
-        self.writer = csv.writer(self.file)
-        self.writer.writerow(["force_timestamp", "value"])
-
-    def log(self, ts, val):
-        """
-        Logs a single data point to the CSV file.
-
-        Parameters:
-            ts (float): The timestamp.
-            val (float): The measured sensor value.
-        """
-        self.writer.writerow([f"force_{ts}", val])
-
-    def close(self):
-        """Closes the CSV file."""
-        self.file.close()
-
-
-class BufferedBinaryLogger:
-    """
-    Logs data points into an in-memory buffer and writes them in batches to an HDF5 file.
-    """
-    def __init__(self, folder="tests", prefix="processed_data", timestamp="today", flush_interval=1000):
-        script_dir = os.path.dirname(__file__)
-        folder_path = os.path.join(script_dir, folder)
-        filename = f"{folder_path}/{prefix}_{timestamp}.h5"
-        self.filename = filename
-        self.buffer = []  # in-memory buffer for data points.
-        self.flush_interval = flush_interval
-        self.key = "data"
-        # Open an HDFStore in write mode with table format (to allow appending).
-        self.store = pd.HDFStore(self.filename, mode='w', complib='blosc', complevel=9)
-        # Initialize the table by writing an empty DataFrame with the proper columns.
-        self.store.put(self.key, pd.DataFrame(columns=["timestamp", "value"]), format='table', append=False)
-
-    def log(self, ts, val):
-        """Append a data point to the buffer and flush if necessary."""
-        self.buffer.append([f"timestamp_{ts}", val])
-        if len(self.buffer) >= self.flush_interval:
-            self.flush()
-
-    def flush(self):
-        """Write the buffered data to the HDF5 file and clear the buffer."""
-        if self.buffer:
-            df = pd.DataFrame(self.buffer, columns=["timestamp", "value"])
-            self.store.append(self.key, df, format='table', data_columns=True)
-            self.buffer = []
-
-    def close(self):
-        """Flush any remaining data and close the HDF5 store."""
-        self.flush()
-        self.store.close()
-'''
-
-# Replace the HDF5-based BufferedBinaryLogger with this Feather version:
 
 
 class FeatherBinaryLogger:
@@ -98,7 +25,6 @@ class FeatherBinaryLogger:
     def __init__(self, folder="tests", prefix="processed_data", timestamp="today"):
         script_dir = os.path.dirname(__file__)
         folder_path = os.path.join(script_dir, folder)
-        # Use a .feather extension
         filename = f"{folder_path}/{prefix}_{timestamp}.feather"
         self.filename = filename
         self.buffer = []  # in-memory buffer for data points
@@ -124,21 +50,30 @@ class FeatherBinaryLogger:
 # --- Combined Data Communicator Class ---
 class CombinedDataCommunicator(QMainWindow):
     """
-    Modified CombinedDataCommunicator that does not auto-start the acquisition.
-    It now accepts admin_id and climber_id parameters and exposes public
-    methods to start and stop data acquisition.
+    CombinedDataCommunicator collects and visualizes sensor data from real-time sources
+    (force sensor via Serial and NIRS sensor via Bluetooth) instead of reading from Excel files.
 
-    Parameters:
-            force_timestamps (np.array): Array of Force sensor timestamps (seconds).
-            force_values (np.array): Array of Force sensor values.
-            nirs_timestamps (np.array): Array of NIRS sensor timestamps (seconds).
-            nirs_values (np.array): Array of NIRS sensor values.
-            window_size (int): Time window (in seconds) for the x-axis (default 60).
-            fixed_offset_ratio (float): Ratio to determine where new points appear.
+    It supports:
+      - Starting and stopping data acquisition (which launches the real-time communicators),
+      - Live updating of a dual-axis plot via QTimers that poll a shared data queue,
+      - Logging incoming data to Feather files,
+      - Computing test evaluation metrics and saving results to the database.
     """
     def __init__(self, admin_id, climber_id, arm_tested, window_size=60, auto_start=False,
                  data_type="force", test_type="ao", parent=None):
+        """
+        Initializes the communicator.
 
+        Parameters:
+            admin_id (str): Administrator ID.
+            climber_id (str): Climber's ID.
+            arm_tested (str): "Dominant", "Non-dominant", or other.
+            window_size (int): Time window (in seconds) for the x-axis.
+            auto_start (bool): If True, acquisition starts immediately.
+            data_type (str): "force", "nirs", or "force_nirs".
+            test_type (str): Test type identifier.
+            parent: Parent widget.
+        """
         super().__init__(parent)
         self.report_window = None
         self.timestamp = None
@@ -161,45 +96,25 @@ class CombinedDataCommunicator(QMainWindow):
         self.x_min = -window_size
         self.x_max = 0
 
-        # Load sensor data from Excel files.
-        script_dir = os.path.dirname(__file__)  # folder where test_page.py is located
-        if self.data_type != "nirs":
-            force_file = os.path.join(script_dir, "group3_ao_copy.xlsx")
-            force_df = pd.read_excel(force_file).dropna()
-            force_timestamps = force_df.iloc[:, 0].values
-            force_values = force_df.iloc[:, 3].values
-
-            self.force_y_range = {"min": np.min(force_values) - 5, "max": np.max(force_values) + 5}
-
-            self.force_data = {
-                "timestamps": force_timestamps,
-                "values": force_values,
-                "index": 0,
-                "num_points": len(force_timestamps)
-            }
-
-        if self.data_type != "force":
-            nirs_file = os.path.join(script_dir, "group3_ao_copy.xlsx")
-            nirs_df = pd.read_excel(nirs_file).dropna()
-            nirs_timestamps = nirs_df.iloc[:, 0].values
-            nirs_values = nirs_df.iloc[:, 2].values
-
-            self.nirs_y_range = {"min": np.min(nirs_values) - 5, "max": np.max(nirs_values) + 5}
-
-            self.nirs_data = {
-                "timestamps": nirs_timestamps,
-                "values": nirs_values,
-                "index": 0,
-                "num_points": len(nirs_timestamps)
-            }
+        # Initialize empty containers for real-time data (populated from the shared queue)
+        self.force_data = {"timestamps": [], "values": []}
+        self.nirs_data = {"timestamps": [], "values": []}
+        # Default y-range (will be updated as data arrives)
+        self.force_y_range = {"min": 0, "max": 100}
+        self.nirs_y_range = {"min": 0, "max": 100}
 
         self.finalized = False
         self._setup_ui()
 
+        # Create a shared queue for real-time data (both communicators will push into it)
+        self.data_queue = queue.Queue()
+        # Instantiate communicators if their sensor type is active.
         if self.data_type != "nirs":
+            self.serial_comm = SerialCommunicator(self.data_queue, self.data_queue)
             self.force_timer = QTimer()
             self.force_timer.timeout.connect(self.update_force)
         if self.data_type != "force":
+            self.bluetooth_comm = BluetoothCommunicator(self.data_queue, self.data_queue)
             self.nirs_timer = QTimer()
             self.nirs_timer.timeout.connect(self.update_nirs)
 
@@ -290,23 +205,14 @@ class CombinedDataCommunicator(QMainWindow):
         self.nirs_view.linkedViewChanged(self.plot_widget.getViewBox(), self.nirs_view.XAxis)
 
     def start_acquisition(self):
-        """Starts the data acquisition by starting the timers."""
-        # self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        """
+        Starts real-time data acquisition from the Serial and/or Bluetooth communicators.
 
-        # if self.data_type in ["force", "force_nirs"]:
-        #     self.force_file = BufferedBinaryLogger(folder="tests", prefix=f"{self.test_type}_force",
-        #                                            timestamp=self.timestamp, flush_interval=1000)
-        # else:
-        #     self.force_file = None
-        #
-        # if self.data_type in ["nirs", "force_nirs"]:
-        #     self.nirs_file = BufferedBinaryLogger(folder="tests", prefix=f"{self.test_type}_nirs",
-        #                                           timestamp=self.timestamp, flush_interval=1000)
-        # else:
-        #     self.nirs_file = None
-
+        This function sets a timestamp, creates Feather loggers for saving data,
+        starts the communicators, and begins QTimers that poll the shared data queue.
+        """
         self.timestamp = str(time.time())
-
+        # Initialize data loggers for saving the acquired data.
         if self.data_type in ["force", "force_nirs"]:
             self.force_file = FeatherBinaryLogger(folder="tests", prefix=f"{self.test_type}_force",
                                                   timestamp=self.timestamp)
@@ -319,71 +225,108 @@ class CombinedDataCommunicator(QMainWindow):
         else:
             self.nirs_file = None
 
-        if self.force_file is not None:
-            self.force_timer.start(10)
-        if self.nirs_file is not None:
+        # Start the communicators to collect real-time data.
+        if self.data_type != "nirs":
+            self.serial_comm.start_serial_collection()
+            self.force_data = {"timestamps": [], "values": []}  # Reset force data container.
+            self.force_timer.start(10)  # Poll every 10 ms.
+        if self.data_type != "force":
+            self.bluetooth_comm.start_bluetooth_collector()
+            self.nirs_data = {"timestamps": [], "values": []}  # Reset NIRS data container.
             self.nirs_timer.start(10)
 
     def update_force(self):
         """
-        Updates the Force data plot.
+        Polls the shared data queue for new force data, updates the internal data container,
+        logs the data to file, and updates the force plot.
 
-        Logs the current Force data point, transforms its x value so that the newest point appears at the fixed offset,
-        and updates the force curve and live text readout.
+        Expected data format (from SerialCommunicator): "sensorID_timestamp_value".
         """
-        if self.force_file is None:
-            return
-        if self.force_data["index"] >= (self.force_data["num_points"] - 1):
-            self.force_timer.stop()
-            self.finalize_acquisition()
-        else:
-            current_ts = self.force_data["timestamps"][self.force_data["index"]]
-            current_val = self.force_data["values"][self.force_data["index"]]
-            self.force_file.log(current_ts, current_val)
-            x_data = (self.force_data["timestamps"][:self.force_data["index"] + 1] - current_ts)
-            y_data = self.force_data["values"][:self.force_data["index"] + 1]
+        new_data = False
+        # Process all items in the shared queue.
+        while not self.data_queue.empty():
+            data_str = self.data_queue.get()
+            # Filter for force data (assumed sensor ID "1")
+            if data_str.startswith(f"{1}_"):
+                parts = data_str.split("_")
+                if len(parts) >= 3:
+                    try:
+                        timestamp = float(parts[1])
+                        value = float(parts[2])
+                    except ValueError:
+                        continue
+                    self.force_data["timestamps"].append(timestamp)
+                    self.force_data["values"].append(value)
+                    if self.force_file is not None:
+                        self.force_file.log(timestamp, value)
+                    new_data = True
+        # If new force data was received, update the plot.
+        if new_data and self.force_data["timestamps"]:
+            current_ts = self.force_data["timestamps"][-1]
+            # Update dynamic y-range.
+            self.force_y_range["min"] = np.min(self.force_data["values"]) - 5
+            self.force_y_range["max"] = np.max(self.force_data["values"]) + 5
+            # Compute x-values as time differences relative to the most recent timestamp.
+            x_data = np.array(self.force_data["timestamps"]) - current_ts
+            y_data = np.array(self.force_data["values"])
             mask = (x_data >= self.x_min) & (x_data <= self.x_max)
             x_data = x_data[mask]
             y_data = y_data[mask]
             self.force_curve.setData(x_data, y_data)
-            self.force_text.setText(f"Force Time: {current_ts:.2f} s\nForce: {current_val:.2f} kg")
-            # self.force_text.setAnchor(0, 0)
+            self.force_text.setText(f"Force Time: {current_ts:.2f} s\nForce: {y_data[-1]:.2f} kg")
             self.force_text.setPos(self.x_min, self.force_y_range["max"])
-            self.force_data["index"] += 1
+            self.plot_widget.setYRange(self.force_y_range["min"], self.force_y_range["max"])
 
     def update_nirs(self):
         """
-        Updates the NIRS data plot.
+        Polls the shared data queue for new NIRS data, updates the internal data container,
+        logs the data to file, and updates the NIRS plot.
 
-        Logs the current NIRS data point, transforms its x value so that the newest point appears at the fixed offset,
-        and updates the NIRS curve and live text readout.
+        Expected NIRS data formats are those generated by BluetoothCommunicator.
         """
-        if self.nirs_file is None:
-            return
-        if self.nirs_data["index"] >= (self.nirs_data["num_points"] - 1):
-            self.nirs_timer.stop()
-            self.finalize_acquisition()
-        else:
-            current_ts = self.nirs_data["timestamps"][self.nirs_data["index"]]
-            current_val = self.nirs_data["values"][self.nirs_data["index"]]
-            self.nirs_file.log(current_ts, current_val)
-            x_data = (self.nirs_data["timestamps"][:self.nirs_data["index"] + 1] - current_ts)
-            y_data = self.nirs_data["values"][:self.nirs_data["index"] + 1]
+        new_data = False
+        while not self.data_queue.empty():
+            data_str = self.data_queue.get()
+            # Filter for NIRS data (sensor IDs assumed 2, 3, or 4)
+            if data_str.startswith(f"{2}_") or data_str.startswith(f"{3}_") or data_str.startswith(f"{4}_"):
+                parts = data_str.split("_")
+                if len(parts) >= 3:
+                    try:
+                        timestamp = float(parts[1])
+                        value = float(parts[2])
+                    except ValueError:
+                        continue
+                    self.nirs_data["timestamps"].append(timestamp)
+                    self.nirs_data["values"].append(value)
+                    if self.nirs_file is not None:
+                        self.nirs_file.log(timestamp, value)
+                    new_data = True
+        if new_data and self.nirs_data["timestamps"]:
+            current_ts = self.nirs_data["timestamps"][-1]
+            self.nirs_y_range["min"] = np.min(self.nirs_data["values"]) - 5
+            self.nirs_y_range["max"] = np.max(self.nirs_data["values"]) + 5
+            x_data = np.array(self.nirs_data["timestamps"]) - current_ts
+            y_data = np.array(self.nirs_data["values"])
             mask = (x_data >= self.x_min) & (x_data <= self.x_max)
             x_data = x_data[mask]
             y_data = y_data[mask]
             self.nirs_curve.setData(x_data, y_data)
-            self.nirs_text.setText(f"NIRS Time: {current_ts:.2f} s\nNIRS: {current_val:.2f} %")
-            # self.nirs_text.setAnchor(1, 0)
+            self.nirs_text.setText(f"NIRS Time: {current_ts:.2f} s\nNIRS: {y_data[-1]:.2f} %")
             self.nirs_text.setPos(self.x_max, self.nirs_y_range["max"])
-            self.nirs_data["index"] += 1
 
     def stop_acquisition(self):
-        """Stops the data acquisition and finalizes the test."""
+        """
+        Stops data acquisition by stopping the QTimers, halting the communicators,
+        closing the data log files, and finalizing the test (computing metrics and saving results).
+        """
         if self.force_timer is not None and self.force_timer.isActive():
             self.force_timer.stop()
         if self.nirs_timer is not None and self.nirs_timer.isActive():
             self.nirs_timer.stop()
+        if self.data_type != "nirs":
+            self.serial_comm.stop_serial_collection()
+        if self.data_type != "force":
+            self.bluetooth_comm.stop_bluetooth_collector()
         if self.force_file is not None:
             self.force_file.close()
         if self.nirs_file is not None:
@@ -391,53 +334,63 @@ class CombinedDataCommunicator(QMainWindow):
         self.finalize_acquisition()
 
     def finalize_acquisition(self):
-        """Generate the final graph and saves data to a database, if not done yet."""
-        # global test_results, evaluator
+        """
+        Finalizes the test by computing evaluation metrics, saving results to the database,
+        and opening a report window. This method is called once acquisition is stopped.
+        """
         if not self.finalized:
-
             if self.data_type == "force":
-                # final_graph = generate_final_graph_force(self.force_file.filename)
-                evaluator = ForceMetrics(self.force_file.filename)
+                evaluator = ForceMetrics(file_path=self.force_file.filename,
+                                         test_type=self.test_type,
+                                         sampling_rate=100)
+                force_df = pd.read_feather(self.force_file.filename)
+                rep_evaluator = RepMetrics(force_df, sampling_rate=100)
+                rep_results = rep_evaluator.compute_rep_metrics()
                 test_results = evaluator.evaluate()
                 print("Force Evaluation Results:")
                 print(test_results)
+                print("Repetition-by-Repetition Metrics:", rep_results)
             elif self.data_type == "nirs":
-                # final_graph = generate_final_graph_nirs(self.nirs_file.filename)
                 test_results = {"evaluation": "placeholder"}
+                rep_results = {"rep_evaluation": "none"}
             elif self.data_type == "force_nirs":
-                # final_graph = generate_final_combined_graph(self.force_file.filename, self.nirs_file.filename)
-                evaluator = ForceMetrics(self.force_file.filename)
+                evaluator = ForceMetrics(file_path=self.force_file.filename,
+                                         test_type=self.test_type,
+                                         sampling_rate=100)
+                force_df = pd.read_feather(self.force_file.filename)
+                rep_evaluator = RepMetrics(force_df, sampling_rate=100)
+                rep_results = rep_evaluator.compute_rep_metrics()
                 test_results = evaluator.evaluate()
                 print("Mixed Evaluation Results:")
                 print(test_results)
+                print("Repetition-by-Repetition Metrics:", rep_results)
             else:
                 QMessageBox.warning(self, "Error", "Unknown test type; cannot generate report.")
                 raise ValueError("Unknown test type; cannot generate report.")
 
-            # Save filenames in the database using the provided admin_id and climber_id.
             db_manager = ClimbingTestManager()
-            # Here you could include the test type in the stored file_paths if desired.
-            file_paths = ""
-            if self.force_file is not None:
-                file_paths += self.force_file.filename
-            if self.nirs_file is not None:
-                file_paths += ("; " if file_paths else "") + self.nirs_file.filename
-
-            db_data = {'arm_tested': self.arm_tested,
-                       'data_type': self.data_type,
-                       'test_type': self.test_type,
-                       'timestamp': self.timestamp,
-                       'file_paths': file_paths,
-                       'test_results': str(test_results)}
-
-            # db_manager.add_test_result(str(self.admin_id), str(self.climber_id), self.arm_tested,
-            #                            self.timestamp, file_paths, str(test_results))
-            db_manager.add_test_result(str(self.admin_id), str(self.climber_id), db_data)
+            force_file = self.force_file.filename if self.force_file else ''
+            nirs_file = self.nirs_file.filename if self.nirs_file else ''
+            db_data = {
+                'arm_tested': self.arm_tested,
+                'data_type': self.data_type,
+                'test_type': self.test_type,
+                'timestamp': self.timestamp,
+                'force_file': force_file,
+                'nirs_file': nirs_file,
+                'test_results': str(test_results),
+                'rep_results': str(rep_results)
+            }
+            print(db_data)
+            db_manager.add_test_result(admin_id=str(self.admin_id),
+                                       participant_id=str(self.climber_id),
+                                       db_data=db_data)
             db_manager.close_connection()
             QMessageBox.information(self, "Test saving", "Test was saved successfully.")
             self.finalized = True
 
-            # --- Load Real Climber Data Using ClimberDatabaseManager ---
+            # Load climber data and show the report window.
+            # from gui.research_members.climber_db_manager import ClimberDatabaseManager
             climber_db = ClimberDatabaseManager()
             climber_data = climber_db.get_user_data(self.admin_id, self.climber_id)
             climber_db.close()
@@ -449,18 +402,6 @@ class CombinedDataCommunicator(QMainWindow):
                     "gender": "N/A",
                     "dominant_arm": "N/A"
                 }
-
-            # --- Create and Show the Report Window ---
-            # self.report_window = TestReportWindow(climber_data, test_results, final_graph)
-            # self.report_window = TestReportWindow(
-            #     participant_info=climber_data,
-            #     test_metrics=test_results,
-            #     data_type=self.data_type,
-            #     test_type=self.test_type,
-            #     force_file=(self.force_file.filename if self.force_file else None),
-            #     nirs_file=(self.nirs_file.filename if self.nirs_file else None),
-            #     parent=True
-            # )
             self.report_window = TestReportWindow(
                 participant_info=climber_data,
                 db_data=db_data,
@@ -470,13 +411,8 @@ class CombinedDataCommunicator(QMainWindow):
 
     def close_event(self, event):
         """
-        Handles the window close event.
-
-        Stops both timers and, if finalization hasn't occurred yet, generates final graphs and saves the CSV filenames
-        into the database in one row. Then closes both CSV files.
-
-        Parameters:
-            event (QCloseEvent): The close event.
+        Handles the window close event by stopping timers, finalizing acquisition,
+        and closing log files.
         """
         if self.force_timer.isActive():
             self.force_timer.stop()
@@ -484,148 +420,8 @@ class CombinedDataCommunicator(QMainWindow):
             self.nirs_timer.stop()
         if not self.finalized:
             self.finalize_acquisition()
-        self.force_file.close()
-        self.nirs_file.close()
+        if self.force_file:
+            self.force_file.close()
+        if self.nirs_file:
+            self.nirs_file.close()
         event.accept()
-
-
-def generate_final_graph_force(force_file):
-    """
-    Generates a final static graph that plots force data.
-
-    Parameters:
-        force_file (str): Filename of the NIRS data h5.
-    """
-    # Read Force data.
-    # force_df = pd.read_csv(force_file)
-    # force_df['timestamp'] = force_df['force_timestamp'].str.replace("force_", "", regex=False).astype(float)
-    # force_timestamps = force_df['timestamp'].values
-    # force_values = force_df['value'].values
-
-    force_df = pd.read_hdf(force_file, key="data")
-    force_df['timestamp'] = force_df['timestamp'].str.replace("timestamp_", "", regex=False).astype(float)
-    force_timestamps = force_df['timestamp'].values
-    force_values = force_df['value'].values
-
-    # Create plot for Force only.
-    fig, ax = plt.subplots()
-    ax.plot(force_timestamps, force_values, 'b-', label="Force [kg]")
-    ax.set_xlabel("Time (s)")
-    ax.set_ylabel("Force (kg)", color='b')
-    ax.tick_params(axis='y', labelcolor='b')
-    ax.grid(True)
-    fig.tight_layout()
-    plt.title("Final Force Data")
-    ax.legend(loc="upper right")
-    return fig
-    # plt.show()
-
-
-def generate_final_graph_nirs(nirs_file):
-    """
-    Generates a final static graph that plots NIRS data.
-
-    Parameters:
-        nirs_file (str): Filename of the NIRS data h5.
-    """
-    # # Read NIRS data.
-    # nirs_df = pd.read_csv(nirs_file)
-    # nirs_df['timestamp'] = nirs_df['force_timestamp'].str.replace("force_", "", regex=False).astype(float)
-    # nirs_timestamps = nirs_df['timestamp'].values
-    # nirs_values = nirs_df['value'].values
-
-    # Read NIRS data.
-    nirs_df = pd.read_hdf(nirs_file, key="data")
-    nirs_df['timestamp'] = nirs_df['timestamp'].str.replace("timestamp_", "", regex=False).astype(float)
-    nirs_timestamps = nirs_df['timestamp'].values
-    nirs_values = nirs_df['value'].values
-
-    # Create plot for NIRS only.
-    fig, ax = plt.subplots()
-    ax.plot(nirs_timestamps, nirs_values, 'r-', label="NIRS (%)")
-    ax.set_xlabel("Time (s)")
-    ax.set_ylabel("NIRS (%)", color='r')
-    ax.tick_params(axis='y', labelcolor='r')
-    ax.grid(True)
-    fig.tight_layout()
-    plt.title("Final NIRS Data")
-    ax.legend(loc="upper right")
-    return fig
-    # plt.show()
-
-
-def generate_final_combined_graph(force_file, nirs_file):
-    """
-    Generates a final static graph that plots both Force and NIRS data on a single figure with two y-axes.
-
-    Parameters:
-        force_file (str): Filename of the Force data h5.
-        nirs_file (str): Filename of the NIRS data h5.
-    """
-    # # Read Force data.
-    # force_df = pd.read_csv(force_file)
-    # force_df['timestamp'] = force_df['force_timestamp'].str.replace("force_", "", regex=False).astype(float)
-    # force_timestamps = force_df['timestamp'].values
-    # force_values = force_df['value'].values
-    #
-    # # Read NIRS data.
-    # nirs_df = pd.read_csv(nirs_file)
-    # nirs_df['timestamp'] = nirs_df['force_timestamp'].str.replace("force_", "", regex=False).astype(float)
-    # nirs_timestamps = nirs_df['timestamp'].values
-    # nirs_values = nirs_df['value'].values
-
-    # Read Force data.
-    force_df = pd.read_hdf(force_file, key="data")
-    force_df['timestamp'] = force_df['timestamp'].str.replace("timestamp_", "", regex=False).astype(float)
-    force_timestamps = force_df['timestamp'].values
-    force_values = force_df['value'].values
-
-    # Read NIRS data.
-    nirs_df = pd.read_hdf(nirs_file, key="data")
-    nirs_df['timestamp'] = nirs_df['timestamp'].str.replace("timestamp_", "", regex=False).astype(float)
-    nirs_timestamps = nirs_df['timestamp'].values
-    nirs_values = nirs_df['value'].values
-
-    # Create a combined plot.
-    fig, ax1 = plt.subplots()
-    ax1.plot(force_timestamps, force_values, 'b-', label="Force [kg]")
-    ax1.set_xlabel("Time (s)")
-    ax1.set_ylabel("Force (kg)", color='b')
-    ax1.tick_params(axis='y', labelcolor='b')
-    ax1.grid(True)
-
-    ax2 = ax1.twinx()
-    ax2.plot(nirs_timestamps, nirs_values, 'r-', label="NIRS (%)")
-    ax2.set_ylabel("NIRS (%)", color='r')
-    ax2.tick_params(axis='y', labelcolor='r')
-
-    # Gather legend handles & labels from both axes and combine them:
-    lines1, labels1 = ax1.get_legend_handles_labels()
-    lines2, labels2 = ax2.get_legend_handles_labels()
-    ax1.legend(lines1 + lines2, labels1 + labels2, loc="upper right")
-
-    fig.tight_layout()
-    plt.title("Final Combined Sensor Data")
-    return fig
-    # plt.show()
-
-
-# The main function is omitted here since you now launch the CombinedDataCommunicator
-# from your TestPage when needed.
-# if __name__ == "__main__":
-#     app = QApplication(sys.argv)
-#     # For standalone testing, load sensor data as before:
-#     force_df = pd.read_excel("group2_ao_copy.xlsx").dropna()
-#     force_timestamps = force_df.iloc[:, 0].values
-#     force_values = force_df.iloc[:, 2].values
-#
-#     nirs_df = pd.read_excel("group3_ao_copy.xlsx").dropna()
-#     nirs_timestamps = nirs_df.iloc[:, 0].values
-#     nirs_values = nirs_df.iloc[:, 3].values
-#
-#     window = CombinedDataCommunicator(force_timestamps, force_values,
-#                                       nirs_timestamps, nirs_values,
-#                                       admin_id="TestAdmin", climber_id="TestClimber",
-#                                       window_size=60, fixed_offset_ratio=1, auto_start=True)
-#     window.show()
-#     app.exec()

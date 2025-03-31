@@ -7,6 +7,7 @@ from PySide6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QGroupBox, QFor
     QMessageBox, QScrollArea, QHBoxLayout, QSizePolicy, QGridLayout
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+from gui.results_page.rep_report_window import RepReportWindow
 
 
 class TestReportWindow(QMainWindow):
@@ -17,22 +18,19 @@ class TestReportWindow(QMainWindow):
 
         Parameters:
             participant_info (dict): Participant data (e.g., name, email, etc.).
-            test_metrics (dict): Test evaluation metrics (e.g., max_strength, critical_force, w_prime).
-            figure (matplotlib.figure.Figure): The figure object containing the test graph.
+            db_data (dict): Information about the selected test saved in the database.
         """
         super().__init__(parent)
         self.setWindowTitle("Test Report Summary")
         self.resize(1000, 800)
-        # self.test_metrics = db_data['test_results']
-        self.test_metrics = eval(db_data['test_results'], {"np": np})
+        test_results = db_data['test_results']
+        print("Test metrics:", test_results)
+        self.test_metrics = eval(test_results, {"np": np})
         self.participant_info = participant_info
         self.db_data = db_data
-        # self.nirs_file = nirs_file
-        # self.data_type = data_type
-        # self.test_type = test_type
         # Create the matplotlib figure
         if db_data['data_type'] == "force":
-            force_file = db_data['file_paths']
+            force_file = db_data['force_file']
             fig = self.create_force_figure(
                 force_file=force_file
             )
@@ -114,10 +112,6 @@ class TestReportWindow(QMainWindow):
                 font-weight: bold;
             }
         """)
-        # group_font = metrics_group.font()
-        # group_font.setPointSize(14)
-        # group_font.setBold(True)
-        # metrics_group.setFont(group_font)
 
         # Put participant info & metrics side-by-side
         info_metrics_layout = QHBoxLayout()
@@ -269,7 +263,7 @@ class TestReportWindow(QMainWindow):
                 time_array, force_array, critical_force,
                 where=(force_array > critical_force),
                 color='lightblue', alpha=0.8,
-                label=f'w prime: {w_prime:.3f} [kg/s]'
+                label=f'w prime: {w_prime:.2f} [kg/s]'
             )
 
         ax.set_xlabel('Time [s]', fontsize=14)
@@ -285,15 +279,49 @@ class TestReportWindow(QMainWindow):
         """
         Placeholder: Implement report export functionality.
         """
-        from PySide6.QtWidgets import QMessageBox
+        # from PySide6.QtWidgets import QMessageBox
         QMessageBox.information(self, "Export Report", "Export report functionality not implemented.")
 
     def show_repetitions(self):
         """
-        Placeholder: Implement functionality to show repetitions details.
+        Open a new window that displays repetition-by-repetition metrics and graphs.
         """
+        # Retrieve rep_results from your db_data. Here we assume they were saved as a string.
+        # For security, consider using json instead of eval.
         from PySide6.QtWidgets import QMessageBox
-        QMessageBox.information(self, "Show Repetitions", "Show repetitions functionality not implemented.")
+        rep_results_str = self.db_data['rep_results']
+        print('Rep metrics str:', rep_results_str)
+        if rep_results_str:
+            try:
+                # rep_results = eval(rep_results_str, {"__builtins__": None}, {})
+                rep_results = eval(rep_results_str, {"np": np})
+            except Exception as e:
+                # from PySide6.QtWidgets import QMessageBox
+                QMessageBox.warning(self, "Error", f"Could not parse rep metrics: {e}")
+                return
+        else:
+            # from PySide6.QtWidgets import QMessageBox
+            QMessageBox.information(self, "No Data", "No repetition metrics were computed.")
+            return
+
+        # Load the force file into a DataFrame for rep graph generation.
+        force_file = self.db_data['force_file']
+        if force_file is None:
+            # from PySide6.QtWidgets import QMessageBox
+            QMessageBox.warning(self, "Error", "Force file path not available.")
+            return
+
+        try:
+            force_df = pd.read_feather(force_file)
+        except Exception as e:
+            # from PySide6.QtWidgets import QMessageBox
+            QMessageBox.warning(self, "Error", f"Could not read force file: {e}")
+            return
+
+        # Instantiate and show the rep report window.
+        self.rep_window = RepReportWindow(rep_results, force_df, sampling_rate=100, parent=self)
+        self.rep_window.show()
+
     '''
     def generate_final_graph_force(self, force_file):
         """
@@ -413,3 +441,4 @@ class TestReportWindow(QMainWindow):
         plt.title("Final Combined Sensor Data")
         return fig
     '''
+

@@ -115,14 +115,18 @@ class ClimberDatabaseManager:
     def get_climbers_by_admin(self, admin_id):
         """Fetches all climbers registered by a specific admin."""
         cursor = self.connection.cursor()
-        cursor.execute("SELECT id, name, surname, email FROM climbers WHERE admin_id = ?;", (admin_id,))
+        if admin_id == 1:
+            cursor.execute("SELECT id, name, surname, email FROM climbers;")
+        else:
+            cursor.execute("SELECT id, name, surname, email FROM climbers WHERE admin_id = ?;",
+                           (admin_id,))
         return [{"id": row[0], "name": row[1], "surname": row[2]} for row in cursor.fetchall()]
 
-    def get_all_climbers(self):
-        """Fetches all registered climbers."""
-        cursor = self.connection.cursor()
-        cursor.execute("SELECT id, name, surname, email FROM climbers;")
-        return [{"id": row[0], "name": row[1], "surname": row[2]} for row in cursor.fetchall()]
+    # def get_all_climbers(self):
+    #     """Fetches all registered climbers."""
+    #     cursor = self.connection.cursor()
+    #     cursor.execute("SELECT id, name, surname, email FROM climbers;")
+    #     return [{"id": row[0], "name": row[1], "surname": row[2]} for row in cursor.fetchall()]
 
     def get_user_data(self, admin_id, climber_id):
         """
@@ -130,20 +134,29 @@ class ClimberDatabaseManager:
         who registered them.
 
         Args:
-            admin_id (int): The ID of the admin currently logged in, used to restrict access.
+            admin_id (str): The ID of the admin currently logged in, used to restrict access.
             climber_id (str): The id of the climber whose data is being requested.
 
         Returns:
             dict: A dictionary of the climber's field values if accessible by the admin; None if access is denied.
         """
         cursor = self.connection.cursor()
-        cursor.execute("""
-            SELECT name, surname, email, gender, dominant_arm, weight, height, age, french_scale, 
-                   climbing_freq, climbing_hours, years_climbing, bouldering, lead_climbing, 
-                   climbing_indoor, climbing_outdoor, sport_other, sport_freq, sport_activity_hours
-            FROM climbers
-            WHERE id = ? AND admin_id = ?;
-        """, (climber_id, admin_id))
+        if int(admin_id) == 1:
+            cursor.execute("""
+                SELECT name, surname, email, gender, dominant_arm, weight, height, age, french_scale, 
+                       climbing_freq, climbing_hours, years_climbing, bouldering, lead_climbing, 
+                       climbing_indoor, climbing_outdoor, sport_other, sport_freq, sport_activity_hours
+                FROM climbers
+                WHERE id = ?;
+            """, (climber_id,))
+        else:
+            cursor.execute("""
+                SELECT name, surname, email, gender, dominant_arm, weight, height, age, french_scale, 
+                       climbing_freq, climbing_hours, years_climbing, bouldering, lead_climbing, 
+                       climbing_indoor, climbing_outdoor, sport_other, sport_freq, sport_activity_hours
+                FROM climbers
+                WHERE id = ? AND admin_id = ?;
+            """, (climber_id, admin_id))
         result = cursor.fetchone()
 
         if result:
@@ -154,10 +167,10 @@ class ClimberDatabaseManager:
             return dict(zip(fields, result))
         return None  # If no climber data is found or access is denied
 
-    def delete_climber(self, climber_id, admin_id):
+    def delete_climber(self, climber_id):
         """Deletes a climber by email if they belong to the specified admin."""
         cursor = self.connection.cursor()
-        cursor.execute("DELETE FROM climbers WHERE id = ? AND admin_id = ?", (climber_id, admin_id))
+        cursor.execute("DELETE FROM climbers WHERE id = ?", (climber_id,))
         self.connection.commit()
         return cursor.rowcount > 0
 
