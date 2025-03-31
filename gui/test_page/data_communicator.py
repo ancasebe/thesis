@@ -75,6 +75,7 @@ class CombinedDataCommunicator(QMainWindow):
             parent: Parent widget.
         """
         super().__init__(parent)
+        self.start_time = None
         self.report_window = None
         self.timestamp = None
         self.force_file = None
@@ -212,6 +213,7 @@ class CombinedDataCommunicator(QMainWindow):
         starts the communicators, and begins QTimers that poll the shared data queue.
         """
         self.timestamp = str(time.time())
+        self.start_time = time.time()  # New: record the start time
         # Initialize data loggers for saving the acquired data.
         if self.data_type in ["force", "force_nirs"]:
             self.force_file = FeatherBinaryLogger(folder="tests", prefix=f"{self.test_type}_force",
@@ -273,7 +275,8 @@ class CombinedDataCommunicator(QMainWindow):
             x_data = x_data[mask]
             y_data = y_data[mask]
             self.force_curve.setData(x_data, y_data)
-            self.force_text.setText(f"Force Time: {current_ts:.2f} s\nForce: {y_data[-1]:.2f} kg")
+            # self.force_text.setText(f"Force Time: {current_ts:.2f} s\nForce: {y_data[-1]:.2f} kg")
+            self.force_text.setText(f"Force Time: {(current_ts - self.start_time):.2f} s\nForce: {y_data[-1]:.2f} kg")
             self.force_text.setPos(self.x_min, self.force_y_range["max"])
             self.plot_widget.setYRange(self.force_y_range["min"], self.force_y_range["max"])
 
@@ -311,7 +314,8 @@ class CombinedDataCommunicator(QMainWindow):
             x_data = x_data[mask]
             y_data = y_data[mask]
             self.nirs_curve.setData(x_data, y_data)
-            self.nirs_text.setText(f"NIRS Time: {current_ts:.2f} s\nNIRS: {y_data[-1]:.2f} %")
+            # self.nirs_text.setText(f"NIRS Time: {current_ts:.2f} s\nNIRS: {y_data[-1]:.2f} %")
+            self.nirs_text.setText(f"NIRS Time: {(current_ts - self.start_time):.2f} s\nNIRS: {y_data[-1]:.2f} %")
             self.nirs_text.setPos(self.x_max, self.nirs_y_range["max"])
 
     def stop_acquisition(self):

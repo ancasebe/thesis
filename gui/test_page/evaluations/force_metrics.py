@@ -22,10 +22,10 @@ def compute_max_strength(force_df):
     Returns:
         float: Maximum force value.
     """
-    return force_df['value'].max()
+    return round(2, force_df['value'].max())
 
 
-def compute_avg_end_force(force_df, end_portion=0.1):
+def compute_end_force(force_df, end_portion=0.1):
     """
     Compute the average end-force by averaging the last portion of force values.
 

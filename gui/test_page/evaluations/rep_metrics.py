@@ -8,7 +8,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from gui.test_page.evaluations.force_metrics import (
     compute_max_strength,
-    compute_avg_end_force,
+    compute_end_force,
     compute_force_drop,
     compute_work,
     compute_rfd
@@ -121,7 +121,7 @@ class RepMetrics:
             # Use the helper functions on the rep slice.
             mvc = compute_max_strength(rep_df)
             # For rep-level average end force, you might use a larger fraction (e.g., last 20% of data)
-            avg_end_force = compute_avg_end_force(rep_df, end_portion=0.2)
+            end_force = compute_end_force(rep_df, end_portion=0.2)
             force_drop = compute_force_drop(rep_df)
             work = compute_work(rep_df, self.sampling_rate)
             rfd = compute_rfd(rep_df, self.sampling_rate)
@@ -132,7 +132,7 @@ class RepMetrics:
             rep_metrics.append({
                 "Rep": i,
                 "MVC (kg)": round(mvc, 2) if mvc is not None else None,
-                "Avg End Force (kg)": round(avg_end_force, 2) if avg_end_force is not None else None,
+                "End Force (kg)": round(end_force, 2) if end_force is not None else None,
                 "Force Drop (%)": round(force_drop, 2) if force_drop is not None else None,
                 "Avg Force (kg)": round(avg_force, 2) if avg_force is not None else None,
                 "Work (kg·s)": round(work, 2) if work is not None else None,

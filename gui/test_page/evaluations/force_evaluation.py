@@ -9,7 +9,7 @@ import os
 import pandas as pd
 from gui.test_page.evaluations.force_metrics import (
     compute_max_strength,
-    compute_avg_end_force,
+    compute_end_force,
     compute_time_between_max_and_end,
     compute_force_drop,
     compute_work,
@@ -81,7 +81,7 @@ class ForceMetrics:
         Returns:
             dict: A dictionary with all computed metrics.
         """
-        results = {'max_strength': compute_max_strength(self.df), 'avg_end_force': compute_avg_end_force(self.df),
+        results = {'max_strength': compute_max_strength(self.df), 'avg_end_force': compute_end_force(self.df),
                    'time_between_max_end_ms': compute_time_between_max_and_end(self.df, self.sampling_rate),
                    'force_drop_pct': compute_force_drop(self.df), 'work': compute_work(self.df, self.sampling_rate),
                    'rfd_overall': compute_rfd(self.df, self.sampling_rate),
@@ -117,13 +117,9 @@ class ForceMetrics:
             results['rfd_last3'] = compute_rfd_subset(rep_results, list(range(n_reps - 3, n_reps)))
             results['rfd_norm_first3'] = compute_rfd_subset_normalized(rep_results, list(range(3)))
             results['rfd_norm_last3'] = compute_rfd_subset_normalized(rep_results, list(range(n_reps - 3, n_reps)))
-        # else:
-        #     results['rfd_first3'] = results['rfd_last3'] = results['rfd_norm_first3'] = results['rfd_norm_last3'] = None
 
         if n_reps >= 6:
             results['rfd_first6'] = compute_rfd_subset(rep_results, list(range(6)))
             results['rfd_norm_first6'] = compute_rfd_subset_normalized(rep_results, list(range(6)))
-        # else:
-            # results['rfd_first6'] = results['rfd_norm_first6'] =
 
         return results
