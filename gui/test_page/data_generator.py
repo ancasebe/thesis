@@ -50,9 +50,10 @@ class SerialCommunicator:
         self.baudrate = baudrate
         self.downsampling = data_viz_downsampling
         self.downsampling_counter = data_viz_downsampling
-        self.port = None  # Serial port identifier (e.g., "COM3"), to be set later.
+        self.port = '/dev/tty.usbserial-14130'  # Serial port identifier (e.g., "COM3"), to be set later.
         self.data_collection_thread = None  # Thread that will continuously collect data.
         # self.__default_variables()  # Initialize internal state variables.
+        # self.update_calibration_parameters(self.calibration_slope, self.calibration_intercept)
 
     def __default_variables(self):
         """
@@ -64,9 +65,9 @@ class SerialCommunicator:
         self.collect_data = False  # Flag to control the data collection loop.
         self.writing_command = False  # True if a command is being sent to the device.
         self.data_collection_thread = None  # Reference to the data collection thread.
-        self.show_raw = True  # If False, calibration parameters are applied.
-        self.calibration_slope = 0  # Calibration slope used when show_raw is False.
-        self.calibration_intercept = 0  # Calibration intercept used when show_raw is False.
+        self.show_raw = False  # False  # If False, calibration parameters are applied.
+        self.calibration_slope = 39  # Calibration slope used when show_raw is False.
+        self.calibration_intercept = 155  # Calibration intercept used when show_raw is False.
         self.command = None  # Command string to be sent to the serial device.
         self.reset_timer = None  # Timer to help detect connection timeouts.
         self.debugging = False  # If True, synthetic data is generated (no serial port).
@@ -350,14 +351,22 @@ class BluetoothCommunicator:
             database_que (queue.Queue): Queue for sending raw data for database storage.
             data_viz_downsampling (int): Factor for downsampling data for visualization (default is 1).
         """
+        self.config = {
+            "dev_name": "Train.Red FYER 0707",
+            "dev_data_uuid": "00002201-D578-4741-9B5B-7C64E958CFC6",
+            "dev_battery_uuid": "00002A19-0000-1000-8000-00805F9B34FB",
+            "dev_frequency": 10,
+            "nirs_viz_ds": 1,
+            "connection_attempts": 2}
+
         # config = JSONCommunicator().get_ble_nirs_config()
-        self.device_name = ""  # config['dev_name']  # BLE device name.
-        self.device_uuid = ""  # config['dev_data_uuid']  # UUID for the BLE device notifications.
+        self.device_name = self.config['dev_name']  # BLE device name.
+        self.device_uuid = self.config['dev_data_uuid']  # UUID for the BLE device notifications.
         self.downsampling = data_viz_downsampling
         self.downsampling_counter = data_viz_downsampling
         self.db_queque = database_que
         self.viz_queque = visualization_que
-        self.valid_connection_attempts = 1  # config['connection_attempts']  # Maximum allowed connection attempts.
+        self.valid_connection_attempts = self.config['connection_attempts']  # Maximum allowed connection attempts.
         self.__default_variables()  # Initialize internal state variables.
 
     def __default_variables(self):
@@ -459,9 +468,8 @@ class BluetoothCommunicator:
         """
         if self.client and self.client.is_connected:
             try:
-                battery_data = await self.client.read_gatt_char()  # JSONCommunicator().get_ble_nirs_config()['dev_battery_uuid'])
-                battery_level = struct.unpack("B", battery_data)[
-                    0]  # Unpack as an unsigned byte
+                battery_data = await self.client.read_gatt_char(self.config["dev_battery_uuid"])  # JSONCommunicator().get_ble_nirs_config()['dev_battery_uuid'])
+                battery_level = struct.unpack("B", battery_data)[0]  # Unpack as an unsigned byte
                 battery_data_str = f'b_{time.time()}_{battery_level}'
                 self.viz_queque.put(battery_data_str)
             except Exception as e:
@@ -839,14 +847,14 @@ class DataGenerator:
         #     self.ble_force_communicator.show_raw = raw
 
 
-if __name__ == '__main__':
-    db_queque = queue.Queue()
-    dg_ble = BluetoothCommunicator(queue.Queue(), db_queque)
-    dg = SerialCommunicator(db_queque, db_queque)
-    dg.start_serial_collection()
-    dg_ble.start_bluetooth_collector()
-    for i in range(500):
-        time.sleep(0.1)
-        print(db_queque.get())
-    dg.stop_serial_collection()
-    dg_ble.stop_bluetooth_collector()
+# if __name__ == '__main__':
+#     db_queque = queue.Queue()
+#     dg_ble = BluetoothCommunicator(queue.Queue(), db_queque)
+#     dg = SerialCommunicator(db_queque, db_queque)
+#     dg.start_serial_collection()
+#     dg_ble.start_bluetooth_collector()
+#     for i in range(500):
+#         time.sleep(0.1)
+#         print(db_queque.get())
+#     dg.stop_serial_collection()
+#     dg_ble.stop_bluetooth_collector()

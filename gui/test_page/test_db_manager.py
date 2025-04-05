@@ -127,14 +127,14 @@ class ClimbingTestManager:
         """
         cursor = self.connection.cursor()
         cursor.execute("""
-            SELECT admin_id, participant_id, arm_tested, data_type, test_type, timestamp, 
+            SELECT id, admin_id, participant_id, arm_tested, data_type, test_type, timestamp, 
             force_file, nirs_file, test_results, rep_results
             FROM climbing_tests
             WHERE id = ?;
         """, (test_id,))
         result = cursor.fetchone()
         if result:
-            fields = ["admin_id", "participant_id", "arm_tested", "data_type", "test_type", "timestamp",
+            fields = ["id", "admin_id", "participant_id", "arm_tested", "data_type", "test_type", "timestamp",
                       "force_file", "nirs_file", "test_results", "rep_results"]
             return dict(zip(fields, result))
         return None

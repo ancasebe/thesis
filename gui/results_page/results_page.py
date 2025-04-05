@@ -338,27 +338,28 @@ class ResultsPage(QWidget):
 
     def export_data(self):
         """
-        Exports the selected test's raw data from HDF5 to the chosen format (CSV, XLSX, or HDF5).
-        - We check the 'file_paths' field in the test record (index 5).
-        - If there are two paths, they're separated by ';'.
-        - For each path, we open a file dialog and save in the user-selected format.
+        Exports the selected test's raw data from separate files. If a force_file is present,
+        it will be exported; similarly for a nirs_file. The exported filenames include the test id and the file type.
         """
         test = self.get_selected_test()
         if not test:
             return
 
-        file_paths_str = str(test['force_file'])  # The 'file_paths' column
-        if not file_paths_str.strip():
+        # Get the test id for filename pattern.
+        test_id = test["id"]
+
+        # Build a list of (file_type, path) tuples based on what is available.
+        files_to_export = []
+        if test.get("force_file") and test["force_file"].strip():
+            files_to_export.append((test['test_type'], "force", test["force_file"]))
+        if test.get("nirs_file") and test["nirs_file"].strip():
+            files_to_export.append((test['test_type'], "nirs", test["nirs_file"]))
+
+        if not files_to_export:
             QMessageBox.warning(self, "No Data Files", "No data file is associated with this test.")
             return
 
-        # Parse potential multiple paths
-        paths = [p.strip() for p in file_paths_str.split(";") if p.strip()]
-        if not paths:
-            QMessageBox.warning(self, "No Data Files", "No valid data files found in the database.")
-            return
-
-        # Dialog to choose export format
+        # Create a dialog for the user to choose export format.
         dialog = QDialog(self)
         dialog.setWindowTitle("Export Test Data")
         vlayout = QVBoxLayout(dialog)
@@ -371,16 +372,16 @@ class ResultsPage(QWidget):
 
         def perform_export():
             export_format = format_combo.currentText().lower()  # "csv", "xlsx", or "hdf5"
-            for i, path in enumerate(paths):
-                # Attempt to read HDF5 data with pandas
+            for test_type, data_type, path in files_to_export:
+                # Attempt to read the file (assumes it's stored in Feather format)
                 try:
                     df = pd.read_feather(path)
                 except Exception as e:
-                    QMessageBox.warning(dialog, "Error Reading feather file", f"Could not read {path}:\n{str(e)}")
+                    QMessageBox.warning(dialog, "Error Reading File", f"Could not read {path}:\n{str(e)}")
                     continue
 
-                # Prompt the user for a save path
-                suggested_filename = f"exported_file_{i}.{export_format}"
+                # Create a suggested filename using the test id and file type
+                suggested_filename = f"test_{test_type}_{data_type}_{test_id}.{export_format}"
                 save_path, _ = QFileDialog.getSaveFileName(
                     self,
                     "Save Converted File",

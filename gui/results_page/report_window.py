@@ -4,9 +4,11 @@ import numpy as np
 import pandas as pd
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QGroupBox, QFormLayout, QLabel, QPushButton, \
-    QMessageBox, QScrollArea, QHBoxLayout, QSizePolicy, QGridLayout
+    QMessageBox, QScrollArea, QHBoxLayout, QSizePolicy, QGridLayout, QFileDialog
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+
+from gui.results_page.pdf_exporter import generate_pdf_report
 from gui.results_page.rep_report_window import RepReportWindow
 
 
@@ -22,7 +24,7 @@ class TestReportWindow(QMainWindow):
         """
         super().__init__(parent)
         self.setWindowTitle("Test Report Summary")
-        self.resize(1000, 800)
+        self.resize(1800, 800)
         test_results = db_data['test_results']
         print("Test metrics:", test_results)
         self.test_metrics = eval(test_results, {"np": np})
@@ -31,13 +33,13 @@ class TestReportWindow(QMainWindow):
         # Create the matplotlib figure
         if db_data['data_type'] == "force":
             force_file = db_data['force_file']
-            fig = self.create_force_figure(
+            self.fig = self.create_force_figure(
                 force_file=force_file
             )
         else:
-            fig = None
+            self.fig = None
             print("todo: nirs")
-        self.setup_ui(fig)
+        self.setup_ui(self.fig)
 
     def setup_ui(self, fig):
         """
@@ -83,7 +85,9 @@ class TestReportWindow(QMainWindow):
         container_layout.addWidget(basic_info_group)
 
         # 3) Participant Info (two columns)
-        participant_pairs = list(self.participant_info.items())  # [(key, value), ...]
+        # participant_pairs = list(self.participant_info.items())  # [(key, value), ...]
+        participant_pairs = self.build_participant_info_pairs()
+        participant_group = self.create_two_column_group("Participant Info", participant_pairs)
         # Convert them to label–value
         # For example, participant_pairs = [("name", "Anna"), ("surname", "Sebestikova"), ...]
         participant_group = self.create_two_column_group("Participant Info", participant_pairs)
@@ -94,16 +98,8 @@ class TestReportWindow(QMainWindow):
                 font-weight: bold;
             }
         """)
-        # group_font = participant_group.font()
-        # group_font.setPointSize(14)
-        # group_font.setBold(True)
-        # participant_group.setFont(group_font)
 
-        # 4) Test Metrics (two columns)
-        metrics_pairs = []
-        for k, v in self.test_metrics.items():
-            display_key = k.replace('_', ' ').capitalize()
-            metrics_pairs.append((display_key, str(v)))
+        metrics_pairs = self.build_test_metrics_pairs()
         metrics_group = self.create_two_column_group("Test Metrics", metrics_pairs)
         # Make title bigger
         metrics_group.setStyleSheet("""
@@ -149,6 +145,71 @@ class TestReportWindow(QMainWindow):
 
     # import matplotlib.pyplot as plt
     # import peakutils
+
+    def build_test_metrics_pairs(self):
+        """
+        Build a list of (label, value) pairs for test metrics using a predefined mapping.
+        This function uses the keys from self.test_metrics and a mapping dictionary to create
+        labels as they should appear in the GUI.
+        """
+        display_names = {
+            "max_strength": "Maximal Force - MVC (kg)",
+            "avg_end_force": "Average End-Force (kg)",
+            "time_between_max_end_ms": "Average Time btw Max- and End-Force (ms)",
+            "force_drop_pct": "Average Force Drop (%)",
+            "avg_rep_force": "Average Rep. Force (kg)",
+            "critical_force": "Critical Force - CF (kg)",
+            "reps_to_cf": "Repetitions to CF",
+            "cf_mvc_pct": "CF/MVC (%)",
+            "work": "Average Work (kg/s)",
+            "sum_work": "Sum Work (kg/s)",
+            "avg_work_above_cf": "Average Work above CF (kg/s)",
+            "sum_work_above_cf": "Sum Work above CF (kg/s)",
+            "avg_pulling_time_ms": "Average Pulling Time (ms)",
+            "rfd_overall": "Rate of Force Development - RFD (ms)",
+            "rfd_first3": "RFD first three repetitions (ms)",
+            "rfd_first6": "RFD first six repetitions (ms)",
+            "rfd_last3": "RFD last three repetitions (ms)",
+            "rfd_norm_overall": "RFD normalized to force (ms/kg)",
+            "rfd_norm_first3": "RFD norm. first three rep. (ms/kg)",
+            "rfd_norm_first6": "RFD norm. first six rep. (ms/kg)",
+            "rfd_norm_last3": "RFD norm. last three rep. (ms/kg)"
+        }
+        pairs = []
+        # Loop through each key in the test metrics dictionary.
+        for key, value in self.test_metrics.items():
+            # Use the display name if available; otherwise, use a default conversion.
+            label = display_names.get(key, key.replace('_', ' ').capitalize())
+            pairs.append((label, str(value)))
+        return pairs
+
+    def build_participant_info_pairs(self):
+        """
+        Build a list of (label, value) pairs for the participant info using a predefined mapping.
+        """
+        user_data_fields = {
+            "name": "Name:",
+            "surname": "Surname:",
+            "email": "Email:",
+            "gender": "Gender:",
+            "dominant_arm": "Dominant Arm:",
+            "weight": "Weight (kg):",
+            "height": "Height (cm):",
+            "age": "Age (years):",
+            "french_scale": "French Scale Level:",
+            "years_climbing": "Years of Climbing:",
+            "climbing_freq": "Climbing Frequency/week:",
+            "climbing_hours": "Climbing Hours/week:",
+            "sport_other": "Other sports:",
+            "sport_freq": "Sport Frequency/week:",
+            "sport_activity_hours": "Sport Activity (hours/week):"
+        }
+        pairs = []
+        # Loop through the mapping keys and build the pairs.
+        for key, label in user_data_fields.items():
+            value = self.participant_info.get(key, "-")
+            pairs.append((label, str(value)))
+        return pairs
 
     def build_basic_info_pairs(self):
         """
@@ -277,10 +338,103 @@ class TestReportWindow(QMainWindow):
 
     def export_report(self):
         """
-        Placeholder: Implement report export functionality.
+        Exports the complete PDF report including:
+          - Basic info, Participant info, Test Metrics, Force-Time Graph,
+          - Repetition Metrics table, Repetition Graph, and Parameters Explanation.
         """
-        # from PySide6.QtWidgets import QMessageBox
-        QMessageBox.information(self, "Export Report", "Export report functionality not implemented.")
+        # Gather data from helper functions
+        basic_info = self.build_basic_info_pairs()
+        participant_info = self.build_participant_info_pairs()
+        test_metrics = self.build_test_metrics_pairs()
+
+        # Retrieve rep_results from db_data and convert to a table
+        rep_results_str = self.db_data.get('rep_results', "")
+        if rep_results_str:
+            try:
+                rep_results = eval(rep_results_str, {"np": np})
+            except Exception as e:
+                QMessageBox.warning(self, "Error", f"Could not parse rep metrics: {e}")
+                return
+        else:
+            rep_results = []
+        if rep_results:
+            # import pandas as pd
+            df_rep = pd.DataFrame(rep_results)
+            rep_table = [df_rep.columns.tolist()] + df_rep.values.tolist()
+            # Transform header row to include line breaks for better fit
+            transformed_header = [
+                "Repetition\nnumber",
+                "MVC\n(kg)",
+                "Endforce\n(kg)",
+                "Force Drop\n(%)",
+                "Avg. Force\n(kg)",
+                "W\n(kg/s)",
+                "W'\n(kg/s)",
+                "Pull Time\n(ms)",
+                "RFD\n(ms)",
+                "RFD norm\n(ms/kg)"
+            ]
+            rep_table[0] = transformed_header
+        else:
+            rep_table = None
+
+        # Prepare Force-Time Graph image (from self.fig)
+        import io
+        buf = io.BytesIO()
+        if self.fig:
+            self.fig.savefig(buf, format='png')
+            buf.seek(0)
+        else:
+            buf = None
+
+        # Prepare Repetition Graph image using a temporary RepReportWindow
+        # from gui.results_page.rep_report_window import RepReportWindow
+        try:
+            force_df = pd.read_feather(self.db_data['force_file'])
+        except Exception as e:
+            QMessageBox.warning(self, "Error", f"Could not read force file: {e}")
+            return
+
+        if rep_results:
+            rep_window_temp = RepReportWindow(rep_results, force_df, sampling_rate=100, parent=self)
+            rep_graph_fig = rep_window_temp.rep_figure
+            rep_buf = io.BytesIO()
+            if rep_graph_fig:
+                rep_graph_fig.savefig(rep_buf, format='png')
+                rep_buf.seek(0)
+        else:
+            rep_buf = None
+
+        # Parameters explanation text (adjust as needed)
+        parameters_explanation = (
+            "Maximal Force - MVC (Kg): The highest force output achieved during a maximal isometric contraction.\n"
+            "Average End-Force (Kg): The mean force measured toward the end of a sustained contraction.\n"
+            "Critical Force - CF (Kg): The asymptotic force that can be maintained without fatigue.\n"
+            # ... additional explanations
+        )
+        print(self.db_data)
+        pdf_filename = f"test_{self.db_data['test_type']}_{self.db_data['data_type']}_{self.db_data['id']}.pdf"
+        # Choose save path using QFileDialog
+        pdf_path, _ = QFileDialog.getSaveFileName(self, "Save Report", pdf_filename, "PDF Files (*.pdf)")
+        if not pdf_path:
+            return
+
+        try:
+            # from gui.results_page.pdf_exporter import generate_pdf_report
+            generate_pdf_report(
+                pdf_path,
+                title_text=f"All-Out Report for {self.participant_info.get('name', 'Unknown')}",
+                basic_info=basic_info,
+                participant_info=participant_info,
+                test_metrics=test_metrics,
+                graph_image_path=buf,           # Force-Time Graph
+                rep_metrics=rep_table,          # Repetition Metrics table
+                rep_graph_image_path=rep_buf,   # Repetition Graph
+                parameters_explanation=parameters_explanation
+            )
+            QMessageBox.information(self, "Export Report", "PDF report generated successfully!")
+        except Exception as e:
+            QMessageBox.critical(self, "Export Error", f"An error occurred: {e}")
 
     def show_repetitions(self):
         """

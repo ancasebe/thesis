@@ -12,7 +12,7 @@ import numpy as np
 # Overall metrics computed from the whole force data
 
 
-def compute_max_strength(force_df):
+def compute_max_force(force_df):
     """
     Compute the maximal force (MVC) from the force data.
 
@@ -68,7 +68,7 @@ def compute_force_drop(force_df):
     Returns:
         float: Percentage force drop.
     """
-    mvc = force_df['value'].max()
+    mvc = compute_max_force(force_df)
     end_force = force_df['value'].iloc[-1]
     return 100 * (mvc - end_force) / mvc if mvc > 0 else None
 

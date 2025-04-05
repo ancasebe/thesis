@@ -79,10 +79,6 @@ class MainWindow(QMainWindow):
             username (str): The username of the logged-in admin.
         """
         admin_id = self.login_db_manager.get_admin_id(username)
-        # if username == "superuser":
-        #     is_superuser = True
-        # else:
-        #     is_superuser = False
         if admin_id is not None:
             self.create_application_widget(username, admin_id)
         else:

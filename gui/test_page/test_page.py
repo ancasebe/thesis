@@ -17,7 +17,7 @@ from PySide6.QtCore import Qt
 
 from gui.research_members.edit_climber_info import EditClimberInfoPage
 from gui.research_members.new_climber import NewClimber
-from gui.test_page.data_communicator import CombinedDataCommunicator
+from gui.test_page.data_communicator_excel import CombinedDataCommunicator
 import pandas as pd
 
 
@@ -183,19 +183,6 @@ class TestPage(QWidget):
         if not climber_id:
             QMessageBox.warning(self, "No Climber Selected", "Please select a climber.")
             return
-
-        # # Compute a test label based on data type; using "ao" for All Out.
-        # if data_type.lower() == "force":
-        #     test_label = f"{test_type}_force"
-        # elif data_type.lower() == "nirs":
-        #     test_label = f"{test_type}_nirs"
-        # elif data_type.lower() == "force and nirs":
-        #     test_label = f"{test_type}_force_nirs"
-        # else:
-        #     QMessageBox.warning(self, "Some problem occurred during data type selection.")
-        #     return
-        #
-        # print(test_label)
 
         # Create a dialog window for the test.
         dialog = QDialog(self)

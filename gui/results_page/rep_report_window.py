@@ -13,6 +13,8 @@ from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QGroupBox, QTableWidget,
     QTableWidgetItem, QPushButton, QScrollArea, QHBoxLayout, QSizePolicy, QLabel
 )
+
+from gui.test_page.evaluations.force_evaluation import compute_end_force
 # from matplotlib import pyplot as plt
 # from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from gui.test_page.evaluations.rep_metrics import RepMetrics  # make sure this is in your PYTHONPATH
@@ -101,113 +103,6 @@ class RepReportWindow(QMainWindow):
         scroll_area.setWidget(container)
         self.setCentralWidget(scroll_area)
 
-    # def setup_ui(self):
-    #     """
-    #     Set up the UI: a scrollable area with a title, a table displaying rep metrics,
-    #     and an embedded Matplotlib figure showing rep-by-rep plots.
-    #     """
-    #     scroll_area = QScrollArea()
-    #     scroll_area.setWidgetResizable(True)
-    #     container = QWidget()
-    #     layout = QVBoxLayout(container)
-    #     layout.setContentsMargins(20, 20, 20, 20)
-    #     layout.setSpacing(15)
-    #
-    #     # 1) Title
-    #     title_group = QGroupBox("Repetition-by-Repetition Metrics")
-    #     title_layout = QVBoxLayout(title_group)
-    #     title_label = QLabel("Repetition-by-Repetition Report")
-    #     title_label.setAlignment(Qt.AlignCenter)
-    #     title_label.setStyleSheet("font-size: 20pt; font-weight: bold;")
-    #     title_layout.addWidget(title_label)
-    #     layout.addWidget(title_group)
-    #
-    #     # 2) Table of rep metrics
-    #     table = QTableWidget()
-    #     df = pd.DataFrame(self.rep_results)
-    #     table.setRowCount(df.shape[0])
-    #     table.setColumnCount(df.shape[1])
-    #     table.setHorizontalHeaderLabels(df.columns)
-    #     for i in range(df.shape[0]):
-    #         for j in range(df.shape[1]):
-    #             item = QTableWidgetItem(str(df.iat[i, j]))
-    #             item.setTextAlignment(Qt.AlignCenter)
-    #             table.setItem(i, j, item)
-    #     table.resizeColumnsToContents()
-    #     layout.addWidget(table)
-    #
-    #     # 3) Embedded Matplotlib figure
-    #     if self.rep_figure is not None:
-    #         canvas = FigureCanvas(self.rep_figure)
-    #         # Make sure the canvas can expand nicely
-    #         canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-    #         layout.addWidget(canvas)
-    #
-    #     # 4) Bottom buttons layout
-    #     button_layout = QHBoxLayout()
-    #     # Optionally remove or rename the Show Graphs button if you no longer need it.
-    #     close_button = QPushButton("Close")
-    #     close_button.clicked.connect(self.close)
-    #     button_layout.addStretch()
-    #     button_layout.addWidget(close_button)
-    #     layout.addLayout(button_layout)
-    #
-    #     scroll_area.setWidget(container)
-    #     self.setCentralWidget(scroll_area)
-
-    # def setup_ui(self):
-    #     """
-    #     Set up the UI: a scrollable area with a title, a table displaying rep metrics,
-    #     and a bottom row with buttons.
-    #     """
-    #     scroll_area = QScrollArea()
-    #     scroll_area.setWidgetResizable(True)
-    #     container = QWidget()
-    #     layout = QVBoxLayout(container)
-    #     layout.setContentsMargins(20, 20, 20, 20)
-    #     layout.setSpacing(15)
-    #
-    #     # Title label
-    #     title = QGroupBox("Repetition-by-Repetition Metrics")
-    #     title_layout = QVBoxLayout(title)
-    #     title_label = QTableWidgetItem("Repetition-by-Repetition Report")
-    #     # Instead of using QTableWidgetItem, we can simply use a QLabel if desired.
-    #     # For simplicity, we add the title as a styled QLabel.
-    #     from PySide6.QtWidgets import QLabel
-    #     title_label = QLabel("Repetition-by-Repetition Report")
-    #     title_label.setAlignment(Qt.AlignCenter)
-    #     title_label.setStyleSheet("font-size: 20pt; font-weight: bold;")
-    #     title_layout.addWidget(title_label)
-    #     layout.addWidget(title)
-    #
-    #     # Create the table widget
-    #     table = QTableWidget()
-    #     df = pd.DataFrame(self.rep_results)
-    #     table.setRowCount(df.shape[0])
-    #     table.setColumnCount(df.shape[1])
-    #     table.setHorizontalHeaderLabels(df.columns)
-    #     for i in range(df.shape[0]):
-    #         for j in range(df.shape[1]):
-    #             item = QTableWidgetItem(str(df.iat[i, j]))
-    #             item.setTextAlignment(Qt.AlignCenter)
-    #             table.setItem(i, j, item)
-    #     table.resizeColumnsToContents()
-    #     layout.addWidget(table)
-    #
-    #     # Bottom buttons layout
-    #     button_layout = QHBoxLayout()
-    #     show_graphs_button = QPushButton("Show Rep Graphs")
-    #     show_graphs_button.clicked.connect(self.show_rep_graphs)
-    #     close_button = QPushButton("Close")
-    #     close_button.clicked.connect(self.close)
-    #     button_layout.addWidget(show_graphs_button)
-    #     button_layout.addStretch()
-    #     button_layout.addWidget(close_button)
-    #     layout.addLayout(button_layout)
-    #
-    #     scroll_area.setWidget(container)
-    #     self.setCentralWidget(scroll_area)
-
     def create_rep_figure(self):
         """
         Creates a Matplotlib figure with one subplot per repetition.
@@ -216,6 +111,8 @@ class RepReportWindow(QMainWindow):
           - Plots the force vs. local time for that rep.
           - Displays a red dot at the maximum force.
           - Draws a dashed horizontal line for the average force.
+          - Plots the end force as a green cross.
+          - Marks the 20% and 80% force thresholds with cyan diamond markers.
           - Has a small title (e.g. "Rep 1").
         Global X and Y labels ("Time [s]" and "Force [kg]") are added only once.
 
@@ -223,13 +120,17 @@ class RepReportWindow(QMainWindow):
             fig: A Matplotlib figure.
         """
         # Identify rep intervals using RepMetrics.
-        rep_eval = RepMetrics(self.force_df, sampling_rate=self.sampling_rate)
+        rep_eval = RepMetrics(force_df=self.force_df,
+                              sampling_rate=self.sampling_rate,
+                              threshold_ratio=0.1,
+                              min_rep_sec=5,
+                              max_rep_sec=10)
         reps = rep_eval.reps
         n_reps = len(reps)
         if n_reps == 0:
             return None  # Nothing to plot
 
-        # Prepare arrays from the force data.
+        # Prepare the overall time and force arrays (from the global DataFrame).
         time_axis = self.force_df['timestamp'].values
         force_values = self.force_df['value'].values
 
@@ -237,104 +138,82 @@ class RepReportWindow(QMainWindow):
         cols = 3
         rows = (n_reps + cols - 1) // cols
 
-        # Create subplots. Using constrained_layout for automatic spacing.
-        fig, axes = plt.subplots(rows, cols, figsize=(12, 3 * rows),
-                                 sharex=True, sharey=True, constrained_layout=True)
+        # Create subplots with an increased figure size.
+        fig, axes = plt.subplots(rows, cols, figsize=(14, 4 * rows),
+                                 sharex=True, sharey=True)
         axes = axes.flatten()
 
         for i, (start_idx, end_idx) in enumerate(reps):
             ax = axes[i]
-            rep_time = time_axis[start_idx:end_idx + 1]
-            rep_force = force_values[start_idx:end_idx + 1]
-            # Reset local time for each rep.
+            # Slice the repetition data and re-index it for local indexing.
+            rep_df = self.force_df.iloc[start_idx:end_idx + 1].copy().reset_index(drop=True)
+            rep_time = rep_df['timestamp'].values
+            rep_force = rep_df['value'].values
+
+            # Compute local time so that each rep starts at 0.
             local_time = rep_time - rep_time[0]
-            ax.plot(local_time, rep_force, color='blue')
-            # Plot red dot at maximum force.
+            ax.plot(local_time, rep_force, color='darkblue')
+
+            # Mark the maximum force (red dot).
             max_i = rep_force.argmax()
-            ax.plot(local_time[max_i], rep_force[max_i], 'ro')
-            # Dashed horizontal line at average force.
+            ax.plot(local_time[max_i], rep_force[max_i], 'r.')
+
+            # Draw a dashed horizontal line at the average force.
             avg_force = rep_force.mean()
-            ax.axhline(avg_force, color='gray', linestyle='--', linewidth=1)
+            ax.axhline(avg_force, color='crimson', linestyle='--', linewidth=1)
+            try:
+                # Compute the end force and its local index.
+                end_force, local_end_idx = compute_end_force(rep_df)
+                # Calculate the local time corresponding to the end force sample.
+                end_local_time = rep_df['timestamp'].iloc[local_end_idx] - rep_df['timestamp'].iloc[0]
+                ax.plot(end_local_time, end_force, marker='x', markersize=10, color='green',
+                        label="End Force" if i == 0 else "")
+
+                # Compute 20% and 80% of the maximum force.
+                threshold20 = 0.2 * rep_force[max_i]
+                threshold80 = 0.8 * rep_force[max_i]
+
+                # Find the first index where force reaches or exceeds 20% threshold.
+                idx_20 = None
+                for j, val in enumerate(rep_force):
+                    if val >= threshold20:
+                        idx_20 = j
+                        break
+                if idx_20 is not None:
+                    local_time_20 = rep_df['timestamp'].iloc[idx_20] - rep_df['timestamp'].iloc[0]
+                    ax.plot(local_time_20, threshold20, marker='3', markersize=8, color='grey',
+                            label="20% Threshold" if i == 0 else "")
+
+                # Find the first index (after idx_20) where force reaches or exceeds 80% threshold.
+                idx_80 = None
+                for j, val in enumerate(rep_force):
+                    if idx_20 is not None and j >= idx_20 and val >= threshold80:
+                        idx_80 = j
+                        break
+                if idx_80 is not None:
+                    local_time_80 = rep_df['timestamp'].iloc[idx_80] - rep_df['timestamp'].iloc[0]
+                    ax.plot(local_time_80, threshold80, marker='3', markersize=8, color='grey',
+                            label="80% Threshold" if i == 0 else "")
+            except Exception as e:
+                print(f"Error plotting other parameters: {e}")
+                return None, None
+
             # Set subplot title.
             ax.set_title(f"Rep {i + 1}", fontsize=10)
-            # Optionally, adjust title position to avoid overlap.
             ax.title.set_position([0.5, 1.05])
 
         # Hide any unused subplots.
         for j in range(i + 1, len(axes)):
             axes[j].axis('off')
 
-        # Instead of calling tight_layout(), use constrained_layout to reserve space.
-        # Add global labels.
+        # Adjust subplot margins to provide more white space around the plots.
+        plt.subplots_adjust(top=0.88, bottom=0.12, left=0.10, right=0.95, hspace=0.3, wspace=0.3)
+
+        # Add global X and Y labels.
         fig.supxlabel("Time [s]", fontsize=12, y=0.04)
         fig.supylabel("Force [kg]", fontsize=12, x=0.04)
 
         return fig
-
-    # def create_rep_figure(self):
-    #     """
-    #     Creates a Matplotlib figure with one subplot per repetition.
-    #
-    #     Each subplot:
-    #       - Plots the force vs. local time for that rep
-    #       - Shows a red dot at max force
-    #       - Draws a dashed horizontal line at average force
-    #       - Has a small title "Rep X"
-    #     The figure has one shared X label "Time [s]" and one shared Y label "Force [kg]".
-    #     """
-    #     # 1) We need to identify the rep intervals from the data
-    #     rep_eval = RepMetrics(self.force_df, sampling_rate=self.sampling_rate)
-    #     reps = rep_eval.reps
-    #     n_reps = len(reps)
-    #     if n_reps == 0:
-    #         return None  # No reps to plot
-    #
-    #     # 2) Prepare time and force arrays
-    #     time_axis = self.force_df['timestamp'].values
-    #     force_values = self.force_df['value'].values
-    #
-    #     # 3) Decide how many columns/rows for subplots
-    #     cols = 3
-    #     rows = (n_reps + cols - 1) // cols  # integer ceil
-    #
-    #     fig, axes = plt.subplots(rows, cols, figsize=(12, 3*rows),
-    #                              sharex=True, sharey=True)
-    #     axes = axes.flatten()
-    #
-    #     # 4) Plot each rep in its own subplot
-    #     for i, (start_idx, end_idx) in enumerate(reps):
-    #         ax = axes[i]
-    #         # Extract the portion of the data for this repetition
-    #         rep_time = time_axis[start_idx:end_idx+1]
-    #         rep_force = force_values[start_idx:end_idx+1]
-    #
-    #         # Convert time so that each rep starts at t=0
-    #         local_time = rep_time - rep_time[0]
-    #
-    #         # Plot the rep
-    #         ax.plot(local_time, rep_force, label=f"Rep {i+1}", color='blue')
-    #
-    #         # Red dot at max force
-    #         max_i = rep_force.argmax()
-    #         ax.plot(local_time[max_i], rep_force[max_i], 'ro')
-    #
-    #         # Dashed line at average force
-    #         avg_force = rep_force.mean()
-    #         ax.axhline(avg_force, color='gray', linestyle='--', linewidth=1)
-    #
-    #         # Title above each subplot
-    #         ax.set_title(f"Rep {i+1}")
-    #
-    #     # 5) Hide unused subplots if n_reps < rows*cols
-    #     for j in range(i+1, len(axes)):
-    #         axes[j].axis('off')
-    #
-    #     # 6) Add a single X label and Y label for the entire figure
-    #     fig.supxlabel("Time [s]")
-    #     fig.supylabel("Force [kg]")
-    #
-    #     fig.tight_layout()
-    #     return fig
 
     def show_rep_graphs(self):
         """

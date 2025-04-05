@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from gui.test_page.evaluations.force_metrics import (
-    compute_max_strength,
+    compute_max_force,
     compute_end_force,
     compute_force_drop,
     compute_work,
@@ -119,7 +119,7 @@ class RepMetrics:
             rep_df['local_time'] = rep_df['timestamp'] - rep_df['timestamp'].iloc[0]
 
             # Use the helper functions on the rep slice.
-            mvc = compute_max_strength(rep_df)
+            mvc = compute_max_force(rep_df)
             # For rep-level average end force, you might use a larger fraction (e.g., last 20% of data)
             end_force = compute_end_force(rep_df, end_portion=0.2)
             force_drop = compute_force_drop(rep_df)
