@@ -235,7 +235,7 @@ class EditClimberInfoPage(QWidget):
             # self.is_saving = False  # Reset the flag if saving fails
             QMessageBox.warning(self, "Error", "An error occurred while updating settings.")
 
-    def close_event(self, event):
+    def closeEvent(self, event):
         """Intercepts the close event to confirm unsaved changes."""
         if not self.is_saving:
             reply = QMessageBox.question(

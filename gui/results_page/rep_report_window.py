@@ -4,11 +4,12 @@ Module to display the repetition-by-repetition report.
 This window shows rep-by-rep metrics in a table and includes a button to display
 the rep graphs. It is styled similarly to the main TestReportWindow.
 """
-
+import os
 import pandas as pd
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QPixmap
 from matplotlib import pyplot as plt
-from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+# from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QGroupBox, QTableWidget,
     QTableWidgetItem, QPushButton, QScrollArea, QHBoxLayout, QSizePolicy, QLabel
@@ -21,25 +22,31 @@ from gui.test_page.evaluations.rep_metrics import RepMetrics  # make sure this i
 
 
 class RepReportWindow(QMainWindow):
-    def __init__(self, rep_results, force_df, sampling_rate=100, parent=None):
+    def __init__(self, rep_results, force_df, test_id, parent=None):
         """
         Initialize the repetition report window.
 
         Parameters:
             rep_results (list of dict): List of rep-by-rep metric dictionaries.
             force_df (pd.DataFrame): The original force data (used to generate rep graphs).
-            sampling_rate (int): Sampling rate in Hz.
+            test_id (int): ID of a test.
             parent (QWidget): Parent widget.
         """
         super().__init__(parent)
         self.setWindowTitle("Repetition-by-Repetition Report")
-        self.resize(900, 600)
+        self.resize(1600, 800)
         self.rep_results = rep_results
         self.force_df = force_df
-        self.sampling_rate = sampling_rate
 
         # We'll create our repetition figure in the constructor (or in setup_ui).
         self.rep_figure = self.create_rep_figure()
+
+        # Save the rep figure to a file if it exists.
+        self.rep_graph_filepath = None
+        if self.rep_figure is not None:
+            # Use uuid to create a unique filename.
+            self.rep_graph_filepath = f"{test_id}_rep_graph.png"
+            self.rep_figure.savefig(self.rep_graph_filepath, format="png")
 
         self.setup_ui()
 
@@ -85,11 +92,20 @@ class RepReportWindow(QMainWindow):
         table.setFixedHeight(header_height + row_height + 2)
         container_layout.addWidget(table)
 
-        # 3) Embedded Matplotlib figure for the repetition graphs.
-        if self.rep_figure is not None:
-            canvas = FigureCanvas(self.rep_figure)
-            canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-            container_layout.addWidget(canvas)
+        # # 3) Embedded Matplotlib figure for the repetition graphs.
+        # if self.rep_figure is not None:
+        #     canvas = FigureCanvas(self.rep_figure)
+        #     canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        #     container_layout.addWidget(canvas)
+
+        # 3) Instead of a canvas, show the saved rep graph image.
+        if self.rep_graph_filepath and os.path.exists(self.rep_graph_filepath):
+            image_label = QLabel()
+            pixmap = QPixmap(self.rep_graph_filepath)
+            image_label.setPixmap(pixmap)
+            # Optionally, adjust scaling behavior
+            image_label.setScaledContents(True)
+            container_layout.addWidget(image_label)
 
         # 4) Bottom buttons.
         button_layout = QHBoxLayout()
@@ -121,7 +137,6 @@ class RepReportWindow(QMainWindow):
         """
         # Identify rep intervals using RepMetrics.
         rep_eval = RepMetrics(force_df=self.force_df,
-                              sampling_rate=self.sampling_rate,
                               threshold_ratio=0.1,
                               min_rep_sec=5,
                               max_rep_sec=10)
@@ -135,11 +150,11 @@ class RepReportWindow(QMainWindow):
         force_values = self.force_df['value'].values
 
         # Define the grid: fixed number of columns (e.g., 3) and as many rows as needed.
-        cols = 3
+        cols = 6
         rows = (n_reps + cols - 1) // cols
 
         # Create subplots with an increased figure size.
-        fig, axes = plt.subplots(rows, cols, figsize=(14, 4 * rows),
+        fig, axes = plt.subplots(rows, cols, figsize=(14, 2 * rows),
                                  sharex=True, sharey=True)
         axes = axes.flatten()
 
@@ -207,20 +222,10 @@ class RepReportWindow(QMainWindow):
             axes[j].axis('off')
 
         # Adjust subplot margins to provide more white space around the plots.
-        plt.subplots_adjust(top=0.88, bottom=0.12, left=0.10, right=0.95, hspace=0.3, wspace=0.3)
+        plt.subplots_adjust(top=0.95, bottom=0.1, left=0.1, right=0.98, hspace=0.2, wspace=0.2)
 
         # Add global X and Y labels.
         fig.supxlabel("Time [s]", fontsize=12, y=0.04)
         fig.supylabel("Force [kg]", fontsize=12, x=0.04)
 
         return fig
-
-    def show_rep_graphs(self):
-        """
-        Generate and show the repetition-by-repetition graphs using RepMetrics.
-        """
-        # Instantiate the rep evaluator again (or re-use if you stored it)
-
-        rep_eval = RepMetrics(self.force_df, sampling_rate=self.sampling_rate)
-        rep_eval.plot_rep_graphs()
-

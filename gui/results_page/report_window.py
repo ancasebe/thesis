@@ -1,3 +1,4 @@
+import os
 from datetime import datetime
 
 import numpy as np
@@ -24,7 +25,7 @@ class TestReportWindow(QMainWindow):
         """
         super().__init__(parent)
         self.setWindowTitle("Test Report Summary")
-        self.resize(1800, 800)
+        self.resize(1600, 800)
         test_results = db_data['test_results']
         print("Test metrics:", test_results)
         self.test_metrics = eval(test_results, {"np": np})
@@ -130,13 +131,14 @@ class TestReportWindow(QMainWindow):
         bottom_layout = QHBoxLayout()
         export_button = QPushButton("Export Report")
         export_button.clicked.connect(self.export_report)
-        show_reps_button = QPushButton("Show Repetitions")
-        show_reps_button.clicked.connect(self.show_repetitions)
         close_button = QPushButton("Close")
         close_button.clicked.connect(self.close)
         bottom_layout.addWidget(export_button)
-        bottom_layout.addWidget(show_reps_button)
-        bottom_layout.addStretch()  # Pushes the following widget to the right.
+        if self.db_data['test_type'] in ['ao', 'iit']:
+            show_reps_button = QPushButton("Show Repetitions")
+            show_reps_button.clicked.connect(self.show_repetitions)
+            bottom_layout.addWidget(show_reps_button)
+        # bottom_layout.addStretch()  # Pushes the following widget to the right.
         bottom_layout.addWidget(close_button)
         container_layout.addLayout(bottom_layout)
 
@@ -188,21 +190,21 @@ class TestReportWindow(QMainWindow):
         Build a list of (label, value) pairs for the participant info using a predefined mapping.
         """
         user_data_fields = {
-            "name": "Name:",
-            "surname": "Surname:",
-            "email": "Email:",
-            "gender": "Gender:",
-            "dominant_arm": "Dominant Arm:",
-            "weight": "Weight (kg):",
-            "height": "Height (cm):",
-            "age": "Age (years):",
-            "french_scale": "French Scale Level:",
-            "years_climbing": "Years of Climbing:",
-            "climbing_freq": "Climbing Frequency/week:",
-            "climbing_hours": "Climbing Hours/week:",
-            "sport_other": "Other sports:",
-            "sport_freq": "Sport Frequency/week:",
-            "sport_activity_hours": "Sport Activity (hours/week):"
+            "name": "Name",
+            "surname": "Surname",
+            "email": "Email",
+            "gender": "Gender",
+            "dominant_arm": "Dominant Arm",
+            "weight": "Weight (kg)",
+            "height": "Height (cm)",
+            "age": "Age (years)",
+            "french_scale": "French Scale Level",
+            "years_climbing": "Years of Climbing",
+            "climbing_freq": "Climbing Frequency/week",
+            "climbing_hours": "Climbing Hours/week",
+            "sport_other": "Other sports",
+            "sport_freq": "Sport Frequency/week",
+            "sport_activity_hours": "Sport Activity (hours/week)"
         }
         pairs = []
         # Loop through the mapping keys and build the pairs.
@@ -298,7 +300,7 @@ class TestReportWindow(QMainWindow):
 
         critical_force = self.test_metrics.get("critical_force")
         max_strength = self.test_metrics.get("max_strength")
-        w_prime = self.test_metrics.get("w_prime")
+        w_prime = self.test_metrics.get("sum_work_above_cf")
 
         fig, ax = plt.subplots(figsize=(10, 6))
         ax.plot(time_array, force_array, label='Duration of test', color='darkblue')
@@ -324,7 +326,7 @@ class TestReportWindow(QMainWindow):
                 time_array, force_array, critical_force,
                 where=(force_array > critical_force),
                 color='lightblue', alpha=0.8,
-                label=f'w prime: {w_prime:.2f} [kg/s]'
+                label=f'Work above CF: {w_prime:.2f} [kg/s]'
             )
 
         ax.set_xlabel('Time [s]', fontsize=14)
@@ -363,29 +365,40 @@ class TestReportWindow(QMainWindow):
             rep_table = [df_rep.columns.tolist()] + df_rep.values.tolist()
             # Transform header row to include line breaks for better fit
             transformed_header = [
-                "Repetition\nnumber",
-                "MVC\n(kg)",
-                "Endforce\n(kg)",
+                "Rep\nno.",
+                "Max Force\n(kg)",
+                "End Force\n(kg)",
                 "Force Drop\n(%)",
                 "Avg. Force\n(kg)",
+                "Pull Time\n(ms)",
+                "Max-End\nTime (s)",
+                "RFD\n(ms)",
+                "RFD norm\n(ms/kg)",
                 "W\n(kg/s)",
                 "W'\n(kg/s)",
-                "Pull Time\n(ms)",
-                "RFD\n(ms)",
-                "RFD norm\n(ms/kg)"
             ]
             rep_table[0] = transformed_header
         else:
             rep_table = None
 
-        # Prepare Force-Time Graph image (from self.fig)
-        import io
-        buf = io.BytesIO()
+        # self.test_id = self.db_data['id']
+        # Build filenames using the test_id.
+
+        # Save the Force-Time Graph.
         if self.fig:
-            self.fig.savefig(buf, format='png')
-            buf.seek(0)
+            force_graph_filepath = f"{self.db_data['id']}_graph.png"
+            self.fig.savefig(force_graph_filepath, format='png')
         else:
-            buf = None
+            force_graph_filepath = None
+
+        # # Prepare Force-Time Graph image (from self.fig)
+        # import io
+        # buf = io.BytesIO()
+        # if self.fig:
+        #     self.fig.savefig(buf, format='png')
+        #     buf.seek(0)
+        # else:
+        #     buf = None
 
         # Prepare Repetition Graph image using a temporary RepReportWindow
         # from gui.results_page.rep_report_window import RepReportWindow
@@ -396,22 +409,46 @@ class TestReportWindow(QMainWindow):
             return
 
         if rep_results:
-            rep_window_temp = RepReportWindow(rep_results, force_df, sampling_rate=100, parent=self)
-            rep_graph_fig = rep_window_temp.rep_figure
-            rep_buf = io.BytesIO()
-            if rep_graph_fig:
-                rep_graph_fig.savefig(rep_buf, format='png')
-                rep_buf.seek(0)
+            rep_window_temp = RepReportWindow(rep_results=rep_results,
+                                              force_df=force_df,
+                                              test_id=self.db_data['id'],
+                                              parent=self)
+            rep_graph_filepath = rep_window_temp.rep_graph_filepath
+            # rep_buf = io.BytesIO()
+            # if rep_graph_fig:
+            #     rep_graph_filepath = f"{self.db_data['id']}_rep_graph.png"
+            #     # rep_graph_fig.savefig(rep_graph_filepath, format='png')
+            #     # rep_buf.seek(0)
+            # else:
+            #     rep_graph_filepath = None
         else:
-            rep_buf = None
+            rep_graph_filepath = None
 
         # Parameters explanation text (adjust as needed)
-        parameters_explanation = (
-            "Maximal Force - MVC (Kg): The highest force output achieved during a maximal isometric contraction.\n"
-            "Average End-Force (Kg): The mean force measured toward the end of a sustained contraction.\n"
-            "Critical Force - CF (Kg): The asymptotic force that can be maintained without fatigue.\n"
-            # ... additional explanations
+        parameters_explanation_text = (
+            "<b>Maximal Force - MVC (kg):</b> This parameter represents the highest force output achieved during a maximal effort isometric contraction. It is essential for assessing peak strength and overall climbing power.<br/><br/>"
+            "<b>Average End-Force (kg):</b> The mean force measured toward the end of a sustained contraction, reflecting the climber's ability to maintain force as fatigue sets in. This parameter helps evaluate endurance and grip stability during climbs.<br/><br/>"
+            "<b>Average Time btw Max- and End-Force (ms):</b> The average duration from reaching maximum force to the force at the end of a repetition, providing insight into how quickly force decays under fatigue. It can indicate the rate of muscular fatigue during a climbing hold.<br/><br/>"
+            "<b>Average Force Drop (%):</b> The percentage decline from peak force to the end force of a repetition, which serves as an indicator of fatigue resistance. A smaller percentage drop suggests better endurance and sustained force application.<br/><br/>"
+            "<b>Average Rep. Force (kg):</b> The mean force exerted across all repetitions, offering an overall measure of strength consistency. It reflects both maximal strength and the ability to maintain performance over multiple holds.<br/><br/>"
+            "<b>Critical Force - CF (kg):</b> Determined by averaging the peak forces of the final repetitions, this value indicates the sustainable force level a climber can maintain. It is a key marker of endurance, as it represents the threshold below which fatigue becomes predominant.<br/><br/>"
+            "<b>Repetitions to CF:</b> The number of repetitions completed before the maximal force falls below the critical force threshold, directly measuring endurance. It quantifies how many moves a climber can perform before significant fatigue impairs performance.<br/><br/>"
+            "<b>CF/MVC (%):</b> The ratio of critical force to maximal force expressed as a percentage, providing a normalized measure of endurance relative to peak strength. This ratio facilitates comparisons across athletes with different absolute strength levels.<br/><br/>"
+            "<b>Average Work (kg/s):</b> The average mechanical work performed per repetition, calculated as the area under the force-time curve. This metric links the concepts of strength and endurance by reflecting energy expenditure during a hold.<br/><br/>"
+            "<b>Sum Work (kg/s):</b> The total work done over the entire test, summing the individual contributions of each repetition. It gives an aggregate measure of overall energy output during the climbing effort.<br/><br/>"
+            "<b>Average Work above CF (kg/s):</b> The average work performed while the force remains above the critical force, highlighting the ability to sustain high-force efforts despite fatigue. This value is important for assessing endurance under load.<br/><br/>"
+            "<b>Sum Work above CF (kg/s):</b> The cumulative work performed above the critical force across all repetitions, indicating the total sustained energy output. It further emphasizes the climber’s endurance capacity.<br/><br/>"
+            "<b>Average Pulling Time (ms):</b> The average duration of a repetition, from the start of force application to its termination. It reflects the speed and control of movement, which are critical in dynamic climbing maneuvers.<br/><br/>"
+            "<b>Rate of Force Development - RFD (ms):</b> The overall time required to develop force, serving as an indicator of explosive strength. Quick force generation is vital for dynamic climbing moves and sudden grip adjustments.<br/><br/>"
+            "<b>RFD first three repetitions (ms):</b> The average rate of force development calculated over the first three repetitions, capturing the climber’s initial explosive capability before fatigue sets in.<br/><br/>"
+            "<b>RFD first six repetitions (ms):</b> An average of the RFD for the first six repetitions, providing a more robust measure of early performance and explosive strength consistency.<br/><br/>"
+            "<b>RFD last three repetitions (ms):</b> The average RFD during the final three repetitions, which reflects the impact of fatigue on rapid force generation in the later stages of the test.<br/><br/>"
+            "<b>RFD normalized to force (ms/kg):</b> The overall rate of force development normalized by maximal force, allowing for comparisons between climbers with different strength levels by providing a relative measure of explosive performance.<br/><br/>"
+            "<b>RFD norm. first three rep. (ms/kg):</b> The normalized RFD for the first three repetitions, emphasizing early explosive performance relative to each climber's peak strength.<br/><br/>"
+            "<b>RFD norm. first six rep. (ms/kg):</b> The normalized RFD for the first six repetitions, offering a broader assessment of initial force generation capability adjusted by maximum force.<br/><br/>"
+            "<b>RFD norm. last three rep. (ms/kg):</b> The normalized RFD for the last three repetitions, which indicates how fatigue influences the climber’s ability to generate force rapidly when compared to peak force."
         )
+
         print(self.db_data)
         pdf_filename = f"test_{self.db_data['test_type']}_{self.db_data['data_type']}_{self.db_data['id']}.pdf"
         # Choose save path using QFileDialog
@@ -422,19 +459,20 @@ class TestReportWindow(QMainWindow):
         try:
             # from gui.results_page.pdf_exporter import generate_pdf_report
             generate_pdf_report(
-                pdf_path,
-                title_text=f"All-Out Report for {self.participant_info.get('name', 'Unknown')}",
+                pdf_path=pdf_path,
+                title_text=f"{self.db_data['test_type'].upper()} Report for {self.participant_info.get('name', 'Unknown')}",
                 basic_info=basic_info,
                 participant_info=participant_info,
-                test_metrics=test_metrics,
-                graph_image_path=buf,           # Force-Time Graph
-                rep_metrics=rep_table,          # Repetition Metrics table
-                rep_graph_image_path=rep_buf,   # Repetition Graph
-                parameters_explanation=parameters_explanation
+                test_results=test_metrics,
+                graph_image_path=force_graph_filepath,           # Force-Time Graph
+                rep_results=rep_table,          # Repetition Metrics table
+                rep_graph_image_path=rep_graph_filepath,   # Repetition Graph
+                parameters_explanation=parameters_explanation_text
             )
             QMessageBox.information(self, "Export Report", "PDF report generated successfully!")
         except Exception as e:
             QMessageBox.critical(self, "Export Error", f"An error occurred: {e}")
+            print(e)
 
     def show_repetitions(self):
         """
@@ -442,7 +480,7 @@ class TestReportWindow(QMainWindow):
         """
         # Retrieve rep_results from your db_data. Here we assume they were saved as a string.
         # For security, consider using json instead of eval.
-        from PySide6.QtWidgets import QMessageBox
+        # from PySide6.QtWidgets import QMessageBox
         rep_results_str = self.db_data['rep_results']
         print('Rep metrics str:', rep_results_str)
         if rep_results_str:
@@ -473,8 +511,32 @@ class TestReportWindow(QMainWindow):
             return
 
         # Instantiate and show the rep report window.
-        self.rep_window = RepReportWindow(rep_results, force_df, sampling_rate=100, parent=self)
+        self.rep_window = RepReportWindow(rep_results=rep_results,
+                                          force_df=force_df,
+                                          test_id=self.db_data['id'],
+                                          parent=self)
         self.rep_window.show()
+
+    def closeEvent(self, event):
+        """
+        Delete the temporary force graph file and also ensure that if a rep report window is open,
+        it is closed (its own closeEvent will delete its temporary rep graph file).
+        """
+        graph_filepath = f"{self.db_data['id']}_graph.png"
+        if os.path.exists(graph_filepath):
+            try:
+                os.remove(graph_filepath)
+            except Exception as e:
+                print("Error deleting graph file:", e)
+        rep_graph_filepath = f"{self.db_data['id']}_rep_graph.png"
+        if os.path.exists(rep_graph_filepath):
+            try:
+                os.remove(rep_graph_filepath)
+            except Exception as e:
+                print("Error deleting rep graph file:", e)
+        if hasattr(self, 'rep_window') and self.rep_window is not None:
+            self.rep_window.close()  # This will trigger rep_window's closeEvent.
+        super().closeEvent(event)
 
     '''
     def generate_final_graph_force(self, force_file):

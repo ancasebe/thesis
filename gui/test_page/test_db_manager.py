@@ -44,15 +44,18 @@ class ClimbingTestManager:
 
     def add_test_result(self, admin_id, participant_id, db_data):
         """
-        Adds a new test result to the database.
+        Adds a new test result to the database and returns the test id.
 
         Parameters:
             admin_id (str): Administrator ID.
             participant_id (str): Participant ID.
-            db_data (dict): Actually tested arm.
+            db_data (dict): Dictionary containing test details.
+
+        Returns:
+            int: The ID of the newly inserted test result.
         """
         with self.connection:
-            self.connection.execute('''
+            cursor = self.connection.execute('''
                 INSERT INTO climbing_tests (admin_id, participant_id, arm_tested, data_type, test_type, 
                 timestamp, force_file, nirs_file, test_results, rep_results)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -61,7 +64,10 @@ class ClimbingTestManager:
                   db_data['test_results'], db_data['rep_results']))
 
             print("Test result saved successfully.")
-            # seems to be working alright
+
+            new_id = cursor.lastrowid
+            print("Test result saved successfully with id:", new_id)
+            return new_id
 
     def fetch_results_by_participant(self, participant_id):
         """
@@ -103,20 +109,20 @@ class ClimbingTestManager:
             columns = [desc[0] for desc in cursor.description]
             return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
-    def fetch_result_by_test_id(self, test_id):
-        """
-        Fetches test results for a specific test id.
-
-        Parameters:
-            test_id (str): Test ID.
-
-        Returns:
-            list: Matching rows from the climbing_tests table.
-        """
-        with self.connection:
-            cursor = self.connection.execute('SELECT * FROM climbing_tests WHERE id = ?', (test_id,))
-            columns = [desc[0] for desc in cursor.description]
-            return [dict(zip(columns, row)) for row in cursor.fetchall()]
+    # def fetch_result_by_test_id(self, test_id):
+    #     """
+    #     Fetches test results for a specific test id.
+    #
+    #     Parameters:
+    #         test_id (str): Test ID.
+    #
+    #     Returns:
+    #         list: Matching rows from the climbing_tests table.
+    #     """
+    #     with self.connection:
+    #         cursor = self.connection.execute('SELECT * FROM climbing_tests WHERE id = ?', (test_id,))
+    #         columns = [desc[0] for desc in cursor.description]
+    #         return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
     def get_test_data(self, test_id):
         """

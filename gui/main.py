@@ -13,7 +13,7 @@ from PySide6.QtWidgets import QApplication, QMainWindow, QStackedWidget, QMessag
 from gui.superuser.login_db_manager import LoginDatabaseManager
 from gui.login_page import LoginPage
 from gui.superuser.new_admin import RegistrationPage
-from main_page import MainPage
+from gui.main_page import MainPage
 
 
 class MainWindow(QMainWindow):
@@ -111,7 +111,7 @@ class MainWindow(QMainWindow):
                 main_app_widget.deleteLater()
             self.stacked_widget.setCurrentIndex(0)
 
-    def close_event(self, event):
+    def closeEvent(self, event):
         """
         Ensures the database connection is closed before closing the application.
         """

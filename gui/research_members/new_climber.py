@@ -333,6 +333,3 @@ class NewClimber(QWidget):
                 event.ignore()
         else:
             event.accept()
-
-#TODO: vyskakovaci okenka, jestli chci skutecne opustit formular a mozna pridat celou upravu ve vyskakovacim?
-# pridat propojeni s cudlikz, navrat do test_page

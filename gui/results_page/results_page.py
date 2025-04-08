@@ -425,7 +425,7 @@ class ResultsPage(QWidget):
             QMessageBox.No
         )
         if reply == QMessageBox.Yes:
-            test_id = test[0]
+            test_id = test['id']
             cursor = self.test_db_manager.connection.cursor()
             cursor.execute("DELETE FROM climbing_tests WHERE id = ?", (test_id,))
             self.test_db_manager.connection.commit()
