@@ -18,6 +18,10 @@ class ClimbingTestManager:
         # Move one level up, then into the 'databases' folder:
         db_folder = os.path.join(script_dir, '..', 'databases')
 
+        # Ensure that the target directory exists; if not, create it.
+        if not os.path.exists(db_folder):
+            os.makedirs(db_folder)
+
         # Construct the full path to a specific DB file:
         climbing_test_db_path = os.path.join(db_folder, db_name)
         self.connection = sqlite3.connect(climbing_test_db_path)

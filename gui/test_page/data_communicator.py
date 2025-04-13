@@ -5,13 +5,12 @@ import time
 import numpy as np
 import pandas as pd
 import pyqtgraph as pg
-from PySide6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QMessageBox
+from PySide6.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QMessageBox
 from PySide6.QtCore import QTimer
 
 from gui.test_page.data_generator import BluetoothCommunicator, SerialCommunicator
 from gui.test_page.test_db_manager import ClimbingTestManager
 from gui.test_page.evaluations.force_evaluation import ForceMetrics
-from gui.test_page.evaluations.rep_metrics import RepMetrics
 from gui.research_members.climber_db_manager import ClimberDatabaseManager
 from gui.results_page.report_window import TestReportWindow
 
@@ -37,7 +36,7 @@ class FeatherBinaryLogger:
     def flush(self):
         """Write the buffered data to the Feather file and clear the buffer."""
         if self.buffer:
-            df = pd.DataFrame(self.buffer, columns=["timestamp", "value"])
+            df = pd.DataFrame(self.buffer, columns=["time", "value"])
             # Write the entire DataFrame to a Feather file
             df.reset_index(drop=True).to_feather(self.filename)
             self.buffer = []

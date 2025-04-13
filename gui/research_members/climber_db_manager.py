@@ -6,7 +6,7 @@ Key functionalities:
 - Registering, updating, and deleting climber data linked to an admin.
 - Fetching climber data for viewing and editing.
 """
-
+import os
 import sqlite3
 
 
@@ -18,7 +18,19 @@ class ClimberDatabaseManager:
 
     def __init__(self, db_name="climber_database.db"):
         """Initializes the ClimberDatabaseManager and creates the climber database if it doesn't exist."""
-        self.connection = sqlite3.connect(db_name)
+        script_dir = os.path.dirname(__file__)
+        # This is the folder where the current .py file (e.g. test_page.py) resides
+
+        # Move one level up, then into the 'databases' folder:
+        db_folder = os.path.join(script_dir, '..', 'databases')
+
+        # Ensure that the target directory exists; if not, create it.
+        if not os.path.exists(db_folder):
+            os.makedirs(db_folder)
+
+        # Construct the full path to a specific DB file:
+        climber_db_path = os.path.join(db_folder, db_name)
+        self.connection = sqlite3.connect(climber_db_path)
         self.create_climbers_table()
 
     def create_climbers_table(self):
@@ -36,7 +48,7 @@ class ClimberDatabaseManager:
                     weight INTEGER,
                     height INTEGER,
                     age INTEGER,
-                    french_scale TEXT,
+                    ircra TEXT,
                     climbing_freq INTEGER,
                     climbing_hours INTEGER,
                     years_climbing INTEGER,
@@ -46,7 +58,8 @@ class ClimberDatabaseManager:
                     climbing_outdoor INTEGER,
                     sport_other TEXT,
                     sport_freq INTEGER,
-                    sport_activity_hours INTEGER
+                    sport_activity_hours INTEGER,
+                    timestamp TEXT
                 );
             """)
 
@@ -56,10 +69,10 @@ class ClimberDatabaseManager:
             cursor = self.connection.cursor()
             cursor.execute("""
                 INSERT INTO climbers (admin_id, name, surname, email, gender, dominant_arm, weight, height,
-                                      age, french_scale, climbing_freq, climbing_hours, years_climbing, 
+                                      age, ircra, climbing_freq, climbing_hours, years_climbing, 
                                       bouldering, lead_climbing, climbing_indoor, climbing_outdoor, 
-                                      sport_other, sport_freq, sport_activity_hours)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                                      sport_other, sport_freq, sport_activity_hours, timestamp)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
             """, (
                 admin_id,
                 climber_data.get('name'),
@@ -70,7 +83,7 @@ class ClimberDatabaseManager:
                 climber_data.get('weight'),
                 climber_data.get('height'),
                 climber_data.get('age'),
-                climber_data.get('french_scale'),
+                climber_data.get('ircra'),
                 climber_data.get('climbing_freq'),
                 climber_data.get('climbing_hours'),
                 climber_data.get('years_climbing'),
@@ -80,7 +93,8 @@ class ClimberDatabaseManager:
                 climber_data.get('climbing_outdoor'),
                 climber_data.get('sport_other'),
                 climber_data.get('sport_freq'),
-                climber_data.get('sport_activity_hours')
+                climber_data.get('sport_activity_hours'),
+                climber_data.get('timestamp'),
             ))
             self.connection.commit()
             return True
@@ -94,14 +108,14 @@ class ClimberDatabaseManager:
             cursor.execute("""
                 UPDATE climbers
                 SET name = ?, surname = ?, email = ?, gender = ?, dominant_arm = ?, weight = ?, height = ?, age = ?, 
-                    french_scale = ?, climbing_freq = ?, climbing_hours = ?, years_climbing = ?, bouldering = ?, 
+                    ircra = ?, climbing_freq = ?, climbing_hours = ?, years_climbing = ?, bouldering = ?, 
                     lead_climbing = ?, climbing_indoor = ?, climbing_outdoor = ?, sport_other = ?, 
                     sport_freq = ?, sport_activity_hours = ?
                 WHERE id = ? AND admin_id = ?;
             """, (
                 updated_data['name'], updated_data['surname'], updated_data['email'], updated_data['gender'],
                 updated_data['dominant_arm'], updated_data['weight'], updated_data['height'], updated_data['age'],
-                updated_data['french_scale'], updated_data['climbing_freq'], updated_data['climbing_hours'],
+                updated_data['ircra'], updated_data['climbing_freq'], updated_data['climbing_hours'],
                 updated_data['years_climbing'], updated_data['bouldering'], updated_data['lead_climbing'],
                 updated_data['climbing_indoor'], updated_data['climbing_outdoor'], updated_data['sport_other'],
                 updated_data['sport_freq'], updated_data['sport_activity_hours'], climber_id, admin_id
@@ -143,7 +157,7 @@ class ClimberDatabaseManager:
         cursor = self.connection.cursor()
         if int(admin_id) == 1:
             cursor.execute("""
-                SELECT name, surname, email, gender, dominant_arm, weight, height, age, french_scale, 
+                SELECT name, surname, email, gender, dominant_arm, weight, height, age, ircra, 
                        climbing_freq, climbing_hours, years_climbing, bouldering, lead_climbing, 
                        climbing_indoor, climbing_outdoor, sport_other, sport_freq, sport_activity_hours
                 FROM climbers
@@ -151,7 +165,7 @@ class ClimberDatabaseManager:
             """, (climber_id,))
         else:
             cursor.execute("""
-                SELECT name, surname, email, gender, dominant_arm, weight, height, age, french_scale, 
+                SELECT name, surname, email, gender, dominant_arm, weight, height, age, ircra, 
                        climbing_freq, climbing_hours, years_climbing, bouldering, lead_climbing, 
                        climbing_indoor, climbing_outdoor, sport_other, sport_freq, sport_activity_hours
                 FROM climbers
@@ -161,7 +175,7 @@ class ClimberDatabaseManager:
 
         if result:
             fields = ["name", "surname", "email", "gender", "dominant_arm", "weight", "height", "age",
-                      "french_scale", "climbing_freq", "climbing_hours", "years_climbing", "bouldering",
+                      "ircra", "climbing_freq", "climbing_hours", "years_climbing", "bouldering",
                       "lead_climbing", "climbing_indoor", "climbing_outdoor", "sport_other",
                       "sport_freq", "sport_activity_hours"]
             return dict(zip(fields, result))

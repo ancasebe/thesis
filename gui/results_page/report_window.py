@@ -9,7 +9,7 @@ from PySide6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QGroupBox, QFor
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 
-from gui.results_page.pdf_exporter import generate_pdf_report
+from gui.results_page.pdf_exporter import generate_pdf_report, parameters_explanation_text
 from gui.results_page.rep_report_window import RepReportWindow
 
 
@@ -32,14 +32,32 @@ class TestReportWindow(QMainWindow):
         self.participant_info = participant_info
         self.db_data = db_data
         # Create the matplotlib figure
-        if db_data['data_type'] == "force":
-            force_file = db_data['force_file']
-            self.fig = self.create_force_figure(
-                force_file=force_file
-            )
-        else:
+        print('data_type:', db_data['data_type'])
+        try:
+            if db_data['data_type'] == "force":
+                force_file = db_data['force_file']
+                self.fig = self.create_force_figure(
+                    force_file=force_file
+                )
+            elif db_data['data_type'] == "nirs":
+                nirs_file = db_data['nirs_file']
+                self.fig = self.create_nirs_figure(
+                    nirs_file=nirs_file
+                )
+                print("todo: nirs")
+            elif db_data['data_type'] == "force_nirs":
+                force_file = db_data['force_file']
+                nirs_file = db_data['nirs_file']
+                self.fig = self.create_combined_figure(
+                    force_file=force_file,
+                    nirs_file=nirs_file
+                )
+        except Exception as e:
+            print(f"Error creating figure: {e}")
             self.fig = None
-            print("todo: nirs")
+
+        # else:
+        #     self.fig = None
         self.setup_ui(self.fig)
 
     def setup_ui(self, fig):
@@ -198,7 +216,7 @@ class TestReportWindow(QMainWindow):
             "weight": "Weight (kg)",
             "height": "Height (cm)",
             "age": "Age (years)",
-            "french_scale": "French Scale Level",
+            "ircra": "IRCRA",
             "years_climbing": "Years of Climbing",
             "climbing_freq": "Climbing Frequency/week",
             "climbing_hours": "Climbing Hours/week",
@@ -293,14 +311,16 @@ class TestReportWindow(QMainWindow):
 
         # Read Force data
         force_df = pd.read_feather(force_file)
-        force_df['timestamp'] = force_df['timestamp'].astype(float)
-        start_time_force = force_df['timestamp'].iloc[0]
-        time_array = force_df['timestamp'] - start_time_force
+        force_df['time'] = force_df['time'].astype(float)
+        start_time_force = force_df['time'].iloc[0]
+        time_array = force_df['time'] - start_time_force
         force_array = force_df['value'].values
+        force_array = np.clip(force_array, 0, None)  # Set negative values to 0
+        force_array = self.smooth_data(force_array, window_size=5)
 
         critical_force = self.test_metrics.get("critical_force")
         max_strength = self.test_metrics.get("max_strength")
-        w_prime = self.test_metrics.get("sum_work_above_cf")
+        # w_prime = self.test_metrics.get("sum_work_above_cf")
 
         fig, ax = plt.subplots(figsize=(10, 6))
         ax.plot(time_array, force_array, label='Duration of test', color='darkblue')
@@ -308,33 +328,233 @@ class TestReportWindow(QMainWindow):
         # Plot critical force as a horizontal line
         if critical_force is not None:
             ax.axhline(critical_force, color='crimson',
-                       label=f'Critical force: {critical_force:.3f}')
+                       label=f'Critical force: {critical_force:.2f}')
 
         # Find the index of maximum strength for labeling (if it exists)
         if max_strength is not None:
             max_index = force_array.argmax()
             ax.plot(time_array[max_index], max_strength, 'r.',
-                    label=f'Maximum strength: {max_strength:.3f}')
+                    label=f'Maximum strength: {max_strength:.2f}')
             # Optionally annotate the exact value near the point
             ax.text(time_array[max_index], max_strength,
                     f'{max_strength:.2f}', fontsize=10, ha='left', va='bottom')
 
-        # Shade area above critical force for w_prime
-        # only if critical_force is valid
-        if (critical_force is not None) and (w_prime is not None):
-            ax.fill_between(
-                time_array, force_array, critical_force,
-                where=(force_array > critical_force),
-                color='lightblue', alpha=0.8,
-                label=f'Work above CF: {w_prime:.2f} [kg/s]'
-            )
+        # # Shade area above critical force for w_prime
+        # # only if critical_force is valid
+        # if (critical_force is not None) and (w_prime is not None):
+        #     ax.fill_between(
+        #         time_array, force_array, critical_force,
+        #         where=(force_array > critical_force),
+        #         color='lightblue', alpha=0.8,
+        #         label=f'Work above CF: {w_prime:.2f} [kg/s]'
+        #     )
 
         ax.set_xlabel('Time [s]', fontsize=14)
         ax.set_ylabel('Force [kg]', fontsize=14)
-        ax.legend(fontsize=12, loc='upper right')
+        # Gather legend handles and labels
+        handles, labels = ax.get_legend_handles_labels()
+        # Place the legend at the bottom
+        ax.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, -0.2),
+                  ncol=3, fontsize=12)
         ax.grid(True)
         fig.tight_layout()
-        fig.subplots_adjust(bottom=0.15)
+        fig.subplots_adjust(bottom=0.25)
+
+        return fig
+
+    def create_nirs_figure(self, nirs_file):
+        """
+        Creates a matplotlib Figure showing:
+          - The nirs vs. time curve
+
+        time_array and nirs_array should be NumPy arrays (or similar),
+        and times are in seconds from start (or however you store them).
+        """
+
+        # Read Force data
+        nirs_df = pd.read_feather(nirs_file)
+        nirs_df['time'] = nirs_df['time'].astype(float)
+        start_time_force = nirs_df['time'].iloc[0]
+        time_array = nirs_df['time'] - start_time_force
+        nirs_array = nirs_df['value'].values
+        nirs_array = np.clip(nirs_array, 0, None)  # Set negative values to 0
+        nirs_array = self.smooth_data(nirs_array, window_size=11)
+
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.plot(time_array, nirs_array, label='Duration of test', color='darkgreen')
+
+        ax.set_xlabel('Time [s]', fontsize=14)
+        ax.set_ylabel('NIRS (%)', fontsize=14)
+        # ax.legend(fontsize=12, loc='upper right')
+        # Gather legend handles and labels
+        handles, labels = ax.get_legend_handles_labels()
+        # Place the legend at the bottom
+        ax.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, -0.2),
+                  ncol=3, fontsize=12)
+        ax.grid(True)
+        fig.tight_layout()
+        fig.subplots_adjust(bottom=0.25)
+
+        return fig
+    # @staticmethod
+    # def smooth_data(data, window_size=11):
+    #     """Smooths the data using a simple moving average."""
+    #     if window_size < 2:
+    #         return data
+    #     kernel = np.ones(window_size) / window_size
+    #     return np.convolve(data, kernel, mode='same')
+
+    @staticmethod
+    def smooth_data(data, window_size=11):
+        if window_size < 2:
+            return data
+
+        half_win = (window_size - 1) // 2
+        # Pad the data on both ends using the edge values
+        data_padded = np.pad(data, (half_win, half_win), mode='edge')
+        kernel = np.ones(window_size) / window_size
+
+        # 'valid' mode ensures the output has the same size as the original data
+        # after we manually pad; if you do 'same', it tries zero-padding internally.
+        convolved = np.convolve(data_padded, kernel, mode='valid')
+        return convolved
+
+    def create_combined_figure(self, force_file, nirs_file):
+        """
+        Creates a combined figure with force data (left y-axis) and NIRS (SmO2) data (right y-axis).
+
+        Processing steps:
+          1. Load the force data and identify the test interval using the original (absolute) timestamps.
+             The test interval is defined as the time range during which the force is above 10% of its maximum.
+          2. Convert the timestamps for both force and NIRS data to relative times by subtracting the start time.
+          3. Replace any negative values in force and NIRS data with 0.
+          4. Smooth the NIRS data to reduce noise.
+          5. Shade the baseline (before test start) and recovery (after test end) areas on the NIRS plot,
+             using the relative times computed from the absolute test start and end.
+          6. Fix the NIRS y-axis limits from 0 to 100 and adjust the layout so the title does not overlap.
+
+        Parameters:
+            force_file (str): Path to the force data (feather file) with a 'time' column and 'value' column.
+            nirs_file (str): Path to the NIRS data (feather file) with a 'time' column and optionally 'smo2'.
+
+        Returns:
+            matplotlib.figure.Figure: The generated combined figure.
+        """
+
+        def correct_baseline_spikes(data, times, test_start_time, threshold_ratio=0.1):
+            """
+            Corrects outlier spikes in the baseline region of the NIRS data.
+            The baseline region is defined by time values less than test_start_time.
+            For all indices in that region, if a sample deviates from the average of all baseline samples
+            by more than threshold_ratio * baseline_average, it is replaced by the baseline average.
+            """
+            corrected = data.copy()
+            baseline_inds = np.where(times < test_start_time)[0]
+            if baseline_inds.size == 0:
+                return corrected
+            baseline_mean = np.mean(data[baseline_inds])
+            for i in baseline_inds:
+                if baseline_mean != 0 and abs(corrected[i] - baseline_mean) > threshold_ratio * baseline_mean:
+                    corrected[i] = baseline_mean
+            return corrected
+
+        # --- Load and prepare Force data (absolute timestamps) ---
+        force_df = pd.read_feather(force_file)
+        force_df['time'] = force_df['time'].astype(float)
+        # Do not subtract the start time immediately.
+        force_absolute_time = force_df['time']  # Absolute time values from the force file
+        force_array = force_df['value'].values
+        force_array = np.clip(force_array, 0, None)  # Set negative values to 0
+        force_array = self.smooth_data(force_array, window_size=5)
+
+        # --- Identify test start and end times from force data (absolute timestamps) ---
+        # max_force = force_array.max()
+        max_force = self.test_metrics.get("max_strength")
+        threshold = 0.1 * max_force
+        above_threshold_indices = np.where(force_array >= threshold)[0]
+        if above_threshold_indices.size > 0:
+            # Use the absolute times directly from the force file
+            test_start_abs = force_absolute_time.iloc[above_threshold_indices[0] - 10]
+            test_end_abs = force_absolute_time.iloc[above_threshold_indices[-1] + 10]
+        else:
+            test_start_abs = force_absolute_time.iloc[0]
+            test_end_abs = force_absolute_time.iloc[-1]
+
+        # --- Convert force time values to relative times for plotting ---
+        start_time = force_absolute_time.iloc[0]
+        time_array = force_absolute_time - start_time
+
+        # Convert the test boundaries to relative time
+        test_start_rel = test_start_abs - start_time
+        test_end_rel = test_end_abs - start_time
+
+        # --- Load and prepare NIRS data ---
+        nirs_df = pd.read_feather(nirs_file)
+        nirs_df['time'] = nirs_df['time'].astype(float)
+        # Use the same reference (first force time) to create relative time for NIRS
+        nirs_time_absolute = nirs_df['time']
+        nirs_time_array = nirs_time_absolute - start_time
+        if 'smo2' in nirs_df.columns:
+            nirs_array = nirs_df['smo2'].values
+        else:
+            nirs_array = nirs_df['value'].values
+        nirs_array = np.clip(nirs_array, 0, None)
+        # --- Correct baseline spikes in NIRS data (only before test start) ---
+        test_start_nirs_rel = force_absolute_time.iloc[above_threshold_indices[0] + 100] - start_time
+        nirs_array = correct_baseline_spikes(nirs_array, nirs_time_array, test_start_nirs_rel, threshold_ratio=0.1)
+        # --- Smooth the (corrected) NIRS data ---
+        nirs_array = self.smooth_data(nirs_array, window_size=25)
+
+        # --- Create the figure with two y-axes ---
+        fig, ax1 = plt.subplots(figsize=(10, 6))
+
+        # Plot the force data on the left y-axis
+        ax1.plot(time_array, force_array, label='Force [kg]', color='darkblue')
+        max_idx = force_array.argmax()
+        ax1.plot(time_array.iloc[max_idx] if hasattr(time_array, 'iloc') else time_array[max_idx],
+                 max_force, 'r.', label=f'Maximum strength: {max_force:.2f}')
+        # ax1.text(time_array.iloc[max_idx] if hasattr(time_array, 'iloc') else time_array[max_idx],
+        #          max_force, f'{max_force:.2f}', fontsize=10, ha='left', va='bottom')
+        ax1.set_xlabel('Time [s]', fontsize=14)
+        ax1.set_ylabel('Force [kg]', fontsize=14, color='darkblue')
+        ax1.tick_params(axis='y', labelcolor='darkblue')
+        ax1.grid(True)
+
+        critical_force = self.test_metrics.get("critical_force")
+        if critical_force is not None:
+            ax1.axhline(critical_force, color='crimson', linestyle='--', alpha=0.7,
+                        label=f'Critical force: {critical_force:.2f}')
+
+        # --- Create the secondary axis for NIRS ---
+        ax2 = ax1.twinx()
+        ax2.plot(nirs_time_array, nirs_array, label='SmO2 (%)', color='darkgreen', linestyle=':')
+        ax2.set_ylabel('SmO2 (%)', fontsize=14, color='darkgreen')
+        ax2.tick_params(axis='y', labelcolor='darkgreen')
+        ax2.set_ylim(0, 100)
+
+        # --- Determine overall time range (relative) from both datasets ---
+        combined_min_time = min(time_array.iloc[0] if hasattr(time_array, 'iloc') else time_array[0],
+                                nirs_time_array.iloc[0] if hasattr(nirs_time_array, 'iloc') else nirs_time_array[0])
+        combined_max_time = max(time_array.iloc[-1] if hasattr(time_array, 'iloc') else time_array[-1],
+                                nirs_time_array.iloc[-1] if hasattr(nirs_time_array, 'iloc') else nirs_time_array[-1])
+
+        # --- Shade baseline and recovery regions on the NIRS axis (using the relative time values) ---
+        # Baseline: Everything before test_start_rel
+        if test_start_rel > combined_min_time:
+            ax2.axvspan(combined_min_time, test_start_rel, color='green', alpha=0.1, label='Baseline')
+        # Recovery: Everything after test_end_rel
+        if combined_max_time > test_end_rel:
+            ax2.axvspan(test_end_rel, combined_max_time, color='cyan', alpha=0.1, label='Recovery')
+
+        # --- Combine legends from both axes and place them at the bottom ---
+        handles1, labels1 = ax1.get_legend_handles_labels()
+        handles2, labels2 = ax2.get_legend_handles_labels()
+        ax1.legend(handles1 + handles2, labels1 + labels2, loc='upper center',
+                   bbox_to_anchor=(0.5, -0.2), ncol=3, fontsize=10)
+
+        # --- Set main title and adjust layout ---
+        fig.suptitle("Combined Force and SmO2 Data", fontsize=12)
+        fig.subplots_adjust(top=0.92, bottom=0.3, left=0.08, right=0.92)
 
         return fig
 
@@ -423,31 +643,6 @@ class TestReportWindow(QMainWindow):
             #     rep_graph_filepath = None
         else:
             rep_graph_filepath = None
-
-        # Parameters explanation text (adjust as needed)
-        parameters_explanation_text = (
-            "<b>Maximal Force - MVC (kg):</b> This parameter represents the highest force output achieved during a maximal effort isometric contraction. It is essential for assessing peak strength and overall climbing power.<br/><br/>"
-            "<b>Average End-Force (kg):</b> The mean force measured toward the end of a sustained contraction, reflecting the climber's ability to maintain force as fatigue sets in. This parameter helps evaluate endurance and grip stability during climbs.<br/><br/>"
-            "<b>Average Time btw Max- and End-Force (ms):</b> The average duration from reaching maximum force to the force at the end of a repetition, providing insight into how quickly force decays under fatigue. It can indicate the rate of muscular fatigue during a climbing hold.<br/><br/>"
-            "<b>Average Force Drop (%):</b> The percentage decline from peak force to the end force of a repetition, which serves as an indicator of fatigue resistance. A smaller percentage drop suggests better endurance and sustained force application.<br/><br/>"
-            "<b>Average Rep. Force (kg):</b> The mean force exerted across all repetitions, offering an overall measure of strength consistency. It reflects both maximal strength and the ability to maintain performance over multiple holds.<br/><br/>"
-            "<b>Critical Force - CF (kg):</b> Determined by averaging the peak forces of the final repetitions, this value indicates the sustainable force level a climber can maintain. It is a key marker of endurance, as it represents the threshold below which fatigue becomes predominant.<br/><br/>"
-            "<b>Repetitions to CF:</b> The number of repetitions completed before the maximal force falls below the critical force threshold, directly measuring endurance. It quantifies how many moves a climber can perform before significant fatigue impairs performance.<br/><br/>"
-            "<b>CF/MVC (%):</b> The ratio of critical force to maximal force expressed as a percentage, providing a normalized measure of endurance relative to peak strength. This ratio facilitates comparisons across athletes with different absolute strength levels.<br/><br/>"
-            "<b>Average Work (kg/s):</b> The average mechanical work performed per repetition, calculated as the area under the force-time curve. This metric links the concepts of strength and endurance by reflecting energy expenditure during a hold.<br/><br/>"
-            "<b>Sum Work (kg/s):</b> The total work done over the entire test, summing the individual contributions of each repetition. It gives an aggregate measure of overall energy output during the climbing effort.<br/><br/>"
-            "<b>Average Work above CF (kg/s):</b> The average work performed while the force remains above the critical force, highlighting the ability to sustain high-force efforts despite fatigue. This value is important for assessing endurance under load.<br/><br/>"
-            "<b>Sum Work above CF (kg/s):</b> The cumulative work performed above the critical force across all repetitions, indicating the total sustained energy output. It further emphasizes the climber’s endurance capacity.<br/><br/>"
-            "<b>Average Pulling Time (ms):</b> The average duration of a repetition, from the start of force application to its termination. It reflects the speed and control of movement, which are critical in dynamic climbing maneuvers.<br/><br/>"
-            "<b>Rate of Force Development - RFD (ms):</b> The overall time required to develop force, serving as an indicator of explosive strength. Quick force generation is vital for dynamic climbing moves and sudden grip adjustments.<br/><br/>"
-            "<b>RFD first three repetitions (ms):</b> The average rate of force development calculated over the first three repetitions, capturing the climber’s initial explosive capability before fatigue sets in.<br/><br/>"
-            "<b>RFD first six repetitions (ms):</b> An average of the RFD for the first six repetitions, providing a more robust measure of early performance and explosive strength consistency.<br/><br/>"
-            "<b>RFD last three repetitions (ms):</b> The average RFD during the final three repetitions, which reflects the impact of fatigue on rapid force generation in the later stages of the test.<br/><br/>"
-            "<b>RFD normalized to force (ms/kg):</b> The overall rate of force development normalized by maximal force, allowing for comparisons between climbers with different strength levels by providing a relative measure of explosive performance.<br/><br/>"
-            "<b>RFD norm. first three rep. (ms/kg):</b> The normalized RFD for the first three repetitions, emphasizing early explosive performance relative to each climber's peak strength.<br/><br/>"
-            "<b>RFD norm. first six rep. (ms/kg):</b> The normalized RFD for the first six repetitions, offering a broader assessment of initial force generation capability adjusted by maximum force.<br/><br/>"
-            "<b>RFD norm. last three rep. (ms/kg):</b> The normalized RFD for the last three repetitions, which indicates how fatigue influences the climber’s ability to generate force rapidly when compared to peak force."
-        )
 
         print(self.db_data)
         pdf_filename = f"test_{self.db_data['test_type']}_{self.db_data['data_type']}_{self.db_data['id']}.pdf"

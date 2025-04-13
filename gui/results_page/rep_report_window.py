@@ -146,8 +146,8 @@ class RepReportWindow(QMainWindow):
             return None  # Nothing to plot
 
         # Prepare the overall time and force arrays (from the global DataFrame).
-        time_axis = self.force_df['timestamp'].values
-        force_values = self.force_df['value'].values
+        # time_axis = self.force_df['time'].values
+        # force_values = self.force_df['value'].values
 
         # Define the grid: fixed number of columns (e.g., 3) and as many rows as needed.
         cols = 6
@@ -162,7 +162,7 @@ class RepReportWindow(QMainWindow):
             ax = axes[i]
             # Slice the repetition data and re-index it for local indexing.
             rep_df = self.force_df.iloc[start_idx:end_idx + 1].copy().reset_index(drop=True)
-            rep_time = rep_df['timestamp'].values
+            rep_time = rep_df['time'].values
             rep_force = rep_df['value'].values
 
             # Compute local time so that each rep starts at 0.
@@ -180,7 +180,7 @@ class RepReportWindow(QMainWindow):
                 # Compute the end force and its local index.
                 end_force, local_end_idx = compute_end_force(rep_df)
                 # Calculate the local time corresponding to the end force sample.
-                end_local_time = rep_df['timestamp'].iloc[local_end_idx] - rep_df['timestamp'].iloc[0]
+                end_local_time = rep_df['time'].iloc[local_end_idx] - rep_df['time'].iloc[0]
                 ax.plot(end_local_time, end_force, marker='x', markersize=10, color='green',
                         label="End Force" if i == 0 else "")
 
@@ -195,7 +195,7 @@ class RepReportWindow(QMainWindow):
                         idx_20 = j
                         break
                 if idx_20 is not None:
-                    local_time_20 = rep_df['timestamp'].iloc[idx_20] - rep_df['timestamp'].iloc[0]
+                    local_time_20 = rep_df['time'].iloc[idx_20] - rep_df['time'].iloc[0]
                     ax.plot(local_time_20, threshold20, marker='3', markersize=8, color='grey',
                             label="20% Threshold" if i == 0 else "")
 
@@ -206,7 +206,7 @@ class RepReportWindow(QMainWindow):
                         idx_80 = j
                         break
                 if idx_80 is not None:
-                    local_time_80 = rep_df['timestamp'].iloc[idx_80] - rep_df['timestamp'].iloc[0]
+                    local_time_80 = rep_df['time'].iloc[idx_80] - rep_df['time'].iloc[0]
                     ax.plot(local_time_80, threshold80, marker='3', markersize=8, color='grey',
                             label="80% Threshold" if i == 0 else "")
             except Exception as e:

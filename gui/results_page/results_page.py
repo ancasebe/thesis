@@ -316,8 +316,11 @@ class ResultsPage(QWidget):
         if not test:
             return
         print("the test:", test)
+
         participant_id = test["participant_id"]
+        print('participant_id_test_db', participant_id)
         participant_info = self.climber_db_manager.get_user_data(self.admin_id, participant_id)
+        # print('participant_id_cimber_db', participant_info['id'])
         print("participant info:", participant_info)
         if not participant_info:
             participant_info = {"Name": "Unknown"}

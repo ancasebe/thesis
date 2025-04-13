@@ -38,33 +38,28 @@ def compute_max_force(force_df):
         return None, None
 
 
-def compute_end_force(rep_df, derivative_threshold=0.4, plateau_fraction=0.8,
-                      min_fraction=0.2, max_force_ratio=1, stable_required=2):
+def compute_end_force(rep_df, derivative_threshold=0.2, min_fraction=0.3,
+                      stable_required=2, start_offset=10, limit_ratio=0.3):
     """
-    Compute the end force (plateau edge) by scanning backwards from the end of the rep,
-    requiring that the difference between a sample and the one three indices earlier is small
-    for a consecutive block of samples.
+    Compute the end force (plateau edge) by scanning backward from a point near the end
+    of the rep. The function starts scanning from 'start_offset' samples from the end and
+    moves backward until it finds at least 'stable_required' consecutive samples where the
+    difference between the current sample and the sample three indices earlier is <= derivative_threshold.
 
-    Approach:
-      1. Compute the maximum force and define the plateau region as values >= (plateau_fraction * max_force).
-      2. Only consider candidate samples that occur in the last min_fraction of the rep and are below max_force_ratio*max_force.
-      3. Scan backward from the rep's end and, for each sample (where i>=3), check if the difference between
-         forces[i] and forces[i-3] is <= derivative_threshold.
-      4. Group consecutive samples meeting this condition into a "stable block."
-      5. Once a stable block of length >= stable_required is found, take the earliest sample of that block
-         (i.e. the one closest to the front of the rep) as the plateau edge.
-      6. If no such block is found, fall back to using the last sample.
+    Additionally, a candidate is only accepted if its force is at least limit_ratio * max_force,
+    otherwise the search continues.
 
     Parameters:
         rep_df (pd.DataFrame): DataFrame for a single rep (must have a 'value' column).
-        derivative_threshold (float): Maximum allowed difference between a sample and the sample three indices earlier.
-        plateau_fraction (float): Fraction of max force to define the plateau region.
-        min_fraction (float): The end force must be detected within the last min_fraction portion of the rep.
-        max_force_ratio (float): The candidate end force must be less than this fraction of the max force.
-        stable_required (int): Number of consecutive samples (with the 3-sample gap check) required for stability.
+        derivative_threshold (float): Maximum allowed difference between a sample and the sample 3 indices earlier.
+        min_fraction (float): Only search in the last min_fraction portion of the rep.
+        stable_required (int): Number of consecutive stable samples required.
+        start_offset (int): Number of samples from the end at which to start the backward scan.
+        limit_ratio (float): Minimum acceptable candidate force is limit_ratio * max_force.
 
     Returns:
-        tuple: (end force, index), rounded to two decimals.
+        tuple: (end_force, index), where end_force is rounded to two decimals and index is the DataFrame index;
+               returns (None, None) if no stable candidate meeting the criteria is found.
     """
     try:
         forces = rep_df['value'].values
@@ -74,38 +69,40 @@ def compute_end_force(rep_df, derivative_threshold=0.4, plateau_fraction=0.8,
             return None, None
 
         max_force = forces.max()
-        min_plateau = plateau_fraction * max_force
-
-        # Define the region toward the end where we expect the end force.
+        # Define the lower bound for scanning: only search in the last min_fraction of the rep.
         min_valid_idx = int(N * (1 - min_fraction))
+        # Set starting index: start_offset samples from the end (or the very last sample if that would be too low)
+        start_index = N - start_offset if (N - start_offset) >= min_valid_idx else N - 1
 
-        stable_block = []  # to hold indices that meet the 3-sample difference condition
+        consecutive = 0
         candidate_idx = None
 
-        # Scan backwards within the valid region.
-        for i in range(N - 1, min_valid_idx - 1, -1):
-            # Only consider points in the plateau region and that show some drop from max.
-            if min_plateau <= forces[i] < max_force_ratio * max_force:
-                # Ensure we have enough earlier samples to compare.
-                if i >= 3 and abs(forces[i] - forces[i - 3]) <= derivative_threshold:
-                    stable_block.append(i)
-                else:
-                    if len(stable_block) >= stable_required:
-                        candidate_idx = min(stable_block)
+        # Scan backward from start_index down to min_valid_idx.
+        for i in range(start_index, min_valid_idx - 1, -1):
+            # Ensure we can compare with the sample three indices earlier.
+            if i < 3:
+                break
+            # Check the condition based on the sample three indices earlier.
+            if abs(forces[i] - forces[i - 3]) <= derivative_threshold:
+                consecutive += 1
+                candidate_idx = i
+                if consecutive >= stable_required:
+                    # Only accept candidate if it meets the minimum force limit.
+                    if forces[candidate_idx] >= limit_ratio * max_force:
                         break
                     else:
-                        stable_block = []
+                        # Candidate's force is too low; reset and continue searching.
+                        consecutive = 0
+                        candidate_idx = None
             else:
-                if len(stable_block) >= stable_required:
-                    candidate_idx = min(stable_block)
-                    break
-                else:
-                    stable_block = []
+                consecutive = 0
+                candidate_idx = None
 
-        if candidate_idx is not None and candidate_idx >= min_valid_idx:
+        if candidate_idx is not None and consecutive >= stable_required:
             return round(forces[candidate_idx], 2), indices[candidate_idx]
         else:
-            return round(forces[-1], 2), indices[-1]
+            return None, None
+
     except Exception as e:
         print(f"Error computing end force: {e}")
         return None, None
@@ -118,13 +115,13 @@ def compute_time_between_max_and_end(max_force_idx, end_force_idx, rep_df):
     Parameters:
         max_force_idx (float): Index of determined max force.
         end_force_idx (float): Index of determined end force.
-        rep_df (pd.DataFrame): DataFrame with 'timestamp' column.
+        rep_df (pd.DataFrame): DataFrame with 'time' column.
 
     Returns:
         float: Time in milliseconds, rounded to two decimals.
     """
     try:
-        time_values = rep_df['timestamp'].values
+        time_values = rep_df['time'].values
         duration_s = (time_values[end_force_idx] - time_values[max_force_idx])
         return round(duration_s * 1000, 2)
     except Exception as e:
@@ -154,17 +151,17 @@ def compute_force_drop(max_force, end_force):
 
 def compute_work(force_df):
     """
-    Compute the total work (kg·s) as the area under the force-time curve using actual timestamps.
+    Compute the total work (kg·s) as the area under the force-time curve using actual times.
 
     Parameters:
-        force_df (pd.DataFrame): DataFrame with 'value' and 'timestamp' columns.
+        force_df (pd.DataFrame): DataFrame with 'value' and 'time' columns.
 
     Returns:
         float: Total work, rounded to two decimals.
     """
     try:
         force_values = force_df['value'].values
-        time_values = force_df['timestamp'].values
+        time_values = force_df['time'].values
         work = np.trapezoid(force_values, x=time_values)
         return round(work, 2)
     except Exception as e:
@@ -177,7 +174,7 @@ def compute_rfd(force_df, max_force):
     Compute the time required to go from 20% of MVC to 80% of MVC.
 
     Parameters:
-        force_df (pd.DataFrame): DataFrame with 'value' and 'timestamp' columns.
+        force_df (pd.DataFrame): DataFrame with 'value' and 'time' columns.
         max_force (float): Maximal force.
 
     Returns:
@@ -186,7 +183,7 @@ def compute_rfd(force_df, max_force):
     """
     try:
         force_values = force_df['value'].values
-        time_values = force_df['timestamp'].values
+        time_values = force_df['time'].values
         if len(force_values) == 0:
             return None
 
@@ -242,7 +239,7 @@ def compute_work_above_cf(force_df, cf):
     Compute the total work performed above the critical force (CF).
 
     Parameters:
-        force_df (pd.DataFrame): DataFrame with 'value' and 'timestamp' columns.
+        force_df (pd.DataFrame): DataFrame with 'value' and 'time' columns.
         cf (float): Critical force value.
 
     Returns:
@@ -250,9 +247,9 @@ def compute_work_above_cf(force_df, cf):
     """
     try:
         force_values = force_df['value'].values
-        timestamps = force_df['timestamp'].values
+        times = force_df['time'].values
         adjusted_force = np.maximum(force_values - cf, 0)
-        work_above = np.trapezoid(adjusted_force, x=timestamps)
+        work_above = np.trapezoid(adjusted_force, x=times)
         return round(work_above, 2)
     except Exception as e:
         print(f"Error computing work above CF: {e}")
@@ -264,7 +261,7 @@ def compute_work_above_cf(force_df, cf):
 #     Compute the total work performed above the critical force (CF) as the sum.
 #
 #     Parameters:
-#         force_df (pd.DataFrame): DataFrame with 'value' and 'timestamp' columns.
+#         force_df (pd.DataFrame): DataFrame with 'value' and 'time' columns.
 #         cf (float): Critical force.
 #
 #     Returns:
@@ -272,8 +269,8 @@ def compute_work_above_cf(force_df, cf):
 #     """
 #     try:
 #         force_values = force_df['value'].values
-#         timestamps = force_df['timestamp'].values
-#         work_above = np.trapezoid(np.maximum(force_values - cf, 0), x=timestamps)
+#         times = force_df['time'].values
+#         work_above = np.trapezoid(np.maximum(force_values - cf, 0), x=times)
 #         return round(work_above, 2)
 #     except Exception as e:
 #         print(f"Error computing sum work above CF: {e}")
@@ -505,7 +502,7 @@ class RepMetrics:
         Initialize the RepMetrics object.
 
         Parameters:
-            force_df (pd.DataFrame): Force data with 'timestamp' and 'value' columns.
+            force_df (pd.DataFrame): Force data with 'time' and 'value' columns.
             threshold_ratio (float): Fraction of the maximum smoothed force used as threshold.
             min_rep_sec (float): Minimum valid repetition duration (in seconds).
             max_rep_sec (float): Maximum valid repetition duration (in seconds).
@@ -541,14 +538,14 @@ class RepMetrics:
 
     def _detect_reps(self):
         """
-        Detect repetitions in the force data using actual timestamps.
+        Detect repetitions in the force data using actual times.
 
         Process:
           1. Smooth the force values.
           2. Determine a threshold as a fraction of the maximum smoothed value.
           3. Detect contiguous intervals where the smoothed force exceeds the threshold.
           4. Merge intervals that are separated by a gap shorter than a constant (e.g. 1.0 sec).
-          5. For each merged interval, compute the duration using the actual timestamps.
+          5. For each merged interval, compute the duration using the actual times.
              Only retain intervals whose duration is between min_rep_sec and max_rep_sec.
 
         Returns:
@@ -572,14 +569,14 @@ class RepMetrics:
             # Merge segments with small gaps based on time difference.
             min_gap_sec = 1.0  # Merge segments separated by less than 1.0 second.
             merged_intervals = []
-            timestamps = self.force_df['timestamp'].values
+            times = self.force_df['time'].values
             for interval in active_intervals:
                 if not merged_intervals:
                     merged_intervals.append(interval)
                 else:
                     prev_start, prev_end = merged_intervals[-1]
                     cur_start, cur_end = interval
-                    gap = timestamps[cur_start] - timestamps[prev_end]
+                    gap = times[cur_start] - times[prev_end]
                     if gap < min_gap_sec:
                         merged_intervals[-1] = (prev_start, cur_end)
                     else:
@@ -588,7 +585,7 @@ class RepMetrics:
             # Filter intervals based on actual repetition duration.
             rep_intervals = []
             for (s, e) in merged_intervals:
-                duration = timestamps[e] - timestamps[s]
+                duration = times[e] - times[s]
                 if self.min_rep_sec <= duration <= self.max_rep_sec:
                     rep_intervals.append((s, e))
             print("Detected repetition intervals (using time):", rep_intervals)
@@ -661,13 +658,13 @@ class RepMetrics:
             All values (except repetition number) are rounded to two decimals.
         """
         rep_metrics = []
-        # time_axis = self.force_df['timestamp'].values
+        # time_axis = self.force_df['time'].values
         print("self.reps: ", len(self.reps))
         try:
             for i, (s, e) in enumerate(self.reps, start=1):
                 print('repetition n.', i, 'indexes: ', (s, e))
                 rep_df = self.force_df.iloc[s:e + 1].copy().reset_index(drop=True)
-                rep_df['local_time'] = rep_df['timestamp'] - rep_df['timestamp'].iloc[0]
+                rep_df['local_time'] = rep_df['time'] - rep_df['time'].iloc[0]
                 max_force, max_force_idx = compute_max_force(rep_df)
                 end_force, end_force_idx = compute_end_force(rep_df)
                 # end_force, end_force_idx = compute_end_force(rep_df, derivative_threshold=0.3, plateau_fraction=0.8)
@@ -675,7 +672,7 @@ class RepMetrics:
                 work = compute_work(rep_df)
                 rfd, rfd_norm = compute_rfd(rep_df, max_force)
                 avg_force = rep_df['value'].mean()
-                duration_ms = (rep_df['timestamp'].iloc[-1] - rep_df['timestamp'].iloc[0]) * 1000
+                duration_ms = (rep_df['time'].iloc[-1] - rep_df['time'].iloc[0]) * 1000
                 max_end_time = compute_time_between_max_and_end(max_force_idx, end_force_idx, rep_df)
                 rep_metrics.append({
                     "Rep": int(i),
@@ -724,7 +721,7 @@ class ForceMetrics:
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"File not found: {file_path}")
         self.df = pd.read_feather(file_path)
-        for col in ['timestamp', 'value']:
+        for col in ['time', 'value']:
             if col not in self.df.columns:
                 raise ValueError(f"Missing required column: {col}")
         self.test_type = test_type
@@ -769,57 +766,63 @@ class ForceMetrics:
             # Overall metrics computed from the entire force DataFrame.
             results['max_strength'], _ = compute_max_force(self.df)
             print('Max force:', results['max_strength'])
-            results['work'] = avg_work
-            results['sum_work'] = sum_work
-
-            # Rep-based metrics computed from the segmented repetitions (self.rep_results).
-            results['avg_end_force'] = compute_average_end_force(self.rep_metrics)
-            results['time_between_max_end_ms'] = compute_average_max_end_time(self.rep_metrics)
-            results['force_drop_pct'] = compute_average_force_drop(self.rep_metrics)
-            results['avg_rep_force'] = compute_average_rep_force(self.rep_metrics)
             results['avg_pulling_time_ms'] = compute_average_pulling_time(self.rep_metrics)
-
-            # Compute critical force from rep metrics (average MVC of the last few reps)
-            results['critical_force'] = compute_critical_force(self.rep_metrics)
-            print('Critical force:', results['critical_force'])
-            print('Number of repetitions:', len(self.rep_metrics))
-
-            # Additional metrics that depend on previously computed values.
-            if results['critical_force']:
-                results['reps_to_cf'] = compute_reps_to_cf(self.rep_metrics, results['critical_force'])
-                results['cf_mvc_pct'] = compute_cf_mvc(results['critical_force'], results['max_strength'])
-                # Loop over the rep intervals (they are in the same order as rep_metrics)
-                for i, (s, e) in enumerate(self.rep_evaluator.reps):
-                    # Extract the rep data and reset its index for local integration.
-                    rep_df = self.df.iloc[s:e + 1].copy().reset_index(drop=True)
-                    # Compute the work above CF for this rep using the timestamps from rep_df.
-                    rep_work_above_cf = compute_work_above_cf(rep_df, results['critical_force'])
-                    # Add the computed work above CF to the corresponding rep metric.
-                    self.rep_metrics[i]['Work Above CF (kg/s)'] = rep_work_above_cf
-
-                # results['avg_work_above_cf'] = compute_avg_work_above_cf(self.rep_metrics)
-                results['sum_work_above_cf'] = compute_work_above_cf(self.df, results['critical_force'])
-
+            results['sum_work'] = sum_work
             n_reps = len(self.rep_metrics)
 
             results['rfd_overall'] = compute_rfd_subset(self.rep_metrics, list(range(len(self.rep_metrics))))
             results['rfd_norm_overall'] = compute_rfd_subset_normalized(self.rep_metrics, list(range(len(self.rep_metrics))))
 
-            if n_reps >= 3:
-                rfd_first3 = compute_rfd_subset(self.rep_metrics, list(range(3)))
-                rfd_last3 = compute_rfd_subset(self.rep_metrics, list(range(n_reps - 3, n_reps)))
-                rfd_norm_first3 = compute_rfd_subset_normalized(self.rep_metrics, list(range(3)))
-                rfd_norm_last3 = compute_rfd_subset_normalized(self.rep_metrics, list(range(n_reps - 3, n_reps)))
-                results['rfd_first3'] = round(rfd_first3, 2) if rfd_first3 is not None else None
-                results['rfd_last3'] = round(rfd_last3, 2) if rfd_last3 is not None else None
-                results['rfd_norm_first3'] = round(rfd_norm_first3, 2) if rfd_norm_first3 is not None else None
-                results['rfd_norm_last3'] = round(rfd_norm_last3, 2) if rfd_norm_last3 is not None else None
+            if self.test_type not in ['mvc', 'sit', 'dh']:
+                results['work'] = avg_work
+                if n_reps >= 3:
+                    rfd_first3 = compute_rfd_subset(self.rep_metrics, list(range(3)))
+                    rfd_last3 = compute_rfd_subset(self.rep_metrics, list(range(n_reps - 3, n_reps)))
+                    rfd_norm_first3 = compute_rfd_subset_normalized(self.rep_metrics, list(range(3)))
+                    rfd_norm_last3 = compute_rfd_subset_normalized(self.rep_metrics, list(range(n_reps - 3, n_reps)))
+                    results['rfd_first3'] = round(rfd_first3, 2) if rfd_first3 is not None else None
+                    results['rfd_last3'] = round(rfd_last3, 2) if rfd_last3 is not None else None
+                    results['rfd_norm_first3'] = round(rfd_norm_first3, 2) if rfd_norm_first3 is not None else None
+                    results['rfd_norm_last3'] = round(rfd_norm_last3, 2) if rfd_norm_last3 is not None else None
 
-            if n_reps >= 6:
-                rfd_first6 = compute_rfd_subset(self.rep_metrics, list(range(6)))
-                rfd_norm_first6 = compute_rfd_subset_normalized(self.rep_metrics, list(range(6)))
-                results['rfd_first6'] = round(rfd_first6, 2) if rfd_first6 is not None else None
-                results['rfd_norm_first6'] = round(rfd_norm_first6, 2) if rfd_norm_first6 is not None else None
+                if n_reps >= 6:
+                    rfd_first6 = compute_rfd_subset(self.rep_metrics, list(range(6)))
+                    rfd_norm_first6 = compute_rfd_subset_normalized(self.rep_metrics, list(range(6)))
+                    results['rfd_first6'] = round(rfd_first6, 2) if rfd_first6 is not None else None
+                    results['rfd_norm_first6'] = round(rfd_norm_first6, 2) if rfd_norm_first6 is not None else None
+
+            if self.test_type == 'ao':
+                # Rep-based metrics computed from the segmented repetitions (self.rep_results).
+                results['avg_end_force'] = compute_average_end_force(self.rep_metrics)
+                results['time_between_max_end_ms'] = compute_average_max_end_time(self.rep_metrics)
+                results['force_drop_pct'] = compute_average_force_drop(self.rep_metrics)
+                results['avg_rep_force'] = compute_average_rep_force(self.rep_metrics)
+
+                # Compute critical force from rep metrics (average MVC of the last few reps)
+                results['critical_force'] = compute_critical_force(self.rep_metrics)
+                print('Critical force:', results['critical_force'])
+                print('Number of repetitions:', len(self.rep_metrics))
+
+                # Additional metrics that depend on previously computed values.
+                if results['critical_force']:
+                    results['reps_to_cf'] = compute_reps_to_cf(self.rep_metrics, results['critical_force'])
+                    results['cf_mvc_pct'] = compute_cf_mvc(results['critical_force'], results['max_strength'])
+                    # Loop over the rep intervals (they are in the same order as rep_metrics)
+                    for i, (s, e) in enumerate(self.rep_evaluator.reps):
+                        # Extract the rep data and reset its index for local integration.
+                        rep_df = self.df.iloc[s:e + 1].copy().reset_index(drop=True)
+                        # Compute the work above CF for this rep using the times from rep_df.
+                        rep_work_above_cf = compute_work_above_cf(rep_df, results['critical_force'])
+                        # Add the computed work above CF to the corresponding rep metric.
+                        self.rep_metrics[i]['Work Above CF (kg/s)'] = rep_work_above_cf
+
+                    # results['avg_work_above_cf'] = compute_avg_work_above_cf(self.rep_metrics)
+                    results['sum_work_above_cf'] = compute_work_above_cf(self.df, results['critical_force'])
+
+                # n_reps = len(self.rep_metrics)
+                #
+                # results['rfd_overall'] = compute_rfd_subset(self.rep_metrics, list(range(len(self.rep_metrics))))
+                # results['rfd_norm_overall'] = compute_rfd_subset_normalized(self.rep_metrics, list(range(len(self.rep_metrics))))
 
             return results, self.rep_metrics
 

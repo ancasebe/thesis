@@ -59,7 +59,7 @@ class EditClimberInfoPage(QWidget):
         }
 
         self.second_column_widgets = {
-            "French Scale Level:": QComboBox(),
+            "IRCRA Scale Level:": QComboBox(),
             "Years of Climbing:": QSpinBox(),
             "Climbing Frequency/week:": QSpinBox(),
             "Climbing Hours/week:": QSpinBox(),
@@ -75,9 +75,9 @@ class EditClimberInfoPage(QWidget):
         self.first_column_widgets["Height (cm):"].setRange(0, 240)
         self.first_column_widgets["Age (years):"].setRange(0, 100)
 
-        self.second_column_widgets["French Scale Level:"].addItems(
-            ["-", "5", "6a", "6a+", "6b", "6b+", "6c", "7a", "7a+", "7b", "7b+",
-             "7c", "7c+", "8a", "8a+", "8b", "8b+", "8c", "8c+", "9a", "9a+", "9b", "9b+", "9c"]
+        self.second_column_widgets["IRCRA Scale Level:"].addItems(
+            ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17',
+             '18', '19', '20', '21', '22', '23', '24', '25', '26', '27', '28', '29', '30', '31', '32']
         )
         self.second_column_widgets["Years of Climbing:"].setRange(0, 50)
         self.second_column_widgets["Climbing Frequency/week:"].setRange(0, 7)
@@ -161,7 +161,7 @@ class EditClimberInfoPage(QWidget):
             "weight": "Weight (kg):",
             "height": "Height (cm):",
             "age": "Age (years):",
-            "french_scale": "French Scale Level:",
+            "ircra": "IRCRA Scale Level:",
             "years_climbing": "Years of Climbing:",
             "climbing_freq": "Climbing Frequency/week:",
             "climbing_hours": "Climbing Hours/week:",
@@ -209,7 +209,7 @@ class EditClimberInfoPage(QWidget):
             "weight": self.first_column_widgets["Weight (kg):"].value(),
             "height": self.first_column_widgets["Height (cm):"].value(),
             "age": self.first_column_widgets["Age (years):"].value(),
-            "french_scale": self.second_column_widgets["French Scale Level:"].currentText(),
+            "ircra": self.second_column_widgets["IRCRA Scale Level:"].currentText(),
             "years_climbing": self.second_column_widgets["Years of Climbing:"].value(),
             "climbing_freq": self.second_column_widgets["Climbing Frequency/week:"].value(),
             "climbing_hours": self.second_column_widgets["Climbing Hours/week:"].value(),
