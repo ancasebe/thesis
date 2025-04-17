@@ -9,7 +9,7 @@ from PySide6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QGroupBox, QFor
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 
-from gui.results_page.pdf_exporter import generate_pdf_report, parameters_explanation_text
+from gui.results_page.pdf_exporter import generate_pdf_report, parameters_explanation_dict, filter_parameters_explanation
 from gui.results_page.rep_report_window import RepReportWindow
 
 
@@ -29,6 +29,11 @@ class TestReportWindow(QMainWindow):
         test_results = db_data['test_results']
         print("Test metrics:", test_results)
         self.test_metrics = eval(test_results, {"np": np})
+        if db_data['data_type'] != "force":
+            nirs_results = db_data['nirs_results']
+            self.nirs_results = eval(nirs_results, {"np": np})
+        else:
+            self.nirs_results = None
         self.participant_info = participant_info
         self.db_data = db_data
         # Create the matplotlib figure
@@ -56,8 +61,6 @@ class TestReportWindow(QMainWindow):
             print(f"Error creating figure: {e}")
             self.fig = None
 
-        # else:
-        #     self.fig = None
         self.setup_ui(self.fig)
 
     def setup_ui(self, fig):
@@ -97,16 +100,31 @@ class TestReportWindow(QMainWindow):
                 font-weight: bold;
             }
         """)
-        # group_font = basic_info_group.font()
-        # group_font.setPointSize(14)
-        # group_font.setBold(True)
-        # basic_info_group.setFont(group_font)
-        container_layout.addWidget(basic_info_group)
+        # If the test contains NIRS data, add a NIRS Results section.
+        if self.db_data["data_type"] in ["nirs", "force_nirs"]:
+            nirs_results_pairs = self.build_nirs_results_pairs()
+            print("DEBUG: nirs_results_pairs =", nirs_results_pairs)
+            if nirs_results_pairs:
+                nirs_results_group = self.create_two_column_group("NIRS Results", nirs_results_pairs)
+                nirs_results_group.setStyleSheet("""
+                    QGroupBox::title {
+                        font-size: 14pt;
+                        font-weight: bold;
+                    }
+                """)
+
+                info_layout = QHBoxLayout()
+                info_layout.addWidget(basic_info_group, stretch=1)
+                info_layout.addWidget(nirs_results_group, stretch=1)
+                container_layout.addLayout(info_layout)
+                # container_layout.addWidget(nirs_results_group)
+        else:
+            container_layout.addWidget(basic_info_group)
 
         # 3) Participant Info (two columns)
         # participant_pairs = list(self.participant_info.items())  # [(key, value), ...]
         participant_pairs = self.build_participant_info_pairs()
-        participant_group = self.create_two_column_group("Participant Info", participant_pairs)
+        # participant_group = self.create_two_column_group("Participant Info", participant_pairs)
         # Convert them to label–value
         # For example, participant_pairs = [("name", "Anna"), ("surname", "Sebestikova"), ...]
         participant_group = self.create_two_column_group("Participant Info", participant_pairs)
@@ -152,7 +170,7 @@ class TestReportWindow(QMainWindow):
         close_button = QPushButton("Close")
         close_button.clicked.connect(self.close)
         bottom_layout.addWidget(export_button)
-        if self.db_data['test_type'] in ['ao', 'iit']:
+        if self.db_data['test_type'] in ['ao', 'iit', 'iirt']:
             show_reps_button = QPushButton("Show Repetitions")
             show_reps_button.clicked.connect(self.show_repetitions)
             bottom_layout.addWidget(show_reps_button)
@@ -203,6 +221,26 @@ class TestReportWindow(QMainWindow):
             pairs.append((label, str(value)))
         return pairs
 
+    def build_nirs_results_pairs(self):
+        """
+        Build a list of (label, value) pairs for NIRS evaluation results.
+        Assumes that self.test_metrics (obtained from db_data['test_results'])
+        contains an entry 'nirs_results' that is a dictionary with keys such as
+        'baseline_mean' and 'time_to_recovery'.
+        """
+        pairs = []
+        # You might have stored it as a dictionary inside test_metrics.
+        print('nirs_results:', self.nirs_results)
+        if self.nirs_results:
+            mapping = {
+                "baseline_mean": "Baseline Mean (%)",
+                "time_to_recovery": "Time to Recovery (s)"
+            }
+            for key, value in self.nirs_results.items():
+                label = mapping.get(key, key.replace('_', ' ').capitalize())
+                pairs.append((label, str(value)))
+        return pairs
+
     def build_participant_info_pairs(self):
         """
         Build a list of (label, value) pairs for the participant info using a predefined mapping.
@@ -240,7 +278,8 @@ class TestReportWindow(QMainWindow):
         test_name = self.db_data.get("test_type", "-")
         data_type = self.db_data.get("data_type", "-")
         arm_tested = self.db_data.get("arm_tested", "-")
-        ts = self.db_data.get("timestamp")
+        ts = self.db_data.get("timestamp", "-")
+        number_of_reps = self.db_data.get("number_of_reps", "-")
         date_str, time_str = "", ""
         if ts:
             try:
@@ -255,6 +294,7 @@ class TestReportWindow(QMainWindow):
             ("Test Name", test_name),
             ("Data Type", data_type),
             ("Arm Tested", arm_tested),
+            ("Number of Repetitions", number_of_reps),
             ("Date", date_str),
             ("Time", time_str)
         ]
@@ -316,7 +356,7 @@ class TestReportWindow(QMainWindow):
         time_array = force_df['time'] - start_time_force
         force_array = force_df['value'].values
         force_array = np.clip(force_array, 0, None)  # Set negative values to 0
-        force_array = self.smooth_data(force_array, window_size=5)
+        force_array = self.smooth_data(force_array, window_size=11)
 
         critical_force = self.test_metrics.get("critical_force")
         max_strength = self.test_metrics.get("max_strength")
@@ -351,6 +391,7 @@ class TestReportWindow(QMainWindow):
 
         ax.set_xlabel('Time [s]', fontsize=14)
         ax.set_ylabel('Force [kg]', fontsize=14)
+        ax.set_ylim(0, max_strength + 5)
         # Gather legend handles and labels
         handles, labels = ax.get_legend_handles_labels()
         # Place the legend at the bottom
@@ -391,6 +432,7 @@ class TestReportWindow(QMainWindow):
         # Place the legend at the bottom
         ax.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, -0.2),
                   ncol=3, fontsize=12)
+        ax.set_ylim(0, 100)
         ax.grid(True)
         fig.tight_layout()
         fig.subplots_adjust(bottom=0.25)
@@ -465,7 +507,7 @@ class TestReportWindow(QMainWindow):
         force_absolute_time = force_df['time']  # Absolute time values from the force file
         force_array = force_df['value'].values
         force_array = np.clip(force_array, 0, None)  # Set negative values to 0
-        force_array = self.smooth_data(force_array, window_size=5)
+        force_array = self.smooth_data(force_array, window_size=11)
 
         # --- Identify test start and end times from force data (absolute timestamps) ---
         # max_force = force_array.max()
@@ -474,8 +516,8 @@ class TestReportWindow(QMainWindow):
         above_threshold_indices = np.where(force_array >= threshold)[0]
         if above_threshold_indices.size > 0:
             # Use the absolute times directly from the force file
-            test_start_abs = force_absolute_time.iloc[above_threshold_indices[0] - 10]
-            test_end_abs = force_absolute_time.iloc[above_threshold_indices[-1] + 10]
+            test_start_abs = force_absolute_time.iloc[above_threshold_indices[0]]
+            test_end_abs = force_absolute_time.iloc[above_threshold_indices[-1]]
         else:
             test_start_abs = force_absolute_time.iloc[0]
             test_end_abs = force_absolute_time.iloc[-1]
@@ -518,6 +560,7 @@ class TestReportWindow(QMainWindow):
         ax1.set_xlabel('Time [s]', fontsize=14)
         ax1.set_ylabel('Force [kg]', fontsize=14, color='darkblue')
         ax1.tick_params(axis='y', labelcolor='darkblue')
+        ax1.set_ylim(0, max_force + 5)
         ax1.grid(True)
 
         critical_force = self.test_metrics.get("critical_force")
@@ -568,41 +611,58 @@ class TestReportWindow(QMainWindow):
         basic_info = self.build_basic_info_pairs()
         participant_info = self.build_participant_info_pairs()
         test_metrics = self.build_test_metrics_pairs()
-
-        # Retrieve rep_results from db_data and convert to a table
-        rep_results_str = self.db_data.get('rep_results', "")
-        if rep_results_str:
-            try:
-                rep_results = eval(rep_results_str, {"np": np})
-            except Exception as e:
-                QMessageBox.warning(self, "Error", f"Could not parse rep metrics: {e}")
-                return
+        if self.db_data['data_type'] != 'force':
+            nirs_results = self.build_nirs_results_pairs()
         else:
-            rep_results = []
-        if rep_results:
-            # import pandas as pd
-            df_rep = pd.DataFrame(rep_results)
-            rep_table = [df_rep.columns.tolist()] + df_rep.values.tolist()
-            # Transform header row to include line breaks for better fit
-            transformed_header = [
-                "Rep\nno.",
-                "Max Force\n(kg)",
-                "End Force\n(kg)",
-                "Force Drop\n(%)",
-                "Avg. Force\n(kg)",
-                "Pull Time\n(ms)",
-                "Max-End\nTime (s)",
-                "RFD\n(ms)",
-                "RFD norm\n(ms/kg)",
-                "W\n(kg/s)",
-                "W'\n(kg/s)",
-            ]
-            rep_table[0] = transformed_header
+            nirs_results = None
+        try:
+            force_df = pd.read_feather(self.db_data['force_file'])
+        except Exception as e:
+            QMessageBox.warning(self, "Error", f"Could not read force file: {e}")
+            return
+        if self.db_data['test_type'] in ['ao', 'iit', 'iirt']:
+            # Retrieve rep_results from db_data and convert to a table
+            rep_results_str = self.db_data.get('rep_results', "")
+            if rep_results_str:
+                try:
+                    rep_results = eval(rep_results_str, {"np": np})
+                except Exception as e:
+                    QMessageBox.warning(self, "Error", f"Could not parse rep metrics: {e}")
+                    return
+            else:
+                rep_results = []
+            if rep_results:
+                df_rep = pd.DataFrame(rep_results)
+                rep_table = [df_rep.columns.tolist()] + df_rep.values.tolist()
+                # Transform header row to include line breaks for better fit
+                transformed_header = [
+                    "Rep\nno.",
+                    "Max Force\n(kg)",
+                    "End Force\n(kg)",
+                    "Force Drop\n(%)",
+                    "Avg. Force\n(kg)",
+                    "Pull Time\n(ms)",
+                    "Max-End\nTime (s)",
+                    "RFD\n(ms)",
+                    "RFD norm\n(ms/kg)",
+                    "W\n(kg/s)",
+                    "W'\n(kg/s)",
+                ]
+                rep_table[0] = transformed_header
+                rep_window_temp = RepReportWindow(rep_results=rep_results,
+                                                  force_df=force_df,
+                                                  test_id=self.db_data['id'],
+                                                  parent=self)
+                rep_graph_filepath = rep_window_temp.rep_graph_filepath
+            else:
+                rep_table = None
+                rep_graph_filepath = None
         else:
             rep_table = None
+            rep_graph_filepath = None
 
-        # self.test_id = self.db_data['id']
-        # Build filenames using the test_id.
+        # Filter the explanation text based on the test metrics
+        filtered_parameters_text = filter_parameters_explanation(self.test_metrics, parameters_explanation_dict)
 
         # Save the Force-Time Graph.
         if self.fig:
@@ -611,40 +671,6 @@ class TestReportWindow(QMainWindow):
         else:
             force_graph_filepath = None
 
-        # # Prepare Force-Time Graph image (from self.fig)
-        # import io
-        # buf = io.BytesIO()
-        # if self.fig:
-        #     self.fig.savefig(buf, format='png')
-        #     buf.seek(0)
-        # else:
-        #     buf = None
-
-        # Prepare Repetition Graph image using a temporary RepReportWindow
-        # from gui.results_page.rep_report_window import RepReportWindow
-        try:
-            force_df = pd.read_feather(self.db_data['force_file'])
-        except Exception as e:
-            QMessageBox.warning(self, "Error", f"Could not read force file: {e}")
-            return
-
-        if rep_results:
-            rep_window_temp = RepReportWindow(rep_results=rep_results,
-                                              force_df=force_df,
-                                              test_id=self.db_data['id'],
-                                              parent=self)
-            rep_graph_filepath = rep_window_temp.rep_graph_filepath
-            # rep_buf = io.BytesIO()
-            # if rep_graph_fig:
-            #     rep_graph_filepath = f"{self.db_data['id']}_rep_graph.png"
-            #     # rep_graph_fig.savefig(rep_graph_filepath, format='png')
-            #     # rep_buf.seek(0)
-            # else:
-            #     rep_graph_filepath = None
-        else:
-            rep_graph_filepath = None
-
-        print(self.db_data)
         pdf_filename = f"test_{self.db_data['test_type']}_{self.db_data['data_type']}_{self.db_data['id']}.pdf"
         # Choose save path using QFileDialog
         pdf_path, _ = QFileDialog.getSaveFileName(self, "Save Report", pdf_filename, "PDF Files (*.pdf)")
@@ -652,17 +678,17 @@ class TestReportWindow(QMainWindow):
             return
 
         try:
-            # from gui.results_page.pdf_exporter import generate_pdf_report
             generate_pdf_report(
                 pdf_path=pdf_path,
                 title_text=f"{self.db_data['test_type'].upper()} Report for {self.participant_info.get('name', 'Unknown')}",
                 basic_info=basic_info,
                 participant_info=participant_info,
                 test_results=test_metrics,
+                nirs_results=nirs_results,
                 graph_image_path=force_graph_filepath,           # Force-Time Graph
                 rep_results=rep_table,          # Repetition Metrics table
                 rep_graph_image_path=rep_graph_filepath,   # Repetition Graph
-                parameters_explanation=parameters_explanation_text
+                parameters_explanation=filtered_parameters_text
             )
             QMessageBox.information(self, "Export Report", "PDF report generated successfully!")
         except Exception as e:
@@ -675,33 +701,27 @@ class TestReportWindow(QMainWindow):
         """
         # Retrieve rep_results from your db_data. Here we assume they were saved as a string.
         # For security, consider using json instead of eval.
-        # from PySide6.QtWidgets import QMessageBox
         rep_results_str = self.db_data['rep_results']
         print('Rep metrics str:', rep_results_str)
         if rep_results_str:
             try:
-                # rep_results = eval(rep_results_str, {"__builtins__": None}, {})
                 rep_results = eval(rep_results_str, {"np": np})
             except Exception as e:
-                # from PySide6.QtWidgets import QMessageBox
                 QMessageBox.warning(self, "Error", f"Could not parse rep metrics: {e}")
                 return
         else:
-            # from PySide6.QtWidgets import QMessageBox
             QMessageBox.information(self, "No Data", "No repetition metrics were computed.")
             return
 
         # Load the force file into a DataFrame for rep graph generation.
         force_file = self.db_data['force_file']
         if force_file is None:
-            # from PySide6.QtWidgets import QMessageBox
             QMessageBox.warning(self, "Error", "Force file path not available.")
             return
 
         try:
             force_df = pd.read_feather(force_file)
         except Exception as e:
-            # from PySide6.QtWidgets import QMessageBox
             QMessageBox.warning(self, "Error", f"Could not read force file: {e}")
             return
 
@@ -732,124 +752,3 @@ class TestReportWindow(QMainWindow):
         if hasattr(self, 'rep_window') and self.rep_window is not None:
             self.rep_window.close()  # This will trigger rep_window's closeEvent.
         super().closeEvent(event)
-
-    '''
-    def generate_final_graph_force(self, force_file):
-        """
-        Generates a final static graph that plots force data.
-
-        Parameters:
-            force_file (str): Filename of the NIRS data h5.
-        """
-        # Read Force data.
-        # force_df = pd.read_csv(force_file)
-        # force_df['timestamp'] = force_df['force_timestamp'].str.replace("force_", "", regex=False).astype(float)
-        # force_timestamps = force_df['timestamp'].values
-        # force_values = force_df['value'].values
-
-        force_df = pd.read_hdf(force_file, key="data")
-        force_df['timestamp'] = force_df['timestamp'].str.replace("timestamp_", "", regex=False).astype(float)
-        force_timestamps = force_df['timestamp'].values
-        force_values = force_df['value'].values
-
-        # Create plot for Force only.
-        fig, ax = plt.subplots()
-        ax.plot(force_timestamps, force_values, 'b-', label="Force [kg]")
-        ax.set_xlabel("Time (s)")
-        ax.set_ylabel("Force (kg)", color='b')
-        ax.tick_params(axis='y', labelcolor='b')
-        ax.grid(True)
-        fig.tight_layout()
-        plt.title("Final Force Data")
-        ax.legend(loc="upper right")
-        plt.show()
-        return fig
-        # plt.show()
-
-    def generate_final_graph_nirs(self, nirs_file):
-        """
-        Generates a final static graph that plots NIRS data.
-
-        Parameters:
-            nirs_file (str): Filename of the NIRS data h5.
-        """
-        # # Read NIRS data.
-        # nirs_df = pd.read_csv(nirs_file)
-        # nirs_df['timestamp'] = nirs_df['force_timestamp'].str.replace("force_", "", regex=False).astype(float)
-        # nirs_timestamps = nirs_df['timestamp'].values
-        # nirs_values = nirs_df['value'].values
-
-        # Read NIRS data.
-        nirs_df = pd.read_hdf(nirs_file, key="data")
-        nirs_df['timestamp'] = nirs_df['timestamp'].str.replace("timestamp_", "", regex=False).astype(float)
-        nirs_timestamps = nirs_df['timestamp'].values
-        nirs_values = nirs_df['value'].values
-
-        # Create plot for NIRS only.
-        fig, ax = plt.subplots()
-        ax.plot(nirs_timestamps, nirs_values, 'r-', label="NIRS (%)")
-        ax.set_xlabel("Time (s)")
-        ax.set_ylabel("NIRS (%)", color='r')
-        ax.tick_params(axis='y', labelcolor='r')
-        ax.grid(True)
-        fig.tight_layout()
-        plt.title("Final NIRS Data")
-        ax.legend(loc="upper right")
-        return fig
-        # plt.show()
-
-    def generate_final_combined_graph(self, force_file, nirs_file):
-        """
-        Generates a final static graph that plots both Force and NIRS data on a single figure with two y-axes.
-
-        Parameters:
-            force_file (str): Filename of the Force data h5.
-            nirs_file (str): Filename of the NIRS data h5.
-        """
-        # # Read Force data.
-        # force_df = pd.read_csv(force_file)
-        # force_df['timestamp'] = force_df['force_timestamp'].str.replace("force_", "", regex=False).astype(float)
-        # force_timestamps = force_df['timestamp'].values
-        # force_values = force_df['value'].values
-        #
-        # # Read NIRS data.
-        # nirs_df = pd.read_csv(nirs_file)
-        # nirs_df['timestamp'] = nirs_df['force_timestamp'].str.replace("force_", "", regex=False).astype(float)
-        # nirs_timestamps = nirs_df['timestamp'].values
-        # nirs_values = nirs_df['value'].values
-
-        # Read Force data.
-        force_df = pd.read_hdf(force_file, key="data")
-        force_df['timestamp'] = force_df['timestamp'].str.replace("timestamp_", "", regex=False).astype(float)
-        force_timestamps = force_df['timestamp'].values
-        force_values = force_df['value'].values
-
-        # Read NIRS data.
-        nirs_df = pd.read_hdf(nirs_file, key="data")
-        nirs_df['timestamp'] = nirs_df['timestamp'].str.replace("timestamp_", "", regex=False).astype(float)
-        nirs_timestamps = nirs_df['timestamp'].values
-        nirs_values = nirs_df['value'].values
-
-        # Create a combined plot.
-        fig, ax1 = plt.subplots()
-        ax1.plot(force_timestamps, force_values, 'b-', label="Force [kg]")
-        ax1.set_xlabel("Time (s)")
-        ax1.set_ylabel("Force (kg)", color='b')
-        ax1.tick_params(axis='y', labelcolor='b')
-        ax1.grid(True)
-
-        ax2 = ax1.twinx()
-        ax2.plot(nirs_timestamps, nirs_values, 'r-', label="NIRS (%)")
-        ax2.set_ylabel("NIRS (%)", color='r')
-        ax2.tick_params(axis='y', labelcolor='r')
-
-        # Gather legend handles & labels from both axes and combine them:
-        lines1, labels1 = ax1.get_legend_handles_labels()
-        lines2, labels2 = ax2.get_legend_handles_labels()
-        ax1.legend(lines1 + lines2, labels1 + labels2, loc="upper right")
-
-        fig.tight_layout()
-        plt.title("Final Combined Sensor Data")
-        return fig
-    '''
-

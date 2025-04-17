@@ -13,12 +13,14 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
     QComboBox, QMessageBox, QFormLayout, QStackedWidget, QSizePolicy, QDialog, QGridLayout
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer, QEventLoop
 
 from gui.research_members.edit_climber_info import EditClimberInfoPage
 from gui.research_members.new_climber import NewClimber
-from gui.test_page.data_communicator_excel import CombinedDataCommunicator
+from gui.test_page.data_communicator import CombinedDataCommunicator
 import pandas as pd
+
+from gui.test_page.data_generator import DataGenerator
 
 
 class TestPage(QWidget):
@@ -43,6 +45,11 @@ class TestPage(QWidget):
         # self.selected_test = None
         self.setup_ui()
         self.load_climbers()
+        self.data_generator = DataGenerator(
+                                baudrate=19200,
+                                force_viz_downsampling=5,
+                                nirs_viz_downsampling=2
+                                )
 
     def setup_ui(self):
         """Sets up the user interface."""
@@ -70,7 +77,7 @@ class TestPage(QWidget):
 
         # New ComboBox for Test Data Type
         self.data_type_combo = QComboBox()
-        self.data_type_combo.addItems(["Select Data Type", "Force", "NIRS", "Force and NIRS"])
+        self.data_type_combo.addItems(["Select Data Type", "Force", "Force and NIRS"])  # "NIRS",
         form_layout.addWidget(QLabel("Test Data Type:"), 2, 0)
         form_layout.addWidget(self.data_type_combo, 2, 1)
 
@@ -109,6 +116,11 @@ class TestPage(QWidget):
         add_button.clicked.connect(self.add_new_climber)
         climber_button_layout.addWidget(add_button)
 
+        add_button = QPushButton("Connect NIRS")
+        add_button.setStyleSheet(button_style)
+        add_button.clicked.connect(self.nirs_connection)
+        climber_button_layout.addWidget(add_button)
+
         main_layout.addLayout(climber_button_layout)
 
         # Test selection buttons in two columns
@@ -121,9 +133,9 @@ class TestPage(QWidget):
             "MVC",
             "AO",
             "IIT",
-            "DH",
+            # "DH",
             "SIT",
-            "IIRT"
+            # "IIRT"
         ]
 
         for i, test_name in enumerate(test_buttons):
@@ -137,6 +149,44 @@ class TestPage(QWidget):
         main_layout.addLayout(button_layout)
 
         self.setLayout(main_layout)
+
+    def nirs_connection(self):
+        # self.data_generator = DataGenerator(
+        #             baudrate=19200,
+        #             force_viz_downsampling=5,
+        #             nirs_viz_downsampling=2
+        #         )
+        self.data_generator.bluetooth_communicator.start_bluetooth_collector()
+        # Wait for connection (10 seconds timeout here)
+        nirs_flag = self.wait_for_nirs_connection(timeout=12000)
+        print(nirs_flag)
+        if nirs_flag:
+            QMessageBox.information(self, "NIRS Connection", "NIRS connected")
+        else:
+            QMessageBox.critical(self, "NIRS Connection", "Cannot connect to NIRS")
+
+    def wait_for_nirs_connection(self, timeout=10000):
+        """
+        Waits up to 'timeout' milliseconds for the DataGenerator's BluetoothCommunicator to start
+        receiving data (i.e. set its data_collection_flag to True). Returns True if connected,
+        otherwise False.
+        """
+        loop = QEventLoop()
+        # Use a QTimer to quit the loop if timeout expires.
+        QTimer.singleShot(timeout, loop.quit)
+
+        checker = QTimer()
+        checker.setInterval(200)  # check every 200ms
+        # When the flag is set, quit the event loop
+        checker.timeout.connect(
+            lambda: loop.quit() if self.data_generator.bluetooth_communicator.data_collection_flag else None)
+        checker.start()
+
+        loop.exec_()
+        checker.stop()
+
+        # Return the connection status.
+        return self.data_generator.bluetooth_communicator.data_collection_flag
 
     def load_climbers(self):
         """Loads climbers registered by the current admin into the ComboBox."""
@@ -179,6 +229,7 @@ class TestPage(QWidget):
 
     def launch_test_window(self, data_type, selected_arm, test_type):
         """Launches a new window for a new test."""
+
         climber_id = self.climber_selector.currentData()
         if not climber_id:
             QMessageBox.warning(self, "No Climber Selected", "Please select a climber.")
@@ -189,6 +240,37 @@ class TestPage(QWidget):
         dialog.setWindowTitle("Test Window")
         dialog.setMinimumSize(800, 600)
         layout = QVBoxLayout(dialog)
+
+        # data_generator = DataGenerator(
+        #     baudrate=19200,
+        #     force_viz_downsampling=5,
+        #     nirs_viz_downsampling=2
+        # )
+        # # If the test requires NIRS data, initiate the Bluetooth (NIRS) connection.
+        # if data_type != "force":
+        #     data_generator.bluetooth_communicator.start_bluetooth_collector()
+        #     # Wait for connection (10 seconds timeout here)
+        #     if wait_for_nirs_connection(timeout=10000):
+        #         QMessageBox.information(self, "NIRS Connection", "NIRS connected")
+        #     else:
+        #         QMessageBox.critical(self, "NIRS Connection", "Cannot connect to NIRS")
+        #         return  # Abort launching the test window if no connection.
+        #
+        # # (Optionally, start the serial connection if needed)
+        # if data_type != "nirs":
+        #     data_generator.serial_communicator.start_serial_collection()
+        # data_generator.start_collection()
+        data_type = self.data_type_combo.currentText()
+        data_type = data_type.lower()
+        if data_type == "force and nirs":
+            data_type = "force_nirs"
+
+        if data_type in ["force", "force_nirs"]:
+            self.data_generator.serial_communicator.start_serial_collection()
+        if data_type in ["nirs", "force_nirs"]:
+            self.data_generator.bluetooth_communicator.start_bluetooth_collector()
+
+        print('data_generator initialized')
 
         # Create the communicator instance with auto_start=False.
         communicator = CombinedDataCommunicator(
@@ -201,19 +283,22 @@ class TestPage(QWidget):
             auto_start=True,
             data_type=data_type,
             test_type=test_type,
+            viz_queue=self.data_generator.viz_queque,  # Pass the downsampled data queue for visualization.
+            db_queue=self.data_generator.db_queque,    # Pass the full data queue for logging.
+            sensor_control=self.data_generator,  # Pass the DataGenerator instance here.
             parent=self
         )
         layout.addWidget(communicator)
 
         # Create Start and Stop buttons.
         button_layout = QHBoxLayout()
-        start_button = QPushButton("Start")
+        # start_button = QPushButton("Start")
         stop_button = QPushButton("Stop")
-        button_layout.addWidget(start_button)
+        # button_layout.addWidget(start_button)
         button_layout.addWidget(stop_button)
         layout.addLayout(button_layout)
 
-        start_button.clicked.connect(communicator.start_acquisition)
+        # start_button.clicked.connect(communicator.start_acquisition)
 
         def stop_and_close():
             communicator.stop_acquisition()
@@ -228,7 +313,7 @@ class TestPage(QWidget):
                 reply = QMessageBox.question(
                     dialog,
                     "Confirm Exit",
-                    "Are you sure you want to close this All Out Test window?",
+                    "Are you sure you want to close this Test window?",
                     QMessageBox.Yes | QMessageBox.No,
                     QMessageBox.No
                 )

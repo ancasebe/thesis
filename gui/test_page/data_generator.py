@@ -13,6 +13,8 @@ import asyncio
 # from backend_scripts.constants import HHB_SENSOR_ID, O2HB_SENSOR_ID, SMO2_SENSOR_ID, FORCE_SENSOR_ID
 # from backend_scripts.utils import JSONCommunicator
 
+# kazda funkce data do vlastniho souboru, plotovani
+
 FORCE_SENSOR_ID = 1
 SMO2_SENSOR_ID = 2
 HHB_SENSOR_ID = 3
@@ -101,15 +103,16 @@ class SerialCommunicator:
         sercon = self.sercon
         try:
             # If data is waiting and no command is being sent, read a line from the serial port.
-            if sercon.in_waiting > 0 and self.writing_command == False:
+            if sercon.in_waiting > 0 and not self.writing_command:
                 serial_data = sercon.readline().decode('utf-8').rstrip()
                 serial_data = int(serial_data)  # Convert the received string to an integer.
                 # Apply calibration if required.
-                if self.show_raw == False and self.calibration_intercept != 0:
+                if self.show_raw is False and self.calibration_intercept != 0:
                     serial_data = (
                         serial_data-self.calibration_intercept)/self.calibration_slope
                 # Format the data string with sensor ID, current timestamp, and the force value.
-                return f'{FORCE_SENSOR_ID}_{time.time():.3f}_{serial_data}'
+                # print('FORCE data:', f'{FORCE_SENSOR_ID}_{time.time():.3f}_{serial_data}')
+                return f'{FORCE_SENSOR_ID}_{time.time()}_{serial_data}'
             # If a command needs to be sent, write it to the serial port.
             elif self.writing_command and self.command is not None:
                 sercon.write(self.command.encode())
@@ -193,7 +196,7 @@ class SerialCommunicator:
             # Retrieve the next synthetic data point.
             serial_data = self.debugging_data.pop(0)
             data = f'{FORCE_SENSOR_ID}_{time.time():.3f}_{serial_data}'
-            # print(f"DEBUG: Generated Synthetic force Data - {data}")  # Debug print
+            print(f"DEBUG: Generated Synthetic force Data - {data}")  # Debug print
             # Pass the data to the queue manager.
             self.__data_generator_que_manager(data)
             time.sleep(0.01)
@@ -229,6 +232,7 @@ class SerialCommunicator:
         """
         while self.collect_data:
             data = self.__serial_get_force_data()
+            print('FORCE data:', data)
             if data is not None:
                 self.__data_generator_que_manager(data)
                 continue
@@ -446,9 +450,11 @@ class BluetoothCommunicator:
         Processes the raw data, pushes the formatted data string into an internal queue,
         and polls the battery level periodically.
         """
+        # print('Data:', data)
         try:
             data_str = self.__process_data(data)
             self.data_queue.put(data_str)  # Send data to the queue
+            print('NIRS data:', data_str)
             time.sleep(0.05)
             if not self.data_collection_flag:
                 self.data_collection_flag = True
@@ -700,19 +706,19 @@ class DataGenerator:
             self.viz_queque, database_que=self.db_queque, baudrate=baudrate, data_viz_downsampling=force_viz_downsampling)
         # self.ble_force_communicator = ForceBluetoothCommunicator(
         #     visualization_que=self.viz_queque, database_que=self.db_queque)
-        self.serial_force_def = True  # bool(JSONCommunicator().get_serial_force_config()['default'])
+        self.serial_force_def = True # bool(JSONCommunicator().get_serial_force_config()['default'])
         self.nirs_active = False
 
-    # def _force_start_collection(self):
-    #     self.serial_communicator.start_serial_collection()
-    #     if not self.serial_force_def:
-    #         self.serial_communicator.stop_serial_collection()
-    #         self.ble_force_communicator.start_bluetooth_collector()
-    #
-    # def _force_stop_collection(self):
-    #     self.serial_communicator.stop_serial_collection()
-    #     if not self.serial_force_def:
-    #         self.ble_force_communicator.stop_bluetooth_collector()
+    def _force_start_collection(self):
+        self.serial_communicator.start_serial_collection()
+        # if not self.serial_force_def:
+        #     self.serial_communicator.stop_serial_collection()
+        #     # self.ble_force_communicator.start_bluetooth_collector()
+
+    def _force_stop_collection(self):
+        self.serial_communicator.stop_serial_collection()
+        # if not self.serial_force_def:
+        #     self.ble_force_communicator.stop_bluetooth_collector()
 
     def _nirs_start_collection(self):
         self.bluetooth_communicator.start_bluetooth_collector()
@@ -732,25 +738,25 @@ class DataGenerator:
         if self.serial_force_def:
             if self.serial_communicator.debugging:
                 return True
-            if self.serial_communicator.debugging == False:
-                if self.serial_communicator.collect_data == False and self.serial_communicator.data_collection_thread is not None:
+            if not self.serial_communicator.debugging:
+                if not self.serial_communicator.collect_data and self.serial_communicator.data_collection_thread:
                     return 'off'
                 return False
             return 'off'
-        else:
-            if self.ble_force_communicator.debugging:
-                return True
-            if self.ble_force_communicator.debugging == False:
-                if self.ble_force_communicator.data_collection_thread is None:
-                    return 'off'
-                else:
-                    if self.ble_force_communicator.data_collection_flag == False:
-                        return 'tba'
-                if self.ble_force_communicator.last_datapoint is None:
-                    return 'tba'
-                elif time.time() - self.ble_force_communicator.last_datapoint > 1.5:
-                    return 'off'
-                return False
+        # else:
+        #     if self.ble_force_communicator.debugging:
+        #         return True
+        #     if self.ble_force_communicator.debugging == False:
+        #         if self.ble_force_communicator.data_collection_thread is None:
+        #             return 'off'
+        #         else:
+        #             if self.ble_force_communicator.data_collection_flag == False:
+        #                 return 'tba'
+        #         if self.ble_force_communicator.last_datapoint is None:
+        #             return 'tba'
+        #         elif time.time() - self.ble_force_communicator.last_datapoint > 1.5:
+        #             return 'off'
+        #         return False
 
     def _nirs_check_if_debugging(self) -> bool | str:
         """
@@ -762,11 +768,11 @@ class DataGenerator:
         """
         if self.bluetooth_communicator.debugging:
             return True
-        if self.bluetooth_communicator.debugging == False:
+        if not self.bluetooth_communicator.debugging:
             if self.bluetooth_communicator.data_collection_thread is None:
                 return 'off'
             else:
-                if self.bluetooth_communicator.data_collection_flag == False:
+                if not self.bluetooth_communicator.data_collection_flag:
                     return 'tba'
             if self.bluetooth_communicator.last_datapoint is None:
                 return 'tba'
@@ -799,10 +805,10 @@ class DataGenerator:
         text = ''
         if self._nirs_check_if_debugging():
             self._nirs_stop_collection()
-            text = text + f'NIRS Collector stopped\n'
+            text = text + 'NIRS Collector stopped\n'
         if self._force_check_if_debugging():
-            self._force_stop_collection
-            text = text + f'Force Collector stopped\n'
+            self._force_stop_collection()
+            text = text + 'Force Collector stopped\n'
         return text if len(text) > 0 else None
 
     # misc function start here

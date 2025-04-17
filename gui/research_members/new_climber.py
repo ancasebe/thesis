@@ -171,8 +171,8 @@ class NewClimber(QWidget):
             "weight": self.first_column_widgets["Weight (kg):"].value(),
             "height": self.first_column_widgets["Height (cm):"].value(),
             "age": self.first_column_widgets["Age (years):"].value(),
-            "climbing_freq": self.second_column_widgets["Climbing Frequency/week:"].value(),
-            "climbing_hours": self.second_column_widgets["Climbing Hours/week:"].value(),
+            # "climbing_freq": self.second_column_widgets["Climbing Frequency/week:"].value(),
+            # "climbing_hours": self.second_column_widgets["Climbing Hours/week:"].value(),
         }
 
         select_inputs = {

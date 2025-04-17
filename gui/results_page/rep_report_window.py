@@ -15,10 +15,10 @@ from PySide6.QtWidgets import (
     QTableWidgetItem, QPushButton, QScrollArea, QHBoxLayout, QSizePolicy, QLabel
 )
 
-from gui.test_page.evaluations.force_evaluation import compute_end_force
+# from gui.test_page.evaluations.force_evaluation import compute_end_force
 # from matplotlib import pyplot as plt
 # from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
-from gui.test_page.evaluations.rep_metrics import RepMetrics  # make sure this is in your PYTHONPATH
+from gui.test_page.evaluations.force_evaluation import RepMetrics, compute_end_force  # make sure this is in your PYTHONPATH
 
 
 class RepReportWindow(QMainWindow):

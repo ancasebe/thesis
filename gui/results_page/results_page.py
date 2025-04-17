@@ -296,6 +296,7 @@ class ResultsPage(QWidget):
         layout.addRow("Test Name:", QLabel(str(test["test_type"])))
         layout.addRow("Data Type:", QLabel(str(test["data_type"])))
         layout.addRow("Arm Tested:", QLabel(str(test["arm_tested"])))
+        layout.addRow("Number of Repetitions:", QLabel(str(test["number_of_reps"])))
 
         date_str, time_str = self.format_timestamp(str(test["timestamp"]))
         layout.addRow("Date:", QLabel(date_str))
@@ -315,16 +316,10 @@ class ResultsPage(QWidget):
         test = self.get_selected_test()
         if not test:
             return
-        print("the test:", test)
-
         participant_id = test["participant_id"]
-        print('participant_id_test_db', participant_id)
         participant_info = self.climber_db_manager.get_user_data(self.admin_id, participant_id)
-        # print('participant_id_cimber_db', participant_info['id'])
-        print("participant info:", participant_info)
         if not participant_info:
             participant_info = {"Name": "Unknown"}
-        print("test id:", test['id'])
         db_data = self.test_db_manager.get_test_data(test_id=test['id'])
         print(db_data)
         # test_metrics = {"Max Strength": "N/A", "Critical Force": "N/A", "W Prime": "N/A"}

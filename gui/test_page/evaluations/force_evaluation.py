@@ -19,6 +19,52 @@ import pandas as pd
 # ------------------------------
 
 
+def find_test_interval(force_file, threshold=2, pre_offset=10, post_offset=10):
+    """
+    Given force data in a DataFrame with columns 'time' and 'value', find:
+      - start_time: the first timestamp (absolute)
+      - test_start_abs: the absolute timestamp where the force first exceeds the threshold,
+                         adjusted with a pre_offset (if possible)
+      - test_end_abs: the absolute timestamp near the end of the test (using a post_offset)
+
+    Parameters:
+        force_file (str): Filepath to a NIRS file.
+        threshold (float): The force threshold to consider that the test has begun.
+                           (Default: 2 kg – adjust as needed.)
+        pre_offset (int): Number of samples to subtract before the detected test start index.
+        post_offset (int): Number of samples to add after the detected test end index.
+
+    Returns:
+        tuple: (start_time, test_start_abs, test_end_abs)
+            - start_time: The very first force timestamp.
+            - test_start_abs: The timestamp (absolute) for the beginning of the test,
+                              shifted back by pre_offset samples (if available).
+            - test_end_abs: The timestamp (absolute) for the end of the test,
+                              shifted forward by post_offset samples (if available).
+    """
+    force_df = pd.read_feather(force_file)
+    # Ensure time is float
+    force_df['time'] = force_df['time'].astype(float)
+    start_time = force_df['time'].iloc[0]
+
+    # Get force values and set negative values to zero.
+    force_array = np.clip(force_df['value'].values, 0, None)
+
+    # Find all indices where force is above the threshold.
+    indices = np.where(force_array >= threshold)[0]
+    if indices.size > 0:
+        test_start_idx = max(indices[0] - pre_offset, 0)
+        test_end_idx = min(indices[-1] + post_offset, len(force_array) - 1)
+        test_start_abs = force_df['time'].iloc[test_start_idx]
+        test_end_abs = force_df['time'].iloc[test_end_idx]
+    else:
+        # If force never reaches the threshold, use the entire data.
+        test_start_abs = force_df['time'].iloc[0]
+        test_end_abs = force_df['time'].iloc[-1]
+
+    return start_time, test_start_abs, test_end_abs
+
+
 def compute_max_force(force_df):
     """
     Compute the maximal force (MVC) from the force data.
@@ -560,10 +606,10 @@ class RepMetrics:
             for i, val in enumerate(smoothed):
                 if val > threshold and start_idx is None:
                     start_idx = i
-                elif val <= threshold and start_idx is not None:
+                elif val <= threshold and start_idx:
                     active_intervals.append((start_idx, i))
                     start_idx = None
-            if start_idx is not None:
+            if start_idx or start_idx == 0:
                 active_intervals.append((start_idx, len(smoothed) - 1))
 
             # Merge segments with small gaps based on time difference.
@@ -593,53 +639,6 @@ class RepMetrics:
         except Exception as e:
             print(f"Error detecting repetitions: {e}")
             return []
-
-    # def _detect_reps(self):
-    #     """
-    #     Detect repetitions in the force data based on a threshold.
-    #
-    #     Returns:
-    #         list of tuple: Each tuple is (start_index, end_index) for a detected repetition.
-    #     """
-    #     try:
-    #         force_values = self.force_df['value'].values
-    #         smoothed = self._smooth(force_values, window_size=5)
-    #         threshold = self.threshold_ratio * np.max(smoothed)
-    #         active_intervals = []
-    #         start_idx = None
-    #         for i, val in enumerate(smoothed):
-    #             if val > threshold and start_idx is None:
-    #                 start_idx = i
-    #             elif val <= threshold and start_idx is not None:
-    #                 active_intervals.append((start_idx, i))
-    #                 start_idx = None
-    #         if start_idx is not None:
-    #             active_intervals.append((start_idx, len(smoothed) - 1))
-    #
-    #         # Merge segments with small gaps.
-    #         min_gap_samples = int(1.0 * self.sampling_rate)
-    #         merged_intervals = []
-    #         for interval in active_intervals:
-    #             if not merged_intervals:
-    #                 merged_intervals.append(interval)
-    #             else:
-    #                 prev_start, prev_end = merged_intervals[-1]
-    #                 cur_start, cur_end = interval
-    #                 if (cur_start - prev_end) < min_gap_samples:
-    #                     merged_intervals[-1] = (prev_start, cur_end)
-    #                 else:
-    #                     merged_intervals.append(interval)
-    #
-    #         # Filter intervals based on expected repetition duration.
-    #         rep_intervals = []
-    #         for (s, e) in merged_intervals:
-    #             if self.min_rep_samples <= (e - s) <= self.max_rep_samples:
-    #                 rep_intervals.append((s, e))
-    #         print(rep_intervals)
-    #         return rep_intervals
-    #     except Exception as e:
-    #         print(f"Error detecting repetitions: {e}")
-    #         return []
 
     def compute_rep_metrics(self):
         """
@@ -816,13 +815,7 @@ class ForceMetrics:
                         # Add the computed work above CF to the corresponding rep metric.
                         self.rep_metrics[i]['Work Above CF (kg/s)'] = rep_work_above_cf
 
-                    # results['avg_work_above_cf'] = compute_avg_work_above_cf(self.rep_metrics)
                     results['sum_work_above_cf'] = compute_work_above_cf(self.df, results['critical_force'])
-
-                # n_reps = len(self.rep_metrics)
-                #
-                # results['rfd_overall'] = compute_rfd_subset(self.rep_metrics, list(range(len(self.rep_metrics))))
-                # results['rfd_norm_overall'] = compute_rfd_subset_normalized(self.rep_metrics, list(range(len(self.rep_metrics))))
 
             return results, self.rep_metrics
 

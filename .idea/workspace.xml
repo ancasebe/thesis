@@ -4,22 +4,24 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="8d114396-0b52-44aa-9fec-17fceb6230ba" name="Changes" comment="pdf_exporter.py added, big update with force_evaluation.py and the other related scripts">
-      <change afterPath="$PROJECT_DIR$/gui/results_page/pdf_exporter_tuned.py" afterDir="false" />
+    <list default="true" id="8d114396-0b52-44aa-9fec-17fceb6230ba" name="Changes" comment="nirs kinda added, plus integration of the recent tests">
+      <change afterPath="$PROJECT_DIR$/gui/databases/tests_database.db" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/gui/superuser/climber_db_manager.py" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/gui/test_page/evaluations/force_evaluation.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/climber_database.db" beforeDir="false" afterPath="$PROJECT_DIR$/gui/superuser/climber_database.db" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gui/login_database.db" beforeDir="false" afterPath="$PROJECT_DIR$/gui/login_database.db" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/research_members/climber_db_manager.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/research_members/climber_db_manager.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/research_members/edit_climber_info.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/research_members/edit_climber_info.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gui/research_members/new_climber.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/research_members/new_climber.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/results_page/logo_uct01.png" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/gui/results_page/rep_report_window.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/results_page/rep_report_window.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gui/results_page/report_window.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/results_page/report_window.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gui/results_page/results_page.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/results_page/results_page.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/superuser/climber_database.db" beforeDir="false" afterPath="$PROJECT_DIR$/gui/databases/climber_database.db" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gui/test_page/data_communicator.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/test_page/data_communicator.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/test_page/data_generator.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/test_page/data_generator.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gui/test_page/evaluations/force_evaluation.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/test_page/evaluations/force_evaluation.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/test_page/evaluations/nirs_evaluation.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/test_page/evaluations/nirs_evaluation.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gui/test_page/test_db_manager.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/test_page/test_db_manager.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/test_page/test_page.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/test_page/test_page.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -42,14 +44,12 @@
     &quot;assignee&quot;: &quot;ancasebe&quot;
   }
 }</component>
-  <component name="GithubPullRequestsUISettings">
-    <option name="selectedUrlAndAccountId">
-      <UrlAndAccount>
-        <option name="accountId" value="44154db6-7e74-4bb1-a210-a26c7b7a14e0" />
-        <option name="url" value="https://github.com/ancasebe/thesis.git" />
-      </UrlAndAccount>
-    </option>
-  </component>
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "git@github.com:ancasebe/thesis.git",
+    "accountId": "44154db6-7e74-4bb1-a210-a26c7b7a14e0"
+  }
+}]]></component>
   <component name="MarkdownSettingsMigration">
     <option name="stateVersion" value="1" />
   </component>
@@ -57,7 +57,6 @@
   &quot;associatedIndex&quot;: 7
 }</component>
   <component name="ProjectId" id="2sxcbxTO6t1NABTN26ZpmfxK2nt" />
-  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
@@ -85,31 +84,32 @@
     "Python.try_report.executor": "Run",
     "RunOnceActivity.OpenProjectViewOnStart": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
     "git-widget-placeholder": "main",
     "last_opened_file_path": "/Users/annasebestikova/PycharmProjects/thesis/gui/test_page",
-    "settings.editor.selected.configurable": "org.jetbrains.plugins.github.ui.GithubSettingsConfigurable"
+    "settings.editor.selected.configurable": "application.passwordSafe"
   }
 }]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/gui/test_page" />
-      <recent name="$PROJECT_DIR$/gui/results_page" />
       <recent name="$PROJECT_DIR$/gui/databases" />
-      <recent name="$PROJECT_DIR$/gui/research_members" />
+      <recent name="$PROJECT_DIR$/gui/results_page" />
       <recent name="$PROJECT_DIR$/gui/test_page/evaluations" />
+      <recent name="$PROJECT_DIR$/gui/research_members" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/gui/test_page" />
       <recent name="$PROJECT_DIR$/gui/databases" />
       <recent name="$PROJECT_DIR$/gui/superuser" />
       <recent name="$PROJECT_DIR$/gui" />
       <recent name="$PROJECT_DIR$/gui/results_page" />
-      <recent name="$PROJECT_DIR$/gui/test_page" />
     </key>
   </component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-python-sdk-c69650fc56ca-d3b881c8e49f-com.jetbrains.pycharm.community.sharedIndexes.bundled-PC-233.15619.17" />
+        <option value="bundled-python-sdk-348a24fa61fa-5312c7369657-com.jetbrains.pycharm.community.sharedIndexes.bundled-PC-251.23774.444" />
       </set>
     </attachedChunks>
   </component>
@@ -234,7 +234,15 @@
       <option name="project" value="LOCAL" />
       <updated>1744129371161</updated>
     </task>
-    <option name="localTasksCounter" value="15" />
+    <task id="LOCAL-00015" summary="nirs kinda added, plus integration of the recent tests">
+      <option name="closed" value="true" />
+      <created>1744542553904</created>
+      <option name="number" value="00015" />
+      <option name="presentableId" value="LOCAL-00015" />
+      <option name="project" value="LOCAL" />
+      <updated>1744542553904</updated>
+    </task>
+    <option name="localTasksCounter" value="16" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -272,6 +280,7 @@
     <MESSAGE value="report_window.py edited so far" />
     <MESSAGE value="report_window.py and rep by rep + data_communicator.py" />
     <MESSAGE value="pdf_exporter.py added, big update with force_evaluation.py and the other related scripts" />
-    <option name="LAST_COMMIT_MESSAGE" value="pdf_exporter.py added, big update with force_evaluation.py and the other related scripts" />
+    <MESSAGE value="nirs kinda added, plus integration of the recent tests" />
+    <option name="LAST_COMMIT_MESSAGE" value="nirs kinda added, plus integration of the recent tests" />
   </component>
 </project>
