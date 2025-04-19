@@ -4,23 +4,16 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="8d114396-0b52-44aa-9fec-17fceb6230ba" name="Changes" comment="nirs kinda added, plus integration of the recent tests">
+    <list default="true" id="8d114396-0b52-44aa-9fec-17fceb6230ba" name="Changes" comment="not working well, trying fix the vizualization">
       <change afterPath="$PROJECT_DIR$/gui/databases/tests_database.db" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gui/superuser/climber_db_manager.py" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/gui/test_page/evaluations/force_evaluation.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gui/test_page/feather_logger.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gui/login_database.db" beforeDir="false" afterPath="$PROJECT_DIR$/gui/login_database.db" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/research_members/new_climber.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/research_members/new_climber.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/results_page/logo_uct01.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/results_page/rep_report_window.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/results_page/rep_report_window.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gui/results_page/report_window.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/results_page/report_window.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/results_page/results_page.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/results_page/results_page.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gui/superuser/climber_database.db" beforeDir="false" afterPath="$PROJECT_DIR$/gui/databases/climber_database.db" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gui/test_page/data_communicator.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/test_page/data_communicator.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/test_page/data_generator.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/test_page/data_generator.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/test_page/evaluations/force_evaluation.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/test_page/evaluations/force_evaluation.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/test_page/evaluations/nirs_evaluation.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/test_page/evaluations/nirs_evaluation.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/test_page/test_db_manager.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/test_page/test_db_manager.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/test_page/data_generator.py" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/gui/test_page/test_page.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/test_page/test_page.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -93,10 +86,10 @@
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/gui/test_page" />
+      <recent name="$PROJECT_DIR$/../Diploma/shit files" />
       <recent name="$PROJECT_DIR$/gui/databases" />
       <recent name="$PROJECT_DIR$/gui/results_page" />
       <recent name="$PROJECT_DIR$/gui/test_page/evaluations" />
-      <recent name="$PROJECT_DIR$/gui/research_members" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/gui/test_page" />
@@ -242,7 +235,15 @@
       <option name="project" value="LOCAL" />
       <updated>1744542553904</updated>
     </task>
-    <option name="localTasksCounter" value="16" />
+    <task id="LOCAL-00016" summary="not working well, trying fix the vizualization">
+      <option name="closed" value="true" />
+      <created>1744903238052</created>
+      <option name="number" value="00016" />
+      <option name="presentableId" value="LOCAL-00016" />
+      <option name="project" value="LOCAL" />
+      <updated>1744903238052</updated>
+    </task>
+    <option name="localTasksCounter" value="17" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -281,6 +282,7 @@
     <MESSAGE value="report_window.py and rep by rep + data_communicator.py" />
     <MESSAGE value="pdf_exporter.py added, big update with force_evaluation.py and the other related scripts" />
     <MESSAGE value="nirs kinda added, plus integration of the recent tests" />
-    <option name="LAST_COMMIT_MESSAGE" value="nirs kinda added, plus integration of the recent tests" />
+    <MESSAGE value="not working well, trying fix the vizualization" />
+    <option name="LAST_COMMIT_MESSAGE" value="not working well, trying fix the vizualization" />
   </component>
 </project>

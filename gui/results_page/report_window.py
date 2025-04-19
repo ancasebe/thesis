@@ -29,11 +29,16 @@ class TestReportWindow(QMainWindow):
         test_results = db_data['test_results']
         print("Test metrics:", test_results)
         self.test_metrics = eval(test_results, {"np": np})
-        if db_data['data_type'] != "force":
-            nirs_results = db_data['nirs_results']
-            self.nirs_results = eval(nirs_results, {"np": np})
-        else:
-            self.nirs_results = None
+        try:
+            if db_data['data_type'] != "force":
+                nirs_results = db_data['nirs_results']
+                self.nirs_results = eval(nirs_results, {"np": np})
+            else:
+                self.nirs_results = ''
+        except Exception as e:
+            self.nirs_results = ''
+            print('NIRS results in Report Window:', e)
+
         self.participant_info = participant_info
         self.db_data = db_data
         # Create the matplotlib figure
