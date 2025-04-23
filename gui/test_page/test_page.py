@@ -178,7 +178,10 @@ class TestPage(QWidget):
 
         # Check current connection state
         bt_com = self.data_generator.bluetooth_com
-        is_currently_connected = bt_com.running
+        print('running', bt_com.running)
+        print('debugging', bt_com.debugging)
+        is_currently_connected = bt_com.running or bt_com.debugging
+        print('connected?', is_currently_connected)
 
         # If already connected, disconnect and update UI
         if is_currently_connected:
@@ -474,7 +477,7 @@ class TestPage(QWidget):
         """
 
         # Reset the NIRS button to "Connect" state
-        self.nirs_connect_button.setText("Connect NIRS")
+        self.nirs_connect_button.setText("NIRS x")
         self.nirs_connect_button.setStyleSheet(nirs_button_style)
 
         # Close the dialog after a brief delay

@@ -289,7 +289,7 @@ class CombinedDataCommunicator(QMainWindow):
             # Import JSON for serialization
             import json
             
-            db_manager = ClimbingTestManager()
+            test_db_manager = ClimbingTestManager()
             force_file = self.force_file.filename if self.force_file else ''
             nirs_file = self.nirs_file.filename if self.nirs_file else ''
             
@@ -311,16 +311,16 @@ class CombinedDataCommunicator(QMainWindow):
                 'rep_results': rep_results_json
             }
             print("data to db: ", db_data_save)
-            test_id = db_manager.add_test_result(admin_id=str(self.admin_id),
-                                                 participant_id=str(self.climber_id),
+            test_id = test_db_manager.add_test_result(admin_id=self.admin_id,
+                                                 participant_id=self.climber_id,
                                                  db_data=db_data_save)
-            db_manager.close_connection()
+
             QMessageBox.information(self, "Test saving", "Test was saved successfully.")
             self.finalized = True
 
-            climber_db = ClimberDatabaseManager()
-            climber_data = climber_db.get_user_data(self.admin_id, self.climber_id)
-            climber_db.close()
+            climber_db_manager = ClimberDatabaseManager()
+            climber_data = climber_db_manager.get_user_data(self.admin_id, self.climber_id)
+
             if not climber_data:
                 climber_data = {
                     "name": "Unknown",
@@ -330,12 +330,17 @@ class CombinedDataCommunicator(QMainWindow):
                     "dominant_arm": "N/A"
                 }
             db_data_save['id'] = test_id
-            self.report_window = TestReportWindow(
+            report_window = TestReportWindow(
                 participant_info=climber_data,
                 db_data=db_data_save,
+                admin_id=self.admin_id,
+                climber_db_manager=climber_db_manager,
+                test_db_manager=test_db_manager,
                 parent=self
             )
-            self.report_window.show()
+            report_window.show()
+            test_db_manager.close_connection()
+            climber_db_manager.close()
 
     def closeEvent(self, event):
         """

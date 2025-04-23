@@ -604,12 +604,14 @@ class RepMetrics:
             active_intervals = []
             start_idx = None
             for i, val in enumerate(smoothed):
+                # i += 1
                 if val > threshold and start_idx is None:
                     start_idx = i
                 elif val <= threshold and start_idx:
                     active_intervals.append((start_idx, i))
                     start_idx = None
             if start_idx or start_idx == 0:
+                print(len(smoothed))
                 active_intervals.append((start_idx, len(smoothed) - 1))
 
             # Merge segments with small gaps based on time difference.
@@ -658,7 +660,6 @@ class RepMetrics:
         """
         rep_metrics = []
         # time_axis = self.force_df['time'].values
-        print("self.reps: ", len(self.reps))
         try:
             for i, (s, e) in enumerate(self.reps, start=1):
                 print('repetition n.', i, 'indexes: ', (s, e))
@@ -674,7 +675,7 @@ class RepMetrics:
                 duration_ms = (rep_df['time'].iloc[-1] - rep_df['time'].iloc[0]) * 1000
                 max_end_time = compute_time_between_max_and_end(max_force_idx, end_force_idx, rep_df)
                 rep_metrics.append({
-                    "Rep": int(i),
+                    "Rep": round(i, 0),
                     "Max Force (kg)": max_force,
                     "End Force (kg)": end_force,
                     "Force Drop (%)": force_drop,
@@ -689,7 +690,6 @@ class RepMetrics:
             return rep_metrics
         except Exception as e:
             print(f"Error computing rep metrics {e}")
-            return None
 
 
 # ------------------------------
@@ -767,11 +767,12 @@ class ForceMetrics:
             results['max_strength'], _ = compute_max_force(self.df)
             print('Max force:', results['max_strength'])
             results['avg_pulling_time_ms'] = compute_average_pulling_time(self.rep_metrics)
-            results['sum_work'] = sum_work
             n_reps = len(self.rep_metrics)
 
-            results['rfd_overall'] = compute_rfd_subset(self.rep_metrics, list(range(len(self.rep_metrics))))
-            results['rfd_norm_overall'] = compute_rfd_subset_normalized(self.rep_metrics, list(range(len(self.rep_metrics))))
+            if self.test_type not in ['sit', 'dh']:
+                results['sum_work'] = sum_work
+                results['rfd_overall'] = compute_rfd_subset(self.rep_metrics, list(range(len(self.rep_metrics))))
+                results['rfd_norm_overall'] = compute_rfd_subset_normalized(self.rep_metrics, list(range(len(self.rep_metrics))))
 
             if self.test_type not in ['mvc', 'sit', 'dh']:
                 results['work'] = avg_work

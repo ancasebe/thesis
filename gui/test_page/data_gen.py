@@ -160,7 +160,7 @@ class BluetoothCommunicator:
         self.running = False
         self.thread = None
         self.debugging = False
-        self._debug_data_buffer = []
+        self.debug_data_buffer = []
         self.connection_attempts = 0
         self.max_attempts = max_attempts
 
@@ -188,10 +188,10 @@ class BluetoothCommunicator:
         """
         while self.running:
             try:
-                if len(self._debug_data_buffer) <= 1:
+                if len(self.debug_data_buffer) <= 1:
                     level = np.random.uniform(0.2, 0.6)
-                    self._debug_data_buffer = self._generate_nirs_profile(level)
-                v = self._debug_data_buffer.pop(0)
+                    self.debug_data_buffer = self._generate_nirs_profile(level)
+                v = self.debug_data_buffer.pop(0)
                 ts = time.time()
                 smo2 = v
                 hhb = np.random.randint(50, 100)

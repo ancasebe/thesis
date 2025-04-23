@@ -39,8 +39,8 @@ class ClimbingTestManager:
             self.connection.execute('''
                 CREATE TABLE IF NOT EXISTS climbing_tests (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    admin_id TEXT NOT NULL,
-                    participant_id TEXT NOT NULL,
+                    admin_id INTEGER NOT NULL,
+                    participant_id INTEGER NOT NULL,
                     timestamp TEXT,
                     test_metadata JSON NOT NULL,
                     test_data JSON NOT NULL
@@ -52,8 +52,8 @@ class ClimbingTestManager:
         Adds a new test result to the database and returns the test id.
 
         Parameters:
-            admin_id (str): Administrator ID.
-            participant_id (str): Participant ID.
+            admin_id (int): Administrator ID.
+            participant_id (int): Participant ID.
             db_data (dict): Dictionary containing test details.
 
         Returns:
@@ -75,6 +75,11 @@ class ClimbingTestManager:
             'rep_results': db_data.get('rep_results')
         }
 
+        if admin_id is str:
+            admin_id = int(admin_id)
+        if participant_id is str:
+            participant_id = int(participant_id)
+
         with self.connection:
             cursor = self.connection.execute('''
                 INSERT INTO climbing_tests (admin_id, participant_id, timestamp, test_metadata, test_data)
@@ -82,10 +87,11 @@ class ClimbingTestManager:
             ''', (admin_id, participant_id, db_data.get('timestamp'),
                   json.dumps(test_metadata), json.dumps(test_data)))
 
+
             print("Test result saved successfully.")
 
             new_id = cursor.lastrowid
-            print("Test result saved successfully with id:", new_id)
+            print("Test result saved successfully with id:", new_id, participant_id)
             return new_id
 
     def fetch_results_by_participant(self, participant_id):
@@ -93,11 +99,16 @@ class ClimbingTestManager:
         Fetches test results for a specific participant.
 
         Parameters:
-            participant_id (str): Participant ID.
+            participant_id (int): Participant ID.
 
         Returns:
             list: Matching rows from the climbing_tests table.
         """
+        # Convert participant_id to integer if it's a string
+
+        if participant_id is str:
+            participant_id = int(participant_id)
+
         with self.connection:
             cursor = self.connection.execute(
                 'SELECT id, admin_id, participant_id, timestamp, test_metadata, test_data FROM climbing_tests WHERE participant_id = ?',
@@ -126,14 +137,17 @@ class ClimbingTestManager:
         Fetches test results for a specific admin.
 
         Parameters:
-            admin_id (str): Admin ID.
+            admin_id (int): Admin ID.
 
         Returns:
             list: Matching rows from the climbing_tests table.
         """
         with self.connection:
-            # Ensure admin_id is compared as an integer
-            if admin_id == "1":
+            if admin_id is str:
+                admin_id = int(admin_id)
+
+                # Ensure admin_id is compared as an integer
+            if admin_id == 1:
                 cursor = self.connection.execute(
                     'SELECT id, admin_id, participant_id, timestamp, test_metadata, test_data FROM climbing_tests'
                 )

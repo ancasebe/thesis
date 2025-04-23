@@ -155,11 +155,11 @@ class ResultsPage(QWidget):
         self.selected_climber_id = self.climber_selector.itemData(index)
         self.load_tests()
 
-    def on_test_filter_changed(self, index):
+    def on_test_filter_changed(self):
         self.selected_test_label = self.test_selector.currentText()
         self.load_tests()
 
-    def on_data_type_changed(self, index):
+    def on_data_type_changed(self):
         self.selected_data_type = self.data_type_selector.currentText()
         self.load_tests()
 
@@ -179,13 +179,12 @@ class ResultsPage(QWidget):
             8: test_results
         """
         self.tests_table.setRowCount(0)
-        # participant_info = self.climber_db_manager.get_user_data(self.admin_id, self.selected_climber_id)
+
         if self.selected_climber_id:
+            print('SELECTED CLIMBER:', self.selected_climber_id.dtype)
             tests = self.test_db_manager.fetch_results_by_participant(participant_id=self.selected_climber_id)
-        # elif self.admin_id == 1:
-        #     tests = self.test_db_manager.fetch_all_results()  # superuser
         else:
-            tests = self.test_db_manager.fetch_results_by_admin(admin_id=str(self.admin_id))
+            tests = self.test_db_manager.fetch_results_by_admin(admin_id=self.admin_id)
         # If filtering by test label (other than "All Tests"), filter test rows.
         if self.selected_test_label and self.selected_test_label != "All Tests":
             filter_text = self.selected_test_label.lower()
@@ -197,13 +196,8 @@ class ResultsPage(QWidget):
 
         for row_index, test in enumerate(tests):
             self.tests_table.insertRow(row_index)
-            # Test tuple structure:
-            # 0: id, 1: admin_id, 2: participant_id, 3: arm_tested, 4: data_type, 5: test_type,
-            # 6: timestamp, 7: file_paths, 8: test_results
 
-            # Retrieve participant info using test[2] (participant_id)
-            # participant_id = test[2]
-            climber_data = self.climber_db_manager.get_user_data(str(self.admin_id), test["participant_id"])
+            climber_data = self.climber_db_manager.get_user_data(self.admin_id, test["participant_id"])
             name = climber_data.get("name", "") if climber_data else ""
             surname = climber_data.get("surname", "") if climber_data else ""
 
@@ -261,12 +255,8 @@ class ResultsPage(QWidget):
         if not test_id_item:
             return None
         test_id = int(test_id_item.text())
-        # Look up the full test information by test id.
-        # tests = self.test_db_manager.fetch_results_by_participant(participant_id=self.selected_climber_id)
-        # if self.admin_id == 1:
-        #     tests = self.test_db_manager.fetch_all_results()
-        # else:
-        tests = self.test_db_manager.fetch_results_by_admin(admin_id=str(self.admin_id))
+
+        tests = self.test_db_manager.fetch_results_by_admin(admin_id=self.admin_id)
         for t in tests:
             if t["id"] == test_id:
                 return t
@@ -286,7 +276,7 @@ class ResultsPage(QWidget):
 
         # Retrieve participant info from test[2]
         participant_id = test["participant_id"]
-        climber_data = self.climber_db_manager.get_user_data(str(self.admin_id), participant_id)
+        climber_data = self.climber_db_manager.get_user_data(self.admin_id, participant_id)
         name = climber_data.get("name", "") if climber_data else ""
         surname = climber_data.get("surname", "") if climber_data else ""
 
@@ -326,6 +316,9 @@ class ResultsPage(QWidget):
         # test_metrics = {"Max Strength": "N/A", "Critical Force": "N/A", "W Prime": "N/A"}
         report_window = TestReportWindow(participant_info=participant_info,
                                          db_data=db_data,
+                                         admin_id=self.admin_id,
+                                         climber_db_manager=self.climber_db_manager,
+                                         test_db_manager=self.test_db_manager,
                                          parent=self)
         report_window.show()
 

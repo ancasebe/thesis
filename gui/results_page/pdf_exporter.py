@@ -43,14 +43,16 @@ def filter_parameters_explanation(test_results, explanation_dict):
     return "<br/><br/>".join(explanations)
 
 
-def generate_pdf_report(pdf_path, title_text, basic_info, participant_info, test_results, nirs_results,
-                        graph_image_path, rep_results, rep_graph_image_path, parameters_explanation):
+def generate_pdf_report(pdf_path, title_text, basic_info, participant_info, test_results, nirs_results=None,
+                        graph_image_path=None, norm_force_graph_image_path=None, rep_results=None, 
+                        rep_graph_image_path=None, parameters_explanation=None):
     """
     Generates a PDF report with the following sections (in order):
       - Title
       - Basic Test Information (table)
       - Participant Information (table)
       - Force-Time Graph (image)
+      - Normalized Max Force Analysis (image)
       - Test Metrics (table)
       - Repetition Metrics (table)
       - Repetition Graph (image)
@@ -68,11 +70,12 @@ def generate_pdf_report(pdf_path, title_text, basic_info, participant_info, test
         basic_info (list of tuple): Basic test info.
         participant_info (list of tuple): Participant info.
         test_results (list of tuple): Test force metrics.
-        nirs_results (list of tuple): NIRS metrics.
-        graph_image_path (str or file-like): Force-Time Graph image.
-        rep_results (list of list): Repetition metrics table (first row header).
-        rep_graph_image_path (str or file-like): Repetition Graph image.
-        parameters_explanation (str): Explanation text.
+        nirs_results (list of tuple, optional): NIRS metrics.
+        graph_image_path (str or file-like, optional): Force-Time Graph image.
+        norm_force_graph_image_path (str or file-like, optional): Normalized Max Force Analysis image.
+        rep_results (list of list, optional): Repetition metrics table (first row header).
+        rep_graph_image_path (str or file-like, optional): Repetition Graph image.
+        parameters_explanation (str, optional): Explanation text.
     """
     doc = SimpleDocTemplate(pdf_path, pagesize=A4, rightMargin=72, leftMargin=72,
                             topMargin=72, bottomMargin=72)
@@ -110,17 +113,6 @@ def generate_pdf_report(pdf_path, title_text, basic_info, participant_info, test
         ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
     ]))
 
-    # test_metrics_data = [[label, value] for (label, value) in test_results]
-    # table_metrics = Table(test_metrics_data, hAlign='LEFT')
-    # table_metrics.setStyle(TableStyle([
-    #     ('BACKGROUND', (0, 0), (-1, -1), colors.white),
-    #     ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
-    #     ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-    #     ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-    #     ('BOX', (0, 0), (-1, -1), 1, colors.black),
-    #     ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-    # ]))
-
     available_width = A4[0] - 33 - 33  # A4 width minus margins
     print('Available width pdf:', available_width)
     col_width = available_width / 2
@@ -137,7 +129,6 @@ def generate_pdf_report(pdf_path, title_text, basic_info, participant_info, test
     story.append(Spacer(1, 12))
 
     # 4. Force-Time Graph Image
-    # story.append(Paragraph("Force-Time Graph", heading_style))
     if graph_image_path:
         im = Image(graph_image_path)
         available_width = A4[0] - 5 - 5
@@ -145,7 +136,6 @@ def generate_pdf_report(pdf_path, title_text, basic_info, participant_info, test
             scale = available_width / im.imageWidth
             im.drawWidth = im.imageWidth * scale
             im.drawHeight = im.imageHeight * scale
-        # story.append(im)
         story.append(KeepTogether([Paragraph("Force-Time Graph", heading_style), im]))
     story.append(Spacer(1, 12))
 
@@ -176,8 +166,18 @@ def generate_pdf_report(pdf_path, title_text, basic_info, participant_info, test
     story.append(KeepTogether([Paragraph("Test Results", heading_style), table_metrics]))
     story.append(Spacer(1, 12))
 
-    # 6. Repetition Graph Image
-    # story.append(Paragraph("Repetition Graph", heading_style))
+    # 6. Normalized Max Force Analysis Graph Image
+    if norm_force_graph_image_path:
+        im_norm = Image(norm_force_graph_image_path)
+        available_width = A4[0] - 5 - 5
+        if im_norm.imageWidth > available_width:
+            scale = available_width / im_norm.imageWidth
+            im_norm.drawWidth = im_norm.imageWidth * scale
+            im_norm.drawHeight = im_norm.imageHeight * scale
+        story.append(KeepTogether([Paragraph("Normalized Max Force Analysis", heading_style), im_norm]))
+    story.append(Spacer(1, 12))
+
+    # 7. Repetition Graph Image
     if rep_graph_image_path:
         im_rep = Image(rep_graph_image_path)
         available_width = A4[0] - 5 - 5
@@ -185,13 +185,11 @@ def generate_pdf_report(pdf_path, title_text, basic_info, participant_info, test
             scale = available_width / im_rep.imageWidth
             im_rep.drawWidth = im_rep.imageWidth * scale
             im_rep.drawHeight = im_rep.imageHeight * scale
-        # story.append(im_rep)
         story.append(KeepTogether([Paragraph("Repetition Graph", heading_style), im_rep]))
     story.append(Spacer(1, 12))
 
-    # 7. Repetition Metrics Table
+    # 8. Repetition Metrics Table
     if rep_results:
-        # story.append(Paragraph("Repetition Results", heading_style))
         table_rep = Table(rep_results, hAlign='CENTER')
         table_rep.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.white),
@@ -199,26 +197,17 @@ def generate_pdf_report(pdf_path, title_text, basic_info, participant_info, test
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('BACKGROUND', (0, 1), (-1, -1), colors.white),
-            # ('FONTNAME', (0, 1), (0, -1), 'Helvetica-Bold'),
             ('BOX', (0, 0), (-1, -1), 1, colors.black),
             ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
         ]))
-        # story.append(table_rep)
-        # story.append(KeepTogether([table_rep]))
         story.append(KeepTogether([Paragraph("Repetition Results", heading_style), table_rep]))
         story.append(Spacer(1, 12))
 
-    # 8. Parameters Explanation
-    # story.append(Paragraph("Measured Parameters Explanation", heading_style))
-    # story.append(Paragraph(parameters_explanation, normal_style))
-    # story.append(Spacer(1, 12))
-
-    # 8. Parameters Explanation – filter only for parameters that appear in test_results
-    # filtered_parameters_text = filter_parameters_explanation(test_results, parameters_explanation_dict)
-    # story.append(Paragraph("Measured Parameters Explanation", heading_style))
-    story.append(KeepTogether([Paragraph("Measured Parameters Explanation", heading_style),
-                               Paragraph(parameters_explanation, normal_style)]))
-    story.append(Spacer(1, 12))
+    # 9. Parameters Explanation
+    if parameters_explanation:
+        story.append(KeepTogether([Paragraph("Measured Parameters Explanation", heading_style),
+                                   Paragraph(parameters_explanation, normal_style)]))
+        story.append(Spacer(1, 12))
 
     doc.build(story)
 
@@ -254,5 +243,17 @@ if __name__ == '__main__':
         # Add more parameter explanations as needed.
     )
 
-    generate_pdf_report(pdf_file, title, basic, participant, metrics, graph_img, rep_metrics_table, graph_img, parameters_text)
+    generate_pdf_report(
+        pdf_path=pdf_file,
+        title_text=title,
+        basic_info=basic,
+        participant_info=participant,
+        test_results=metrics,
+        nirs_results=None,
+        graph_image_path=graph_img,
+        norm_force_graph_image_path=None,
+        rep_results=rep_metrics_table,
+        rep_graph_image_path=graph_img,
+        parameters_explanation=parameters_text
+    )
     print("PDF report generated successfully!")

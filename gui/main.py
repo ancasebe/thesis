@@ -31,7 +31,6 @@ class MainWindow(QMainWindow):
 
         super().__init__()
         self.login_db_manager = LoginDatabaseManager()
-        # self.super_db_manager = DatabaseManager()
         self.login_db_manager.register_superuser()  # Ensure default superuser exists
 
         self.setWindowTitle("Testing climbers app")

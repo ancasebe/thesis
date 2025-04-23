@@ -51,8 +51,15 @@ class ClimberDatabaseManager:
             """)
 
     def register_climber(self, admin_id, **climber_data):
-        """Registers a new climber linked to a specific admin."""
+        """
+        Registers a new climber linked to a specific admin.
+        If a climber with the same email already exists, returns their ID instead.
+        
+        Returns:
+            int: The ID of the newly inserted or existing climber
+        """
         try:
+            cursor = self.connection.cursor()
             # Organize data into JSON objects
             basic_info = {
                 'name': climber_data.get('name'),
@@ -82,7 +89,6 @@ class ClimberDatabaseManager:
                 'sport_activity_hours': climber_data.get('sport_activity_hours')
             }
 
-            cursor = self.connection.cursor()
             cursor.execute("""
                 INSERT INTO climbers (admin_id, basic_info, climbing_info, sport_info, timestamp)
                 VALUES (?, ?, ?, ?, ?);
@@ -94,14 +100,22 @@ class ClimberDatabaseManager:
                 climber_data.get('timestamp')
             ))
             self.connection.commit()
-            return True
-        except sqlite3.IntegrityError:
-            return False
+            new_id = cursor.lastrowid
+            print(f"New climber registered with ID: {new_id}")
+            return new_id
+        except sqlite3.IntegrityError as e:
+            print(f"Error registering climber: {e}")
+            return None
 
     def update_climber_data(self, admin_id, climber_id, updated_data):
         """Updates climber information based on admin_id and climber_id."""
         try:
-            # Organize data into JSON objects
+            if admin_id is str:
+                admin_id = int(admin_id)
+            if climber_id is str:
+                participant_id = int(climber_id)
+
+                # Organize data into JSON objects
             basic_info = {
                 'name': updated_data.get('name'),
                 'surname': updated_data.get('surname'),
@@ -149,6 +163,9 @@ class ClimberDatabaseManager:
 
     def get_climbers_by_admin(self, admin_id):
         """Fetches all climbers registered by a specific admin."""
+        if admin_id is str:
+            admin_id = int(admin_id)
+
         cursor = self.connection.cursor()
         if admin_id == 1:
             cursor.execute(
@@ -161,18 +178,27 @@ class ClimberDatabaseManager:
 
     def get_user_data(self, admin_id, climber_id):
         """
-        Retrieves all field values for a registered climber based on email, accessible only by the admin
-        who registered them.
-
+        Retrieves all field values for a registered climber, compatible with both column-based
+        and JSON-based schemas.
+        
         Args:
-            admin_id (str): The ID of the admin currently logged in, used to restrict access.
-            climber_id (str): The id of the climber whose data is being requested.
-
+            admin_id (int): The ID of the admin currently logged in, used to restrict access.
+            climber_id (int): The id of the climber whose data is being requested.
+            
         Returns:
             dict: A dictionary of the climber's field values if accessible by the admin; None if access is denied.
         """
+        # Convert parameters to integers to ensure correct comparison
+        if admin_id is str:
+            admin_id = int(admin_id)
+        if climber_id is str:
+            participant_id = int(climber_id)
+        
         cursor = self.connection.cursor()
-        if int(admin_id) == 1:
+        print(f"Querying climber ID: {climber_id} for admin ID: {admin_id}")
+        
+        # First try the JSON-based schema
+        if admin_id == 1:
             cursor.execute("""
                 SELECT basic_info, climbing_info, sport_info
                 FROM climbers
@@ -184,17 +210,49 @@ class ClimberDatabaseManager:
                 FROM climbers
                 WHERE id = ? AND admin_id = ?;
             """, (climber_id, admin_id))
+        
         result = cursor.fetchone()
-
+        
         if result:
-            # Deserialize JSON data
-            basic_info = json.loads(result[0])
-            climbing_info = json.loads(result[1])
-            sport_info = json.loads(result[2])
-
-            # Combine all data into one dictionary
-            combined_data = {**basic_info, **climbing_info, **sport_info}
-            return combined_data
+            try:
+                # Try JSON-based approach
+                basic_info = json.loads(result[0])
+                climbing_info = json.loads(result[1])
+                sport_info = json.loads(result[2])
+                combined_data = {**basic_info, **climbing_info, **sport_info}
+                return combined_data
+            except (json.JSONDecodeError, TypeError):
+                # If JSON parsing fails, it might be using the column-based schema
+                pass
+        
+        # Fall back to column-based schema if JSON approach failed
+        if admin_id == 1:
+            cursor.execute("""
+                SELECT name, surname, email, gender, dominant_arm, weight, height, age, ircra, 
+                   climbing_freq, climbing_hours, years_climbing, bouldering, lead_climbing, 
+                   climbing_indoor, climbing_outdoor, sport_other, sport_freq, sport_activity_hours
+            FROM climbers
+            WHERE id = ?;
+        """, (climber_id,))
+        else:
+            cursor.execute("""
+                SELECT name, surname, email, gender, dominant_arm, weight, height, age, ircra, 
+                   climbing_freq, climbing_hours, years_climbing, bouldering, lead_climbing, 
+                   climbing_indoor, climbing_outdoor, sport_other, sport_freq, sport_activity_hours
+            FROM climbers
+            WHERE id = ? AND admin_id = ?;
+        """, (climber_id, admin_id))
+        
+        result = cursor.fetchone()
+        print(f"Query result: {result}")
+        
+        if result:
+            fields = ["name", "surname", "email", "gender", "dominant_arm", "weight", "height", "age",
+                      "ircra", "climbing_freq", "climbing_hours", "years_climbing", "bouldering",
+                      "lead_climbing", "climbing_indoor", "climbing_outdoor", "sport_other",
+                      "sport_freq", "sport_activity_hours"]
+            return dict(zip(fields, result))
+        
         return None  # If no climber data is found or access is denied
 
     def delete_climber(self, climber_id):
