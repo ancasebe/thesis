@@ -6,6 +6,8 @@ the rep graphs. It is styled similarly to the main TestReportWindow.
 """
 import os
 import pandas as pd
+import json
+
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
 from matplotlib import pyplot as plt
@@ -35,7 +37,17 @@ class RepReportWindow(QMainWindow):
         super().__init__(parent)
         self.setWindowTitle("Repetition-by-Repetition Report")
         self.resize(1600, 800)
+        # self.rep_results = rep_results
+        # Handle rep_results - could be a JSON string or already a Python object
+        # if isinstance(rep_results, str):
+        #     try:
+        #         self.rep_results = json.loads(rep_results)
+        #     except json.JSONDecodeError:
+        #         # Fallback for old format
+        #         self.rep_results = eval(rep_results)
+        # else:
         self.rep_results = rep_results
+
         self.force_df = force_df
 
         # We'll create our repetition figure in the constructor (or in setup_ui).
@@ -211,11 +223,8 @@ class RepReportWindow(QMainWindow):
                             label="80% Threshold" if i == 0 else "")
             except Exception as e:
                 print(f"Error plotting other parameters: {e}")
-                return None, None
-
-            # Set subplot title.
-            ax.set_title(f"Rep {i + 1}", fontsize=10)
-            ax.title.set_position([0.5, 1.05])
+                # Changed from returning a tuple to returning None
+                return None
 
         # Hide any unused subplots.
         for j in range(i + 1, len(axes)):

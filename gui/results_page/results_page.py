@@ -130,25 +130,26 @@ class ResultsPage(QWidget):
         main_layout.addLayout(bottom_layout)
 
     def load_climbers(self):
-        """
-        Loads climbers into the climber_selector combo box.
-        Normal admins see only climbers registered with their admin_id;
-        superuser (admin_id == 1) sees all climbers.
-        """
-        # if self.admin_id == 1:
-        #     climbers = self.climber_db_manager.get_all_climbers()
-        # else:
-        climbers = self.climber_db_manager.get_climbers_by_admin(self.admin_id)
-        self.climber_selector.clear()
-        self.climber_selector.addItem("All climbers", None)
-        seen = set()
-        for climber in climbers:
-            # Only add if we haven't seen this climber's id
-            if climber["id"] in seen:
-                continue
-            seen.add(climber["id"])
-            display_name = f"{climber['name']} {climber['surname']}"
-            self.climber_selector.addItem(display_name, climber["id"])
+        """Load climbers for the current admin into the dropdown."""
+        try:
+            climbers = self.climber_db_manager.get_climbers_by_admin(self.admin_id)
+            
+            self.climber_selector.clear()
+            if not climbers:
+                self.climber_selector.addItem("No climbers found", None)
+                return
+            
+            # Add "All climbers" option at the top
+            self.climber_selector.addItem("All climbers", None)
+            
+            # Add individual climbers
+            for climber in climbers:
+                # The returned structure now has 'id', 'name', and 'surname'
+                display_text = f"{climber['name']} {climber['surname']}"
+                self.climber_selector.addItem(display_text, climber['id'])
+                
+        except Exception as e:
+            print(f"Error loading climbers: {e}")
 
     def on_climber_changed(self, index):
         self.selected_climber_id = self.climber_selector.itemData(index)

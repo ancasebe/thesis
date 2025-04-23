@@ -4,16 +4,27 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="8d114396-0b52-44aa-9fec-17fceb6230ba" name="Changes" comment="not working well, trying fix the vizualization">
+    <list default="true" id="8d114396-0b52-44aa-9fec-17fceb6230ba" name="Changes" comment="Add data acquisition system for force and NIRS sensors&#10;&#10;Implemented a comprehensive module for collecting, processing, and simulating data from force sensors (via serial connection) and NIRS sensors (via BLE). The system includes fallback mechanisms for synthetic data generation, calibration support, and data forwarding controls. This addition also introduces data storage capabilities with options to retrieve data as pandas DataFrames.">
       <change afterPath="$PROJECT_DIR$/gui/databases/tests_database.db" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gui/test_page/evaluations/force_evaluation.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gui/test_page/feather_logger.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gui/results_page/graphs_generator.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gui/login_database.db" beforeDir="false" afterPath="$PROJECT_DIR$/gui/login_database.db" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/research_members/climber_db_manager.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/research_members/climber_db_manager.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/research_members/edit_climber_info.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/research_members/edit_climber_info.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/research_members/old_research_members_page.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/results_page/rep_report_window.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/results_page/rep_report_window.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gui/results_page/report_window.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/results_page/report_window.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/results_page/results_page.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/results_page/results_page.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gui/superuser/climber_database.db" beforeDir="false" afterPath="$PROJECT_DIR$/gui/databases/climber_database.db" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/superuser/climber_db_manager.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/superuser/login_db_manager.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/superuser/login_db_manager.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gui/test_page/data_communicator.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/test_page/data_communicator.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/test_page/data_generator.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/test_page/data_communicator_split.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/test_page/evaluations/force_evaluation.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/test_page/evaluations/force_evaluation.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/test_page/evaluations/nirs_evaluation.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/test_page/evaluations/nirs_evaluation.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/test_page/group2_ao_copy.xlsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/test_page/test_db_manager.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/test_page/test_db_manager.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gui/test_page/test_page.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/test_page/test_page.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -64,7 +75,10 @@
     "Python.data_communicator_mocked.executor": "Run",
     "Python.data_generator.executor": "Run",
     "Python.data_visualisation.executor": "Run",
+    "Python.database_diagnostic_tool.executor": "Run",
+    "Python.database_migration_script.executor": "Run",
     "Python.force_evaluation.executor": "Run",
+    "Python.graphs_generator.executor": "Run",
     "Python.main.executor": "Run",
     "Python.pdf_exporter.executor": "Run",
     "Python.rep_another.executor": "Run",
@@ -79,23 +93,23 @@
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.git.unshallow": "true",
     "git-widget-placeholder": "main",
-    "last_opened_file_path": "/Users/annasebestikova/PycharmProjects/thesis/gui/test_page",
-    "settings.editor.selected.configurable": "application.passwordSafe"
+    "last_opened_file_path": "/Users/annasebestikova/PycharmProjects/thesis/gui/databases",
+    "settings.editor.selected.configurable": "ml.llm.LLMConfigurable"
   }
 }]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/gui/databases" />
       <recent name="$PROJECT_DIR$/gui/test_page" />
       <recent name="$PROJECT_DIR$/../Diploma/shit files" />
-      <recent name="$PROJECT_DIR$/gui/databases" />
       <recent name="$PROJECT_DIR$/gui/results_page" />
       <recent name="$PROJECT_DIR$/gui/test_page/evaluations" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/gui" />
       <recent name="$PROJECT_DIR$/gui/test_page" />
       <recent name="$PROJECT_DIR$/gui/databases" />
       <recent name="$PROJECT_DIR$/gui/superuser" />
-      <recent name="$PROJECT_DIR$/gui" />
       <recent name="$PROJECT_DIR$/gui/results_page" />
     </key>
   </component>
@@ -243,7 +257,23 @@
       <option name="project" value="LOCAL" />
       <updated>1744903238052</updated>
     </task>
-    <option name="localTasksCounter" value="17" />
+    <task id="LOCAL-00017" summary="Remove data_generator.py and its associated functionality.&#10;&#10;The file `data_generator.py` has been entirely removed from the project. This includes all classes and methods related to Serial and Bluetooth communication and synthetic data generation, as they are no longer required. Ensure no dependent code references these removed components.">
+      <option name="closed" value="true" />
+      <created>1745073518208</created>
+      <option name="number" value="00017" />
+      <option name="presentableId" value="LOCAL-00017" />
+      <option name="project" value="LOCAL" />
+      <updated>1745073518208</updated>
+    </task>
+    <task id="LOCAL-00018" summary="Add data acquisition system for force and NIRS sensors&#10;&#10;Implemented a comprehensive module for collecting, processing, and simulating data from force sensors (via serial connection) and NIRS sensors (via BLE). The system includes fallback mechanisms for synthetic data generation, calibration support, and data forwarding controls. This addition also introduces data storage capabilities with options to retrieve data as pandas DataFrames.">
+      <option name="closed" value="true" />
+      <created>1745073585830</created>
+      <option name="number" value="00018" />
+      <option name="presentableId" value="LOCAL-00018" />
+      <option name="project" value="LOCAL" />
+      <updated>1745073585830</updated>
+    </task>
+    <option name="localTasksCounter" value="19" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -283,6 +313,9 @@
     <MESSAGE value="pdf_exporter.py added, big update with force_evaluation.py and the other related scripts" />
     <MESSAGE value="nirs kinda added, plus integration of the recent tests" />
     <MESSAGE value="not working well, trying fix the vizualization" />
-    <option name="LAST_COMMIT_MESSAGE" value="not working well, trying fix the vizualization" />
+    <MESSAGE value="Remove unused `data_generator.py` file.&#10;&#10;The `data_generator.py` file, containing classes for serial and Bluetooth data communication, has been deleted due to lack of use or relevance in the project. This cleanup improves the overall maintainability of the codebase." />
+    <MESSAGE value="Remove data_generator.py and its associated functionality.&#10;&#10;The file `data_generator.py` has been entirely removed from the project. This includes all classes and methods related to Serial and Bluetooth communication and synthetic data generation, as they are no longer required. Ensure no dependent code references these removed components." />
+    <MESSAGE value="Add data acquisition system for force and NIRS sensors&#10;&#10;Implemented a comprehensive module for collecting, processing, and simulating data from force sensors (via serial connection) and NIRS sensors (via BLE). The system includes fallback mechanisms for synthetic data generation, calibration support, and data forwarding controls. This addition also introduces data storage capabilities with options to retrieve data as pandas DataFrames." />
+    <option name="LAST_COMMIT_MESSAGE" value="Add data acquisition system for force and NIRS sensors&#10;&#10;Implemented a comprehensive module for collecting, processing, and simulating data from force sensors (via serial connection) and NIRS sensors (via BLE). The system includes fallback mechanisms for synthetic data generation, calibration support, and data forwarding controls. This addition also introduces data storage capabilities with options to retrieve data as pandas DataFrames." />
   </component>
 </project>

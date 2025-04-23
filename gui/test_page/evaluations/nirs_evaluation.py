@@ -82,7 +82,7 @@ class NIRSEvaluation:
                 baseline_mean = np.mean(nirs_array[baseline_inds])
                 baseline_mean = round(baseline_mean, 2)
             else:
-                baseline_mean = np.nan
+                baseline_mean = None
 
             # Compute time to recovery: starting at test_end_rel, find the first time point where
             # the NIRS value is within recovery_tolerance of the baseline_mean.
@@ -90,12 +90,14 @@ class NIRSEvaluation:
             time_to_recovery = None
             for idx in recovery_inds:
                 if abs(nirs_array[idx] - baseline_mean) <= self.recovery_tolerance:
-                    time_to_recovery = round((nirs_time_array[idx] - test_end_rel), 2)
+                    time_to_recovery = round((nirs_time_array[idx] - test_end_rel) / 2, 2)
                     break
-            self.results = {
-                'baseline_mean': baseline_mean,
-                'time_to_recovery': time_to_recovery
-            }
+            if baseline_mean:
+                self.results = {
+                    'baseline_mean': baseline_mean,
+                    'time_to_recovery': time_to_recovery
+                }
             return self.results
         except FileNotFoundError:
             print('FileNotFoundError:', self.nirs_file)
+            return None

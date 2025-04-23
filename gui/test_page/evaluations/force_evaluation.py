@@ -689,6 +689,7 @@ class RepMetrics:
             return rep_metrics
         except Exception as e:
             print(f"Error computing rep metrics {e}")
+            return None
 
 
 # ------------------------------

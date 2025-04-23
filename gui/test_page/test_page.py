@@ -483,18 +483,18 @@ class TestPage(QWidget):
         # Log the disconnection
         print(f"{time.strftime('%H:%M:%S')} - NIRS disconnected manually by user")
 
-    def load_climbers(self):
-        """Loads climbers registered by the current admin into the ComboBox."""
-        # if self.admin_id == 1:
-        #     climbers = self.db_manager.get_all_climbers()
-        # else:
-        climbers = self.db_manager.get_climbers_by_admin(self.admin_id)
-        self.climber_selector.clear()
-        self.climber_selector.addItem("Select a climber", None)
-        for climber in climbers:
-            display_name = f"{climber['name']} {climber['surname']}"
-            # Save both the id and email in a dict.
-            self.climber_selector.addItem(display_name, climber["id"])
+    # def load_climbers(self):
+    #     """Loads climbers registered by the current admin into the ComboBox."""
+    #     # if self.admin_id == 1:
+    #     #     climbers = self.db_manager.get_all_climbers()
+    #     # else:
+    #     climbers = self.db_manager.get_climbers_by_admin(self.admin_id)
+    #     self.climber_selector.clear()
+    #     self.climber_selector.addItem("Select a climber", None)
+    #     for climber in climbers:
+    #         display_name = f"{climber['name']} {climber['surname']}"
+    #         # Save both the id and email in a dict.
+    #         self.climber_selector.addItem(display_name, climber["id"])
 
     def select_test(self, test_name):
         """Sets the selected test and validates climber and arm selections."""
@@ -682,3 +682,21 @@ class TestPage(QWidget):
         if not editing:
             self.load_climbers()
         self.main_stacked_widget.setCurrentWidget(self)
+
+    def load_climbers(self):
+        """Loads all climbers for the current admin into the dropdown."""
+        try:
+            self.climber_selector.clear()
+            climbers = self.db_manager.get_climbers_by_admin(self.admin_id)
+            if not climbers:
+                self.climber_selector.addItem("No climbers found", -1)
+                return
+        
+            # Add climbers to the dropdown
+            self.climber_selector.addItem("Select a climber", -1)
+            for climber in climbers:
+                # The returned structure now has 'id', 'name', and 'surname'
+                display_text = f"{climber['name']} {climber['surname']}"
+                self.climber_selector.addItem(display_text, climber['id'])
+        except Exception as e:
+            print(f"Error loading climbers: {e}")

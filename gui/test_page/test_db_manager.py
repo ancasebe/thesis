@@ -1,6 +1,10 @@
-# --- Database Manager for Test Results ---
+"""
+This module provides a database manager for climbing test results,
+using JSON for efficient storage of complex data structures.
+"""
 import os
 import sqlite3
+import json
 
 
 class ClimbingTestManager:
@@ -25,6 +29,8 @@ class ClimbingTestManager:
         # Construct the full path to a specific DB file:
         climbing_test_db_path = os.path.join(db_folder, db_name)
         self.connection = sqlite3.connect(climbing_test_db_path)
+        # Enable JSON support
+        self.connection.execute("PRAGMA foreign_keys = ON")
         self.create_climbing_tests_table()
 
     def create_climbing_tests_table(self):
@@ -35,16 +41,9 @@ class ClimbingTestManager:
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     admin_id TEXT NOT NULL,
                     participant_id TEXT NOT NULL,
-                    arm_tested TEXT,
-                    data_type TEXT,
-                    test_type TEXT,
                     timestamp TEXT,
-                    number_of_reps INTEGER,
-                    force_file TEXT,
-                    nirs_file TEXT,
-                    test_results TEXT,
-                    nirs_results TEXT,
-                    rep_results TEXT
+                    test_metadata JSON NOT NULL,
+                    test_data JSON NOT NULL
                 )
             ''')
 
@@ -60,14 +59,28 @@ class ClimbingTestManager:
         Returns:
             int: The ID of the newly inserted test result.
         """
+        # Organize data into JSON objects
+        test_metadata = {
+            'arm_tested': db_data.get('arm_tested'),
+            'data_type': db_data.get('data_type'),
+            'test_type': db_data.get('test_type'),
+            'number_of_reps': db_data.get('number_of_reps')
+        }
+
+        test_data = {
+            'force_file': db_data.get('force_file'),
+            'nirs_file': db_data.get('nirs_file'),
+            'test_results': db_data.get('test_results'),
+            'nirs_results': db_data.get('nirs_results'),
+            'rep_results': db_data.get('rep_results')
+        }
+
         with self.connection:
             cursor = self.connection.execute('''
-                INSERT INTO climbing_tests (admin_id, participant_id, arm_tested, data_type, test_type, 
-                timestamp, number_of_reps, force_file, nirs_file, test_results, nirs_results, rep_results)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (admin_id, participant_id, db_data['arm_tested'], db_data['data_type'],
-                  db_data['test_type'], db_data['timestamp'], db_data['number_of_reps'], db_data['force_file'],
-                  db_data['nirs_file'], db_data['test_results'], db_data['nirs_results'], db_data['rep_results']))
+                INSERT INTO climbing_tests (admin_id, participant_id, timestamp, test_metadata, test_data)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (admin_id, participant_id, db_data.get('timestamp'),
+                  json.dumps(test_metadata), json.dumps(test_data)))
 
             print("Test result saved successfully.")
 
@@ -87,11 +100,26 @@ class ClimbingTestManager:
         """
         with self.connection:
             cursor = self.connection.execute(
-                'SELECT * FROM climbing_tests WHERE participant_id = ?',
+                'SELECT id, admin_id, participant_id, timestamp, test_metadata, test_data FROM climbing_tests WHERE participant_id = ?',
                 (participant_id,)
             )
-            columns = [desc[0] for desc in cursor.description]
-            return [dict(zip(columns, row)) for row in cursor.fetchall()]
+            results = []
+            for row in cursor.fetchall():
+                test_id, admin_id, participant_id, timestamp, test_metadata, test_data = row
+                test_metadata_dict = json.loads(test_metadata)
+                test_data_dict = json.loads(test_data)
+
+                # Combine all data
+                result = {
+                    'id': test_id,
+                    'admin_id': admin_id,
+                    'participant_id': participant_id,
+                    'timestamp': timestamp,
+                    **test_metadata_dict,
+                    **test_data_dict
+                }
+                results.append(result)
+            return results
 
     def fetch_results_by_admin(self, admin_id):
         """
@@ -106,14 +134,32 @@ class ClimbingTestManager:
         with self.connection:
             # Ensure admin_id is compared as an integer
             if admin_id == "1":
-                cursor = self.connection.execute('SELECT * FROM climbing_tests')
+                cursor = self.connection.execute(
+                    'SELECT id, admin_id, participant_id, timestamp, test_metadata, test_data FROM climbing_tests'
+                )
             else:
                 cursor = self.connection.execute(
-                    'SELECT * FROM climbing_tests WHERE admin_id = ?',
+                    'SELECT id, admin_id, participant_id, timestamp, test_metadata, test_data FROM climbing_tests WHERE admin_id = ?',
                     (admin_id,)
                 )
-            columns = [desc[0] for desc in cursor.description]
-            return [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+            results = []
+            for row in cursor.fetchall():
+                test_id, admin_id, participant_id, timestamp, test_metadata, test_data = row
+                test_metadata_dict = json.loads(test_metadata)
+                test_data_dict = json.loads(test_data)
+
+                # Combine all data
+                result = {
+                    'id': test_id,
+                    'admin_id': admin_id,
+                    'participant_id': participant_id,
+                    'timestamp': timestamp,
+                    **test_metadata_dict,
+                    **test_data_dict
+                }
+                results.append(result)
+            return results
 
     def get_test_data(self, test_id):
         """
@@ -124,16 +170,26 @@ class ClimbingTestManager:
         """
         cursor = self.connection.cursor()
         cursor.execute("""
-            SELECT id, admin_id, participant_id, arm_tested, data_type, test_type, timestamp, 
-            number_of_reps, force_file, nirs_file, test_results, nirs_results, rep_results
+            SELECT id, admin_id, participant_id, timestamp, test_metadata, test_data
             FROM climbing_tests
             WHERE id = ?;
         """, (test_id,))
         result = cursor.fetchone()
+
         if result:
-            fields = ["id", "admin_id", "participant_id", "arm_tested", "data_type", "test_type", "timestamp",
-                      "number_of_reps", "force_file", "nirs_file", "test_results", "nirs_results", "rep_results"]
-            return dict(zip(fields, result))
+            test_id, admin_id, participant_id, timestamp, test_metadata, test_data = result
+            test_metadata_dict = json.loads(test_metadata)
+            test_data_dict = json.loads(test_data)
+
+            # Combine all data
+            return {
+                'id': test_id,
+                'admin_id': admin_id,
+                'participant_id': participant_id,
+                'timestamp': timestamp,
+                **test_metadata_dict,
+                **test_data_dict
+            }
         return None
 
     def close_connection(self):

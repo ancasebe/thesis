@@ -10,6 +10,9 @@ Key functionalities:
 
 import sqlite3
 import hashlib
+import json
+import os
+
 
 class LoginDatabaseManager:
     """
@@ -19,7 +22,16 @@ class LoginDatabaseManager:
 
     def __init__(self, db_name="login_database.db"):
         """Initializes the LoginDatabaseManager and creates the login database if it doesn't exist."""
-        self.connection = sqlite3.connect(db_name)
+        script_dir = os.path.dirname(__file__)
+        db_folder = os.path.join(script_dir, '..', 'databases')
+
+        if not os.path.exists(db_folder):
+            os.makedirs(db_folder)
+
+        login_db_path = os.path.join(db_folder, db_name)
+        self.connection = sqlite3.connect(login_db_path)
+        # Enable JSON support
+        self.connection.execute("PRAGMA foreign_keys = ON")
         self.create_admins_table()
 
     def create_admins_table(self):
@@ -30,7 +42,7 @@ class LoginDatabaseManager:
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     username TEXT UNIQUE NOT NULL,
                     password TEXT NOT NULL,
-                    research_name TEXT
+                    admin_info JSON
                 );
             """)
 
@@ -38,10 +50,12 @@ class LoginDatabaseManager:
         """Registers a default superuser in the database."""
         try:
             cursor = self.connection.cursor()
+            admin_info = json.dumps({"research_name": "Superuser Research"})
+
             cursor.execute("""
-                INSERT OR IGNORE INTO admins (username, password, research_name)
+                INSERT OR IGNORE INTO admins (username, password, admin_info)
                 VALUES (?, ?, ?);
-            """, ("superuser", "placeholder_password", "Superuser Research"))
+            """, ("superuser", "placeholder_password", admin_info))
             self.connection.commit()
 
             cursor.execute("SELECT id FROM admins WHERE username = ?", ("superuser",))
@@ -58,10 +72,12 @@ class LoginDatabaseManager:
         """Registers a new admin with hashed password."""
         try:
             cursor = self.connection.cursor()
+            admin_info = json.dumps({"research_name": research_name})
+
             cursor.execute("""
-                INSERT INTO admins (username, password, research_name)
+                INSERT INTO admins (username, password, admin_info)
                 VALUES (?, ?, ?);
-            """, (username, "placeholder_password", research_name))
+            """, (username, "placeholder_password", admin_info))
             self.connection.commit()
 
             user_id = cursor.lastrowid
@@ -97,6 +113,13 @@ class LoginDatabaseManager:
         """Retrieves the admin_id for a given username."""
         cursor = self.connection.cursor()
         cursor.execute("SELECT id FROM admins WHERE username = ?", (username,))
+        result = cursor.fetchone()
+        return result[0] if result else None
+
+    def get_research_name(self, admin_id):
+        """Retrieves the research name for a given admin ID."""
+        cursor = self.connection.cursor()
+        cursor.execute("SELECT json_extract(admin_info, '$.research_name') FROM admins WHERE id = ?", (admin_id,))
         result = cursor.fetchone()
         return result[0] if result else None
 

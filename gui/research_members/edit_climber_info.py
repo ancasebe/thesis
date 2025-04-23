@@ -151,48 +151,52 @@ class EditClimberInfoPage(QWidget):
         right_label.setText(f"{right_label.text().split(':')[0]}: {value}%")
 
     def populate_data(self):
-        """Fetches and pre-fills the climber's data into the form fields based on their email."""
-        user_data_fields = {
-            "name": "Name:",
-            "surname": "Surname:",
-            "email": "Email:",
-            "gender": "Gender:",
-            "dominant_arm": "Dominant Arm:",
-            "weight": "Weight (kg):",
-            "height": "Height (cm):",
-            "age": "Age (years):",
-            "ircra": "IRCRA Scale Level:",
-            "years_climbing": "Years of Climbing:",
-            "climbing_freq": "Climbing Frequency/week:",
-            "climbing_hours": "Climbing Hours/week:",
-            "sport_other": "Other sports:",
-            "sport_freq": "Sport Frequency/week:",
-            "sport_activity_hours": "Sport Activity (hours/week):"
-        }
-
-        print(self.admin_id)
-        print(self.climber_id)
-        # if self.admin_id == 1:
+        """Fetches climber data from the database and populates the form fields."""
         climber_data = self.climber_db_manager.get_user_data(self.admin_id, self.climber_id)
-
-        if climber_data:
-            for field, widget_label in user_data_fields.items():
-                widget = self.first_column_widgets.get(widget_label) or self.second_column_widgets.get(widget_label)
-                data = climber_data.get(field)
-
-                if widget:
-                    if isinstance(widget, QSpinBox):
-                        widget.setValue(int(data) if data else 0)
-                    elif isinstance(widget, QComboBox):
-                        widget.setCurrentText(data or "")
-                    elif isinstance(widget, QLineEdit):
-                        widget.setText(data or "")
-
-            # Set slider values based on database values
-            self.bouldering_lead_slider.setValue(climber_data.get("bouldering", 50))
-            self.indoor_outdoor_slider.setValue(climber_data.get("climbing_indoor", 50))
-        else:
-            QMessageBox.warning(self, "Access Denied", "You do not have permission to access this climber's data.")
+        
+        if not climber_data:
+            return
+        
+        # Populate fields from the dictionaries instead of direct attributes
+        # Basic info fields (first column)
+        self.first_column_widgets["Name:"].setText(climber_data.get('name', ''))
+        self.first_column_widgets["Surname:"].setText(climber_data.get('surname', ''))
+        self.first_column_widgets["Email:"].setText(climber_data.get('email', ''))
+        
+        gender_index = self.first_column_widgets["Gender:"].findText(climber_data.get('gender', ''))
+        if gender_index >= 0:
+            self.first_column_widgets["Gender:"].setCurrentIndex(gender_index)
+        
+        arm_index = self.first_column_widgets["Dominant Arm:"].findText(climber_data.get('dominant_arm', ''))
+        if arm_index >= 0:
+            self.first_column_widgets["Dominant Arm:"].setCurrentIndex(arm_index)
+        
+        # Set numeric values properly
+        self.first_column_widgets["Weight (kg):"].setValue(int(climber_data.get('weight', 0) or 0))
+        self.first_column_widgets["Height (cm):"].setValue(int(climber_data.get('height', 0) or 0))
+        self.first_column_widgets["Age (years):"].setValue(int(climber_data.get('age', 0) or 0))
+        
+        # Climbing info fields (second column)
+        ircra_index = self.second_column_widgets["IRCRA Scale Level:"].findText(str(climber_data.get('ircra', '')))
+        if ircra_index >= 0:
+            self.second_column_widgets["IRCRA Scale Level:"].setCurrentIndex(ircra_index)
+        
+        # Set numeric values properly
+        self.second_column_widgets["Years of Climbing:"].setValue(int(climber_data.get('years_climbing', 0) or 0))
+        self.second_column_widgets["Climbing Frequency/week:"].setValue(int(climber_data.get('climbing_freq', 0) or 0))
+        self.second_column_widgets["Climbing Hours/week:"].setValue(int(climber_data.get('climbing_hours', 0) or 0))
+        
+        # Update sliders - assuming values are between 0-100
+        bouldering_value = int(climber_data.get('lead_climbing', 50) or 50)
+        self.bouldering_lead_slider.setValue(bouldering_value)
+        
+        indoor_value = int(climber_data.get('climbing_outdoor', 50) or 50)
+        self.indoor_outdoor_slider.setValue(indoor_value)
+        
+        # Sport info fields
+        self.second_column_widgets["Other sports:"].setText(climber_data.get('sport_other', ''))
+        self.second_column_widgets["Sport Frequency/week:"].setValue(int(climber_data.get('sport_freq', 0) or 0))
+        self.second_column_widgets["Sport Activity (hours/week):"].setValue(int(climber_data.get('sport_activity_hours', 0) or 0))
 
     def handle_save(self):
         """Handles saving the updated data into the database."""

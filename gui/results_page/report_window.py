@@ -3,6 +3,8 @@ from datetime import datetime
 
 import numpy as np
 import pandas as pd
+import json
+
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QGroupBox, QFormLayout, QLabel, QPushButton, \
     QMessageBox, QScrollArea, QHBoxLayout, QSizePolicy, QGridLayout, QFileDialog
@@ -26,34 +28,50 @@ class TestReportWindow(QMainWindow):
         super().__init__(parent)
         self.setWindowTitle("Test Report Summary")
         self.resize(1600, 800)
-        test_results = db_data['test_results']
-        print("Test metrics:", test_results)
-        self.test_metrics = eval(test_results, {"np": np})
-        try:
-            if db_data['data_type'] != "force":
-                nirs_results = db_data['nirs_results']
-                self.nirs_results = eval(nirs_results, {"np": np})
-            else:
-                self.nirs_results = ''
-        except Exception as e:
-            self.nirs_results = ''
-            print('NIRS results in Report Window:', e)
-
+        
+        # Parse test_results from db_data
+        self.test_metrics = None
+        if db_data.get('test_results') and db_data['test_results'] != "null":
+            try:
+                self.test_metrics = json.loads(db_data['test_results'])
+            except json.JSONDecodeError as e:
+                print(f"Error parsing test_results JSON: {e}")
+                try:
+                    # Fallback for old format data
+                    self.test_metrics = eval(db_data['test_results'], {"np": np})
+                except Exception as e2:
+                    print(f"Failed to parse test_results with eval: {e2}")
+        
+        # Parse nirs_results from db_data
+        self.nirs_results = None
+        if db_data.get('nirs_results') and db_data['nirs_results'] != "null":
+            try:
+                # Print the raw value to debug
+                print(f"Raw nirs_results value: {repr(db_data['nirs_results'])}")
+                self.nirs_results = json.loads(db_data['nirs_results'])
+            except json.JSONDecodeError as e:
+                print(f"Error parsing nirs_results JSON: {e}")
+                try:
+                    # Fallback for old format data
+                    self.nirs_results = eval(db_data['nirs_results'], {"np": np})
+                except Exception as e2:
+                    print(f"Failed to parse nirs_results with eval: {e2}")
+                    # Ensure we have a valid value even if parsing fails
+                    self.nirs_results = None
+        
         self.participant_info = participant_info
         self.db_data = db_data
+        
         # Create the matplotlib figure
         print('data_type:', db_data['data_type'])
+        self.fig = None
         try:
             if db_data['data_type'] == "force":
                 force_file = db_data['force_file']
-                self.fig = self.create_force_figure(
-                    force_file=force_file
-                )
+                self.fig = self.create_force_figure(force_file=force_file)
             elif db_data['data_type'] == "nirs":
                 nirs_file = db_data['nirs_file']
-                self.fig = self.create_nirs_figure(
-                    nirs_file=nirs_file
-                )
+                self.fig = self.create_nirs_figure(nirs_file=nirs_file)
                 print("todo: nirs")
             elif db_data['data_type'] == "force_nirs":
                 force_file = db_data['force_file']
@@ -64,8 +82,7 @@ class TestReportWindow(QMainWindow):
                 )
         except Exception as e:
             print(f"Error creating figure: {e}")
-            self.fig = None
-
+        
         self.setup_ui(self.fig)
 
     def setup_ui(self, fig):
@@ -246,9 +263,38 @@ class TestReportWindow(QMainWindow):
                 pairs.append((label, str(value)))
         return pairs
 
+
+    @staticmethod
+    def get_test_type_display(test_type):
+        """
+        Returns a human-readable display name for the test type.
+        """
+        test_type_mapping = {
+            "ao": "All-Out Test",
+            "mvc": "Maximum Voluntary Contraction",
+            "iit": "Intermittent Incremental Test",
+            "iirt": "Intermittent Isometric Resistance Test",
+            "ec": "Endurance Capacity",
+            "sit": "Sprint Interval Test"
+        }
+        return test_type_mapping.get(test_type, test_type)
+
+    @staticmethod
+    def get_data_type_display(data_type):
+        """
+        Returns a human-readable display name for the data type.
+        """
+        data_type_mapping = {
+            "force": "Force only",
+            "nirs": "NIRS only",
+            "force_nirs": "Force & NIRS"
+        }
+        return data_type_mapping.get(data_type, data_type)
+
     def build_participant_info_pairs(self):
         """
         Build a list of (label, value) pairs for the participant info using a predefined mapping.
+        Compatible with data from ClimberDatabaseManager.get_user_data()
         """
         user_data_fields = {
             "name": "Name",
@@ -278,13 +324,19 @@ class TestReportWindow(QMainWindow):
         """
         Returns a list of (label, value) pairs for the basic test info section,
         each to be displayed in two columns.
+        Compatible with data from CombinedDataCommunicator and db_data from ClimbingTestManager
         """
         # Gather data from db_data
-        test_name = self.db_data.get("test_type", "-")
+        test_type = self.db_data.get("test_type", "-")
         data_type = self.db_data.get("data_type", "-")
         arm_tested = self.db_data.get("arm_tested", "-")
-        ts = self.db_data.get("timestamp", "-")
         number_of_reps = self.db_data.get("number_of_reps", "-")
+        ts = self.db_data.get("timestamp", "-")
+
+        # Format arm_tested for display
+        arm_text = "Dominant" if arm_tested == "D" else "Non-dominant" if arm_tested == "N" else arm_tested
+
+        # Format timestamp
         date_str, time_str = "", ""
         if ts:
             try:
@@ -296,9 +348,9 @@ class TestReportWindow(QMainWindow):
                 pass
 
         pairs = [
-            ("Test Name", test_name),
-            ("Data Type", data_type),
-            ("Arm Tested", arm_tested),
+            ("Test Name", self.get_test_type_display(test_type)),
+            ("Data Type", self.get_data_type_display(data_type)),
+            ("Arm Tested", arm_text),
             ("Number of Repetitions", number_of_reps),
             ("Date", date_str),
             ("Time", time_str)
@@ -704,31 +756,61 @@ class TestReportWindow(QMainWindow):
         """
         Open a new window that displays repetition-by-repetition metrics and graphs.
         """
-        # Retrieve rep_results from your db_data. Here we assume they were saved as a string.
-        # For security, consider using json instead of eval.
-        rep_results_str = self.db_data['rep_results']
-        print('Rep metrics str:', rep_results_str)
-        if rep_results_str:
-            try:
-                rep_results = eval(rep_results_str, {"np": np})
-            except Exception as e:
-                QMessageBox.warning(self, "Error", f"Could not parse rep metrics: {e}")
-                return
-        else:
-            QMessageBox.information(self, "No Data", "No repetition metrics were computed.")
+        if not hasattr(self, 'db_data') or not self.db_data:
+            QMessageBox.warning(self, "No Data", "No repetition data available.")
             return
 
-        # Load the force file into a DataFrame for rep graph generation.
-        force_file = self.db_data['force_file']
-        if force_file is None:
-            QMessageBox.warning(self, "Error", "Force file path not available.")
+        # Parse rep_results if it's a JSON string
+        rep_results_db = self.db_data.get('rep_results')
+        if not rep_results_db or rep_results_db == "null":
+            QMessageBox.warning(self, "No Data", "No repetition data available.")
             return
+        print('rep_results_db:', rep_results_db)
 
         try:
-            force_df = pd.read_feather(force_file)
-        except Exception as e:
-            QMessageBox.warning(self, "Error", f"Could not read force file: {e}")
+            rep_results = json.loads(rep_results_db)
+        except json.JSONDecodeError:
+            # Fallback for old format
+            rep_results = eval(rep_results_db)
+
+        if not rep_results:
+            QMessageBox.warning(self, "No Data", "No repetition data available.")
             return
+
+        # Load force data if available
+        force_file = self.db_data.get('force_file')
+        force_df = None
+        if force_file and os.path.exists(force_file):
+            try:
+                force_df = pd.read_feather(force_file)
+            except Exception as e:
+                print(f"Error loading force data: {e}")
+
+        # # Retrieve rep_results from your db_data. Here we assume they were saved as a string.
+        # # For security, consider using json instead of eval.
+        # rep_results_str = self.db_data['rep_results']
+        # print('Rep metrics str:', rep_results_str)
+        # if rep_results_str:
+        #     try:
+        #         rep_results = eval(rep_results_str, {"np": np})
+        #     except Exception as e:
+        #         QMessageBox.warning(self, "Error", f"Could not parse rep metrics: {e}")
+        #         return
+        # else:
+        #     QMessageBox.information(self, "No Data", "No repetition metrics were computed.")
+        #     return
+        #
+        # # Load the force file into a DataFrame for rep graph generation.
+        # force_file = self.db_data['force_file']
+        # if force_file is None:
+        #     QMessageBox.warning(self, "Error", "Force file path not available.")
+        #     return
+        #
+        # try:
+        #     force_df = pd.read_feather(force_file)
+        # except Exception as e:
+        #     QMessageBox.warning(self, "Error", f"Could not read force file: {e}")
+        #     return
 
         # Instantiate and show the rep report window.
         self.rep_window = RepReportWindow(rep_results=rep_results,

@@ -63,7 +63,7 @@ class MainWindow(QMainWindow):
         """
         Creates the main application interface after successful login or registration.
 
-        Args:
+        Args
             username (str): The username of the logged-in user.
             admin_id (int): The ID of the logged-in admin, passed to MainPage and other components.
         """
