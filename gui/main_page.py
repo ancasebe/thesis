@@ -20,6 +20,7 @@ from gui.superuser.login_db_manager import LoginDatabaseManager
 from gui.research_members.climber_db_manager import ClimberDatabaseManager
 from gui.superuser.new_admin import RegistrationPage
 from gui.results_page.results_page import ResultsPage
+from gui.statistics.statistics_page import StatisticsPage
 
 
 def create_placeholder_page(title):
@@ -92,7 +93,7 @@ class MainPage(QWidget):
     """
     MainPage is the primary interface after the user logs in. It provides a navigation menu
     on the left, allowing the user to switch between different sections of the application
-    such as Calibration, Testing, Training, Results, Settings, and About.
+    such as Calibration, Testing, Training, Results, Settings, and Statistics.
 
     Args:
         username (str): The username of the logged-in user.
@@ -103,7 +104,6 @@ class MainPage(QWidget):
         self.username = username
         self.admin_id = admin_id
         self.logout_callback = logout_callback
-        # self.is_superuser = is_superuser
         self.app_stacked_widget = QStackedWidget()
         self.widget_mapping = {}  # To track added widgets
         self.setup_ui()
@@ -111,7 +111,6 @@ class MainPage(QWidget):
         # Add main app page initially
         self.main_app_page = MainAppPage(self.username, self.logout_callback)
         self.add_widget_to_stack(self.main_app_page, "main")
-        # print(self.admin_id)
 
     def add_widget_to_stack(self, widget, key):
         """
@@ -140,10 +139,10 @@ class MainPage(QWidget):
         # Navigation buttons for various sections
         buttons = {
             "Testing": self.show_testing,
-            "Training": self.show_training,
+            # "Training": self.show_training,
             "Results": self.show_results,
             "Settings": self.show_settings,
-            "About": self.show_about,
+            "Statistics": self.show_statistics,  # Changed "About" to "Statistics"
             "Log Out": self.logout_callback  # Log Out button at the end
         }
 
@@ -209,7 +208,7 @@ class MainPage(QWidget):
         if "handle_admins" not in self.widget_mapping:
             login_db_manager = LoginDatabaseManager()
             handle_admins_page = RegistrationPage(
-                switch_to_main=self.show_about,
+                switch_to_main=self.show_testing(),
                 db_manager=login_db_manager
             )
             self.add_widget_to_stack(handle_admins_page, "handle_admins")
@@ -224,12 +223,11 @@ class MainPage(QWidget):
             self.add_widget_to_stack(settings_page, "settings")
         self.app_stacked_widget.setCurrentWidget(self.widget_mapping["settings"])
 
-    def show_about(self):
+    def show_statistics(self):
         """
-        Switch to the About page.
+        Switch to the Statistics page with IRCRA prediction model functionality.
         """
-        if "about" not in self.widget_mapping:
-            about_page = create_placeholder_page("About")
-            self.add_widget_to_stack(about_page, "about")
-        self.app_stacked_widget.setCurrentWidget(self.widget_mapping["about"])
-
+        if "statistics" not in self.widget_mapping:
+            statistics_page = StatisticsPage(admin_id=self.admin_id)
+            self.add_widget_to_stack(statistics_page, "statistics")
+        self.app_stacked_widget.setCurrentWidget(self.widget_mapping["statistics"])

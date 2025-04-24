@@ -4,14 +4,13 @@
 import os
 import pickle
 import numpy as np
-import pandas as pd
 from matplotlib import pyplot as plt
 from sklearn import svm
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import train_test_split
 
-from pca_model import MLDataProcessor
+from gui.statistics.pca_model import MLDataProcessor
 
 MODEL_DIR = 'models'
 os.makedirs(MODEL_DIR, exist_ok=True)

@@ -460,7 +460,7 @@ def plot_normalized_max_force(climber_manager, test_manager, admin_id, current_t
         top=0.90,  # top margin (so titles don’t clip)
         bottom=0.15  # bottom margin for x-labels
     )
-    fig.tight_layout()
+    # fig.tight_layout()
     
     return fig
 

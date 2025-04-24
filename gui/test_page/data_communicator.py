@@ -43,6 +43,12 @@ class CombinedDataCommunicator(QMainWindow):
         self.data_type = data_type
         self.test_type = test_type
         self.window_size = window_size
+        
+        # Add NIRS smoothing parameters
+        # self.ema_alpha = 0.2  # Smoothing factor: lower = more smoothing
+        # self.last_smoothed_value = None  # Store the last smoothed value
+        # self.nirs_smoothing_window = 15  # Smaller window for real-time display
+        self.nirs_buffer = []  # Buffer to hold recent NIRS values for smoothing
 
         # Connect the signal to the handler
         self.newData.connect(self.handle_new_data)
@@ -158,17 +164,6 @@ class CombinedDataCommunicator(QMainWindow):
         The data string is expected in the format "sensorID_timestamp_value".
         Update internal data arrays and call updatePlot.
         """
-        # parts = data_str.split("_")
-        # print('Data to plot:', data_str)
-        # if len(parts) < 3:
-        #     return
-        # try:
-        #     sensor = int(parts[0])
-        #     timestamp = float(parts[1])
-        #     value = float(parts[2])
-        # except ValueError:
-        #     return
-
         sid, ts, val = data_str.split('_')
         ts, val = float(ts), float(val)
         if sid == '1':  # force
@@ -178,11 +173,14 @@ class CombinedDataCommunicator(QMainWindow):
             if self.force_file:
                 self.force_file.log(ts, val)
         else:           # NIRS channels: '2','3','4'
-            print('plotting NIRS:', ts, val)
+            # Apply smoothing to NIRS data before displaying
+            smoothed_val = self.smooth_nirs_data(float(val))
+            print('plotting NIRS:', ts, smoothed_val)
             self.nirs_data['timestamps'].append(ts)
-            self.nirs_data['values'].append(val)
+            self.nirs_data['values'].append(smoothed_val)
+            # Always log the original (unsmoothed) value
             if self.nirs_file:
-                self.nirs_file.log(ts, val)
+                self.nirs_file.log(ts, val)  # Log the original value
         self.update_plot()
 
     def update_plot(self):
@@ -355,3 +353,49 @@ class CombinedDataCommunicator(QMainWindow):
             self.dg.pause_data_forwarding()
         
         event.accept()
+
+    # def smooth_nirs_data(self, value):
+    #     """
+    #     Apply Exponential Moving Average (EMA) smoothing to NIRS data in real-time.
+    #     This is computationally efficient and reduces noise while maintaining responsiveness.
+    #
+    #     Args:
+    #         value (float): The new NIRS value
+    #
+    #     Returns:
+    #         float: The smoothed NIRS value
+    #     """
+    #
+    #     # If it's the first value, just return it without smoothing
+    #     if self.last_smoothed_value is None:
+    #         self.last_smoothed_value = value
+    #         return value
+    #
+    #     # Apply EMA smoothing
+    #     smoothed_value = self.ema_alpha * value + (1 - self.ema_alpha) * self.last_smoothed_value
+    #     self.last_smoothed_value = smoothed_value
+    #     return smoothed_value
+
+    def smooth_nirs_data(self, value, nirs_smoothing_window=11):
+        """
+        Apply a simple moving average smoothing to NIRS data in real-time.
+
+        Args:
+            value (float): The new NIRS value to add to the buffer
+            nirs_smoothing_window (int, optional): The size of the moving average window. Defaults to 11.
+
+        Returns:
+            float: The smoothed NIRS value
+        """
+        # Add the new value to the buffer
+        self.nirs_buffer.append(value)
+
+        # Keep only the most recent values based on the window size
+        if len(self.nirs_buffer) > nirs_smoothing_window:
+            self.nirs_buffer.pop(0)
+
+        # Calculate the smoothed value (simple moving average)
+        if len(self.nirs_buffer) > 0:
+            return sum(self.nirs_buffer) / len(self.nirs_buffer)
+        else:
+            return value

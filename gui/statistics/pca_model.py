@@ -7,8 +7,8 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 
-from db_testing.project_files.climber_db_manager import ClimberDatabaseManager
-from db_testing.project_files.test_db_manager import ClimbingTestManager
+from gui.research_members.climber_db_manager import ClimberDatabaseManager
+from gui.test_page.test_db_manager import ClimbingTestManager
 
 
 class MLDataProcessor:

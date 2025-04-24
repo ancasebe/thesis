@@ -245,12 +245,17 @@ class BluetoothCommunicator:
         """
         try:
             ts = time.time()
-            f1, f2, f3, _ = struct.unpack('<fffB I', data)
+            # Update the format string to match the actual data format
+            # Original problematic line: f1, f2, f3, _ = struct.unpack('<fffB I', data)
+            values = struct.unpack('<fff', data[:12])  # Unpack just the first three floats (4 bytes each)
+            f1, f2, f3 = values
             items = [f"2_{ts:.3f}_{f1}", f"3_{ts:.3f}_{f2}", f"4_{ts:.3f}_{f3}"]
             print('NIRS data:', items)
             self.data_callback(items)
-        except struct.error:
-            print(f"Malformed BLE data received, incorrect format")
+        except struct.error as e:
+            print(f"{time.strftime('%H:%M:%S')} - NIRS handler error: {e} - Data length: {len(data)}")
+            # If the format is still incorrect, print the raw data to help debugging
+            print(f"Raw data (hex): {data.hex()}")
         except Exception as e:
             print(f"{time.strftime('%H:%M:%S')} - NIRS handler error: {e}")
 
@@ -346,7 +351,7 @@ class DataGenerator:
         self._original_nirs_callback = None
         
         # Create communicators with internal callbacks
-        self.serial_com = SerialCommunicator(data_callback=self._on_force)
+        self.serial_com = SerialCommunicator(data_callback=self._on_force, port='/dev/tty.usbserial-14130')
         self.bluetooth_com = BluetoothCommunicator(
             data_callback=self._on_nirs,
             device_name="Train.Red FYER 0707",

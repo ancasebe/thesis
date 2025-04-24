@@ -4,25 +4,18 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="8d114396-0b52-44aa-9fec-17fceb6230ba" name="Changes" comment="Remove deprecated database and GUI management files.&#10;&#10;Both `climber_db_manager.py` and `data_communicator_split.py` along with associated resources were removed, as they are no longer used in the system. This cleanup helps reduce code clutter and eliminates maintenance overhead for outdated components.">
-      <change afterPath="$PROJECT_DIR$/gui/results_page/ircra_prediction_model.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gui/results_page/ircra_prediction_test.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gui/results_page/pca_model.py" afterDir="false" />
+    <list default="true" id="8d114396-0b52-44aa-9fec-17fceb6230ba" name="Changes" comment="Refactor and enhance force and NIRS data processing&#10;&#10;Simplified and cleaned up redundant or commented-out code in various modules. Introduced new helper functions to smooth data, handle baseline spikes, and improve visualization. Enhanced PDF generation and graph creation with added flexibility for optional inputs and improved plots for test metrics and normalized force analysis.">
+      <change afterPath="$PROJECT_DIR$/gui/statistics/statistics_page.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/databases/climber_database.db" beforeDir="false" afterPath="$PROJECT_DIR$/gui/databases/climber_database.db" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gui/databases/tests_database.db" beforeDir="false" afterPath="$PROJECT_DIR$/gui/databases/tests_database.db" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/research_members/climber_db_manager.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/research_members/new_climber.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/research_members/new_climber.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/login_database.db" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/main_page.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/main_page.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gui/results_page/graphs_generator.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/results_page/graphs_generator.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/results_page/pdf_exporter.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/results_page/pdf_exporter.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/results_page/report_window.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/results_page/report_window.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/results_page/results_page.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/results_page/results_page.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/results_page/ircra_prediction_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/statistics/ircra_prediction_model.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/results_page/ircra_prediction_test.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/statistics/ircra_prediction_test.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/results_page/pca_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/statistics/pca_model.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gui/test_page/data_communicator.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/test_page/data_communicator.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gui/test_page/data_gen.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/test_page/data_gen.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/test_page/evaluations/force_evaluation.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/test_page/evaluations/force_evaluation.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/test_page/test_db_manager.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/test_page/test_page.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/test_page/test_page.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -103,11 +96,11 @@
       <recent name="$PROJECT_DIR$/gui/results_page" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/gui/statistics" />
       <recent name="$PROJECT_DIR$/gui/test_page" />
       <recent name="$PROJECT_DIR$/gui" />
       <recent name="$PROJECT_DIR$/gui/databases" />
       <recent name="$PROJECT_DIR$/gui/superuser" />
-      <recent name="$PROJECT_DIR$/gui/results_page" />
     </key>
   </component>
   <component name="SharedIndexes">
@@ -278,7 +271,15 @@
       <option name="project" value="LOCAL" />
       <updated>1745398070646</updated>
     </task>
-    <option name="localTasksCounter" value="20" />
+    <task id="LOCAL-00020" summary="Refactor and enhance force and NIRS data processing&#10;&#10;Simplified and cleaned up redundant or commented-out code in various modules. Introduced new helper functions to smooth data, handle baseline spikes, and improve visualization. Enhanced PDF generation and graph creation with added flexibility for optional inputs and improved plots for test metrics and normalized force analysis.">
+      <option name="closed" value="true" />
+      <created>1745433179289</created>
+      <option name="number" value="00020" />
+      <option name="presentableId" value="LOCAL-00020" />
+      <option name="project" value="LOCAL" />
+      <updated>1745433179289</updated>
+    </task>
+    <option name="localTasksCounter" value="21" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -322,6 +323,7 @@
     <MESSAGE value="Remove data_generator.py and its associated functionality.&#10;&#10;The file `data_generator.py` has been entirely removed from the project. This includes all classes and methods related to Serial and Bluetooth communication and synthetic data generation, as they are no longer required. Ensure no dependent code references these removed components." />
     <MESSAGE value="Add data acquisition system for force and NIRS sensors&#10;&#10;Implemented a comprehensive module for collecting, processing, and simulating data from force sensors (via serial connection) and NIRS sensors (via BLE). The system includes fallback mechanisms for synthetic data generation, calibration support, and data forwarding controls. This addition also introduces data storage capabilities with options to retrieve data as pandas DataFrames." />
     <MESSAGE value="Remove deprecated database and GUI management files.&#10;&#10;Both `climber_db_manager.py` and `data_communicator_split.py` along with associated resources were removed, as they are no longer used in the system. This cleanup helps reduce code clutter and eliminates maintenance overhead for outdated components." />
-    <option name="LAST_COMMIT_MESSAGE" value="Remove deprecated database and GUI management files.&#10;&#10;Both `climber_db_manager.py` and `data_communicator_split.py` along with associated resources were removed, as they are no longer used in the system. This cleanup helps reduce code clutter and eliminates maintenance overhead for outdated components." />
+    <MESSAGE value="Refactor and enhance force and NIRS data processing&#10;&#10;Simplified and cleaned up redundant or commented-out code in various modules. Introduced new helper functions to smooth data, handle baseline spikes, and improve visualization. Enhanced PDF generation and graph creation with added flexibility for optional inputs and improved plots for test metrics and normalized force analysis." />
+    <option name="LAST_COMMIT_MESSAGE" value="Refactor and enhance force and NIRS data processing&#10;&#10;Simplified and cleaned up redundant or commented-out code in various modules. Introduced new helper functions to smooth data, handle baseline spikes, and improve visualization. Enhanced PDF generation and graph creation with added flexibility for optional inputs and improved plots for test metrics and normalized force analysis." />
   </component>
 </project>
