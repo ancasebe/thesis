@@ -12,6 +12,7 @@ class FeatherBinaryLogger:
     def __init__(self, folder="tests", prefix="processed_data", timestamp="today", db_queue=None):
         script_dir = os.path.dirname(__file__)
         folder_path = os.path.join(script_dir, folder)
+        # filename = os.path.join(folder, f"{prefix}_{timestamp}.feather")
         filename = f"{folder_path}/{prefix}_{timestamp}.feather"
         print(f'{prefix} file was prepared:', filename)
         self.filename = filename

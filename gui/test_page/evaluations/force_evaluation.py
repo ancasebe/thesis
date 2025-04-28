@@ -600,47 +600,114 @@ class RepMetrics:
         try:
             force_values = self.force_df['value'].values
             smoothed = self._smooth(force_values, window_size=5)
-            threshold = self.threshold_ratio * np.max(smoothed)
+            threshold = self.threshold_ratio * self.force_df['value'].max()
+
             active_intervals = []
             start_idx = None
+
+            # 1) sweep for crossings
             for i, val in enumerate(smoothed):
-                # i += 1
                 if val > threshold and start_idx is None:
+                    # rising edge
                     start_idx = i
-                elif val <= threshold and start_idx:
+                elif val <= threshold and start_idx is not None:
+                    # falling edge
                     active_intervals.append((start_idx, i))
                     start_idx = None
-            if start_idx or start_idx == 0:
-                print(len(smoothed))
+
+            # 2) if we never dipped back below, close out the last rep
+            if start_idx is not None:
                 active_intervals.append((start_idx, len(smoothed) - 1))
 
-            # Merge segments with small gaps based on time difference.
-            min_gap_sec = 1.0  # Merge segments separated by less than 1.0 second.
-            merged_intervals = []
+            # 3) merge small gaps
+            min_gap_sec = 1.0
+            merged = []
             times = self.force_df['time'].values
-            for interval in active_intervals:
-                if not merged_intervals:
-                    merged_intervals.append(interval)
+            for s, e in active_intervals:
+                if not merged:
+                    merged.append((s, e))
                 else:
-                    prev_start, prev_end = merged_intervals[-1]
-                    cur_start, cur_end = interval
-                    gap = times[cur_start] - times[prev_end]
+                    ps, pe = merged[-1]
+                    gap = times[s] - times[pe]
                     if gap < min_gap_sec:
-                        merged_intervals[-1] = (prev_start, cur_end)
+                        # extend previous
+                        merged[-1] = (ps, e)
                     else:
-                        merged_intervals.append(interval)
+                        merged.append((s, e))
 
-            # Filter intervals based on actual repetition duration.
+            # 4) filter by duration
             rep_intervals = []
-            for (s, e) in merged_intervals:
+            for s, e in merged:
                 duration = times[e] - times[s]
                 if self.min_rep_sec <= duration <= self.max_rep_sec:
                     rep_intervals.append((s, e))
+
             print("Detected repetition intervals (using time):", rep_intervals)
             return rep_intervals
+
         except Exception as e:
             print(f"Error detecting repetitions: {e}")
             return []
+
+    # def _detect_reps(self):
+    #     """
+    #     Detect repetitions in the force data using actual times.
+    #
+    #     Process:
+    #       1. Smooth the force values.
+    #       2. Determine a threshold as a fraction of the maximum smoothed value.
+    #       3. Detect contiguous intervals where the smoothed force exceeds the threshold.
+    #       4. Merge intervals that are separated by a gap shorter than a constant (e.g. 1.0 sec).
+    #       5. For each merged interval, compute the duration using the actual times.
+    #          Only retain intervals whose duration is between min_rep_sec and max_rep_sec.
+    #
+    #     Returns:
+    #         list of tuple: Each tuple is (start_index, end_index) for a detected repetition.
+    #     """
+    #     try:
+    #         force_values = self.force_df['value'].values
+    #         smoothed = self._smooth(force_values, window_size=5)
+    #         threshold = self.threshold_ratio * np.max(smoothed)
+    #         active_intervals = []
+    #         start_idx = None
+    #         for i, val in enumerate(smoothed):
+    #             # i += 1
+    #             if val > threshold and start_idx is None:
+    #                 start_idx = i
+    #             elif val <= threshold and start_idx:
+    #                 active_intervals.append((start_idx, i))
+    #                 start_idx = None
+    #         if start_idx or start_idx == 0:
+    #             print(len(smoothed))
+    #             active_intervals.append((start_idx, len(smoothed) - 1))
+    #
+    #         # Merge segments with small gaps based on time difference.
+    #         min_gap_sec = 1.0  # Merge segments separated by less than 1.0 second.
+    #         merged_intervals = []
+    #         times = self.force_df['time'].values
+    #         for interval in active_intervals:
+    #             if not merged_intervals:
+    #                 merged_intervals.append(interval)
+    #             else:
+    #                 prev_start, prev_end = merged_intervals[-1]
+    #                 cur_start, cur_end = interval
+    #                 gap = times[cur_start] - times[prev_end]
+    #                 if gap < min_gap_sec:
+    #                     merged_intervals[-1] = (prev_start, cur_end)
+    #                 else:
+    #                     merged_intervals.append(interval)
+    #
+    #         # Filter intervals based on actual repetition duration.
+    #         rep_intervals = []
+    #         for (s, e) in merged_intervals:
+    #             duration = times[e] - times[s]
+    #             if self.min_rep_sec <= duration <= self.max_rep_sec:
+    #                 rep_intervals.append((s, e))
+    #         print("Detected repetition intervals (using time):", rep_intervals)
+    #         return rep_intervals
+    #     except Exception as e:
+    #         print(f"Error detecting repetitions: {e}")
+    #         return []
 
     def compute_rep_metrics(self):
         """

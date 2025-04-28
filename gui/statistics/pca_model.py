@@ -147,8 +147,9 @@ class MLDataProcessor:
 
         # Replace 'N/A' values with NaN for all columns
         for col in df.columns:
-            df[col] = df[col].replace('N/A', np.nan)
-        
+            # df[col] = df[col].replace('N/A', np.nan)
+            df[col] = df[col].replace('N/A', np.nan).infer_objects(copy=False)
+
         # Debug the final DataFrame
         print("\nFinal DataFrame:")
         print(f"  Shape: {df.shape}")
@@ -456,6 +457,7 @@ class MLDataProcessor:
         print(f"Selected {n_components} components explaining {cum_var[n_components - 1] * 100:.1f}% of variance")
 
         # Fit PCA with optimal components
+        n_components = min(n_components, X.shape[1])
         pca = PCA(n_components=n_components)
         PCs = pca.fit_transform(X_scaled)
 

@@ -157,13 +157,16 @@ class BluetoothCommunicator:
         self.data_uuid = data_uuid
         self.client = None
         self.connection_state = ''
-        self.running = False
+        self.running = False  # Whether the communication thread is running
+        self.connected = False  # Actual BLE connection state
         self.thread = None
         self.debugging = False
         self.debug_data_buffer = []
         self.connection_attempts = 0
         self.max_attempts = max_attempts
-
+        
+    # ... other methods remain the same ...
+    
     @staticmethod
     def _generate_nirs_profile(noise_level=0.4):
         """
@@ -245,20 +248,22 @@ class BluetoothCommunicator:
         """
         try:
             ts = time.time()
-            # Update the format string to match the actual data format
-            # Original problematic line: f1, f2, f3, _ = struct.unpack('<fffB I', data)
+            # Update to properly handle the data format
             values = struct.unpack('<fff', data[:12])  # Unpack just the first three floats (4 bytes each)
             f1, f2, f3 = values
             items = [f"2_{ts:.3f}_{f1}", f"3_{ts:.3f}_{f2}", f"4_{ts:.3f}_{f3}"]
             print('NIRS data:', items)
             self.data_callback(items)
+            
+            # Explicitly set connected flag when we successfully receive data
+            if not self.connected:
+                self.connected = True
+                print("NIRS CONNECTION STATUS: Connected and receiving real data")
         except struct.error as e:
             print(f"{time.strftime('%H:%M:%S')} - NIRS handler error: {e} - Data length: {len(data)}")
-            # If the format is still incorrect, print the raw data to help debugging
-            print(f"Raw data (hex): {data.hex()}")
         except Exception as e:
             print(f"{time.strftime('%H:%M:%S')} - NIRS handler error: {e}")
-
+            
     def _run_loop(self):
         """
         Main thread loop for BLE operations. Handles connection attempts and switches
@@ -270,15 +275,15 @@ class BluetoothCommunicator:
             asyncio.set_event_loop(loop)
 
             # Attempt to connect with retries
-            connected = False
+            self.connected = False
             for attempt in range(1, self.max_attempts + 1):
                 try:
-                    connected = loop.run_until_complete(self._connect_and_listen())
+                    self.connected = loop.run_until_complete(self._connect_and_listen())
                 except Exception as e:
                     self.connection_state = f"{time.strftime('%H:%M:%S')} - NIRS connect attempt {attempt}/{self.max_attempts} error: {e}"
                     print(self.connection_state)
-                    connected = False
-                if connected:
+                    self.connected = False
+                if self.connected:
                     self.connection_state = f"{time.strftime('%H:%M:%S')} - Connected to {self.device_name} on attempt {attempt}"
                     print(self.connection_state)
                     break
@@ -287,7 +292,7 @@ class BluetoothCommunicator:
                     print(self.connection_state)
                     time.sleep(1)
 
-            if not connected:
+            if not self.connected:
                 self.debugging = True
                 self.connection_state = f"{time.strftime('%H:%M:%S')} - Failed to connect after {self.max_attempts} attempts. Starting simulation mode"
                 print(self.connection_state)
@@ -303,6 +308,7 @@ class BluetoothCommunicator:
             finally:
                 try:
                     loop.run_until_complete(self._stop_and_disconnect())
+                    self.connected = False
                 except Exception as e:
                     print(f"{time.strftime('%H:%M:%S')} - Error on disconnect: {e}")
         except Exception as e:
@@ -414,21 +420,72 @@ class DataGenerator:
         self.external_nirs_callback = nirs_callback
         # Resume data forwarding by default when setting new callbacks
         self.pause_callbacks = False
+        print("Data callbacks set and forwarding enabled")
     
     def pause_data_forwarding(self):
         """
         Pause forwarding data to external callbacks.
         Data will still be collected and stored internally.
         """
-        self.pause_callbacks = True
-        print("Data forwarding paused - still collecting data")
-        
+        if not self.pause_callbacks:
+            self.pause_callbacks = True
+
+            # Check if the sensors are actually running
+            nirs_running = self.bluetooth_com.running and self.bluetooth_com.connected
+            force_running = self.serial_com.running
+
+            if nirs_running and force_running:
+                print("Data forwarding paused - both NIRS and Force data collection continues")
+            elif nirs_running:
+                print("Data forwarding paused - NIRS data collection continues")
+            elif force_running:
+                print("Data forwarding paused - Force data collection continues")
+            else:
+                print("Data forwarding paused - no active data collection")
+
     def resume_data_forwarding(self):
         """
         Resume forwarding data to external callbacks.
         """
-        self.pause_callbacks = False
-        print("Data forwarding resumed")
+        if self.pause_callbacks:
+            self.pause_callbacks = False
+            print("Data forwarding resumed")
+
+    def is_nirs_connected(self):
+        """
+        Check if NIRS is connected and running.
+
+        Returns:
+            bool: True if NIRS connection is active
+        """
+        # For the connection to be considered active:
+        # 1. The thread must be running
+        # 2. We must have received actual data (connected flag set)
+        # 3. We must not be in debugging/simulation mode
+        
+        thread_running = self.bluetooth_com.running
+        real_connection = self.bluetooth_com.connected
+        not_simulating = not self.bluetooth_com.debugging
+        
+        connection_active = thread_running and real_connection and not_simulating
+        
+        # Debug output
+        # Detailed connection state logging
+        connection_state = "NIRS connection state: "
+        if thread_running:
+            if real_connection:
+                if not_simulating:
+                    connection_state += "FULLY CONNECTED (real data)"
+                else:
+                    connection_state += "SIMULATED DATA MODE"
+            else:
+                connection_state += "CONNECTING (waiting for data)"
+        else:
+            connection_state += "NOT RUNNING (disconnected)"
+
+        print(connection_state)
+
+        return connection_active
 
     def set_force_port(self, port: str):
         """
@@ -459,15 +516,15 @@ class DataGenerator:
         self.bluetooth_com.start()
         return True
 
-    def is_nirs_connected(self):
-        """
-        Check if NIRS is connected and running.
-
-        Returns:
-            bool: True if NIRS connection is active
-        """
-        # connected_nirs = self.bluetooth_com.running
-        return self.bluetooth_com.running and not self.bluetooth_com.debugging
+    # def is_nirs_connected(self):
+    #     """
+    #     Check if NIRS is connected and running.
+    #
+    #     Returns:
+    #         bool: True if NIRS connection is active
+    #     """
+    #     # connected_nirs = self.bluetooth_com.running
+    #     return self.bluetooth_com.running and not self.bluetooth_com.debugging
 
     def update_calibration(self, slope: float, intercept: float):
         """

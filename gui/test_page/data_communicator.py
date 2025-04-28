@@ -1,12 +1,10 @@
-import os
-import queue
+
 import time
 
 import numpy as np
-import pandas as pd
 import pyqtgraph as pg
 from PySide6.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QMessageBox
-from PySide6.QtCore import Signal, QThread
+from PySide6.QtCore import Signal
 
 from gui.test_page.data_gen import DataGenerator
 from gui.test_page.evaluations.nirs_evaluation import NIRSEvaluation
@@ -223,7 +221,7 @@ class CombinedDataCommunicator(QMainWindow):
         self.dg.pause_data_forwarding()
         
         # Stop sensors
-        self.dg.stop(nirs=True, force=True)
+        self.dg.stop(nirs=False, force=True)
         
         # Flush logs
         if self.force_file:

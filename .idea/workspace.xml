@@ -4,18 +4,18 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="8d114396-0b52-44aa-9fec-17fceb6230ba" name="Changes" comment="Refactor and enhance force and NIRS data processing&#10;&#10;Simplified and cleaned up redundant or commented-out code in various modules. Introduced new helper functions to smooth data, handle baseline spikes, and improve visualization. Enhanced PDF generation and graph creation with added flexibility for optional inputs and improved plots for test metrics and normalized force analysis.">
-      <change afterPath="$PROJECT_DIR$/gui/statistics/statistics_page.py" afterDir="false" />
+    <list default="true" id="8d114396-0b52-44aa-9fec-17fceb6230ba" name="Changes" comment="Changes in real time plotting">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/databases/tests_database.db" beforeDir="false" afterPath="$PROJECT_DIR$/gui/databases/tests_database.db" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/login_database.db" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/main_page.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/main_page.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/results_page/graphs_generator.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/results_page/graphs_generator.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/results_page/ircra_prediction_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/statistics/ircra_prediction_model.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/results_page/ircra_prediction_test.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/statistics/ircra_prediction_test.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/results_page/pca_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/statistics/pca_model.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/databases/climber_database.db" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/databases/tests_database.db" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/db_reader.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/statistics/pca_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/statistics/pca_model.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/statistics/statistics_page.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/statistics/statistics_page.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gui/test_page/data_communicator.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/test_page/data_communicator.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gui/test_page/data_gen.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/test_page/data_gen.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/test_page/evaluations/force_evaluation.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/test_page/evaluations/force_evaluation.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/test_page/feather_logger.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/test_page/feather_logger.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/test_page/test_page.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/test_page/test_page.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -55,42 +55,42 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;Python.all_out.executor&quot;: &quot;Run&quot;,
-    &quot;Python.climber_db_manager.executor&quot;: &quot;Run&quot;,
-    &quot;Python.data_com_new.executor&quot;: &quot;Run&quot;,
-    &quot;Python.data_com_old.executor&quot;: &quot;Run&quot;,
-    &quot;Python.data_communicator.executor&quot;: &quot;Run&quot;,
-    &quot;Python.data_communicator_mocked.executor&quot;: &quot;Run&quot;,
-    &quot;Python.data_generator.executor&quot;: &quot;Run&quot;,
-    &quot;Python.data_visualisation.executor&quot;: &quot;Run&quot;,
-    &quot;Python.database_diagnostic_tool.executor&quot;: &quot;Run&quot;,
-    &quot;Python.database_migration_script.executor&quot;: &quot;Run&quot;,
-    &quot;Python.force_evaluation.executor&quot;: &quot;Run&quot;,
-    &quot;Python.graphs_generator.executor&quot;: &quot;Run&quot;,
-    &quot;Python.main.executor&quot;: &quot;Run&quot;,
-    &quot;Python.pdf_exporter.executor&quot;: &quot;Run&quot;,
-    &quot;Python.rep_another.executor&quot;: &quot;Run&quot;,
-    &quot;Python.report_window.executor&quot;: &quot;Run&quot;,
-    &quot;Python.reps.executor&quot;: &quot;Run&quot;,
-    &quot;Python.reps_excel.executor&quot;: &quot;Run&quot;,
-    &quot;Python.reps_hdf5.executor&quot;: &quot;Run&quot;,
-    &quot;Python.test_page.executor&quot;: &quot;Run&quot;,
-    &quot;Python.test_run.executor&quot;: &quot;Run&quot;,
-    &quot;Python.try_report.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/Users/annasebestikova/PycharmProjects/thesis/gui/test_page/evaluations&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;ml.llm.LLMConfigurable&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Python.all_out.executor": "Run",
+    "Python.climber_db_manager.executor": "Run",
+    "Python.data_com_new.executor": "Run",
+    "Python.data_com_old.executor": "Run",
+    "Python.data_communicator.executor": "Run",
+    "Python.data_communicator_mocked.executor": "Run",
+    "Python.data_generator.executor": "Run",
+    "Python.data_visualisation.executor": "Run",
+    "Python.database_diagnostic_tool.executor": "Run",
+    "Python.database_migration_script.executor": "Run",
+    "Python.force_evaluation.executor": "Run",
+    "Python.graphs_generator.executor": "Run",
+    "Python.main.executor": "Run",
+    "Python.pdf_exporter.executor": "Run",
+    "Python.rep_another.executor": "Run",
+    "Python.report_window.executor": "Run",
+    "Python.reps.executor": "Run",
+    "Python.reps_excel.executor": "Run",
+    "Python.reps_hdf5.executor": "Run",
+    "Python.test_page.executor": "Run",
+    "Python.test_run.executor": "Run",
+    "Python.try_report.executor": "Run",
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "main",
+    "last_opened_file_path": "/Users/annasebestikova/PycharmProjects/thesis/gui/databases",
+    "settings.editor.selected.configurable": "ml.llm.LLMConfigurable"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
-      <recent name="$PROJECT_DIR$/gui/test_page/evaluations" />
       <recent name="$PROJECT_DIR$/gui/databases" />
+      <recent name="$PROJECT_DIR$/gui/test_page/evaluations" />
       <recent name="$PROJECT_DIR$/gui/test_page" />
       <recent name="$PROJECT_DIR$/../Diploma/shit files" />
       <recent name="$PROJECT_DIR$/gui/results_page" />
@@ -279,7 +279,15 @@
       <option name="project" value="LOCAL" />
       <updated>1745433179289</updated>
     </task>
-    <option name="localTasksCounter" value="21" />
+    <task id="LOCAL-00021" summary="Changes in real time plotting">
+      <option name="closed" value="true" />
+      <created>1745492210782</created>
+      <option name="number" value="00021" />
+      <option name="presentableId" value="LOCAL-00021" />
+      <option name="project" value="LOCAL" />
+      <updated>1745492210782</updated>
+    </task>
+    <option name="localTasksCounter" value="22" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -324,6 +332,7 @@
     <MESSAGE value="Add data acquisition system for force and NIRS sensors&#10;&#10;Implemented a comprehensive module for collecting, processing, and simulating data from force sensors (via serial connection) and NIRS sensors (via BLE). The system includes fallback mechanisms for synthetic data generation, calibration support, and data forwarding controls. This addition also introduces data storage capabilities with options to retrieve data as pandas DataFrames." />
     <MESSAGE value="Remove deprecated database and GUI management files.&#10;&#10;Both `climber_db_manager.py` and `data_communicator_split.py` along with associated resources were removed, as they are no longer used in the system. This cleanup helps reduce code clutter and eliminates maintenance overhead for outdated components." />
     <MESSAGE value="Refactor and enhance force and NIRS data processing&#10;&#10;Simplified and cleaned up redundant or commented-out code in various modules. Introduced new helper functions to smooth data, handle baseline spikes, and improve visualization. Enhanced PDF generation and graph creation with added flexibility for optional inputs and improved plots for test metrics and normalized force analysis." />
-    <option name="LAST_COMMIT_MESSAGE" value="Refactor and enhance force and NIRS data processing&#10;&#10;Simplified and cleaned up redundant or commented-out code in various modules. Introduced new helper functions to smooth data, handle baseline spikes, and improve visualization. Enhanced PDF generation and graph creation with added flexibility for optional inputs and improved plots for test metrics and normalized force analysis." />
+    <MESSAGE value="Changes in real time plotting" />
+    <option name="LAST_COMMIT_MESSAGE" value="Changes in real time plotting" />
   </component>
 </project>

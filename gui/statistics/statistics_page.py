@@ -337,8 +337,15 @@ class StatisticsPage(QWidget):
         self.training_thread.training_complete.connect(self.training_completed)
         self.training_thread.training_failed.connect(self.training_failed)
         
-        # Start the thread
-        self.training_thread.start()
+        # In your start_model_training method:
+        try:
+            # Your training code here
+            self.training_thread.start()
+        except Exception as e:
+            import traceback
+            print(f"Error starting model training: {e}")
+            print(traceback.format_exc())
+            self.update_status(f"Training failed: {str(e)}")
     
     def update_progress(self, value):
         """Update the progress bar value"""
