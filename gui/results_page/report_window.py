@@ -299,9 +299,8 @@ class TestReportWindow(QMainWindow):
         test_type_mapping = {
             "ao": "All-Out Test",
             "mvc": "Maximum Voluntary Contraction",
-            "iit": "Intermittent Incremental Test",
+            "iit": "Intermittent Isometric Test",
             "iirt": "Intermittent Isometric Resistance Test",
-            "ec": "Endurance Capacity",
             "sit": "Sprint Interval Test"
         }
         return test_type_mapping.get(test_type, test_type)
@@ -361,8 +360,8 @@ class TestReportWindow(QMainWindow):
         ts = self.db_data.get("timestamp", "-")
 
         # Format arm_tested for display
-        arm_text = "Dominant" if arm_tested == "d" or "D" \
-            else "Non-dominant" if arm_tested == "n" or "N" else arm_tested
+        arm_text = "Dominant" if arm_tested == "d"\
+            else "Non-dominant" if arm_tested == "nd" else arm_tested
 
         # Format timestamp
         date_str, time_str = "", ""

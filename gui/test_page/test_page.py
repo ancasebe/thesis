@@ -119,7 +119,7 @@ class TestPage(QWidget):
         climber_button_layout.addWidget(add_button)
 
         # NIRS connection button with status indication
-        self.nirs_connect_button = QPushButton("NIRS not Connected")
+        self.nirs_connect_button = QPushButton("NIRS disconnected")
         self.nirs_connect_button.setStyleSheet(self.button_styles['default'])
         self.nirs_connect_button.clicked.connect(self.nirs_connection)
         climber_button_layout.addWidget(self.nirs_connect_button)
@@ -173,7 +173,7 @@ class TestPage(QWidget):
             # Disconnect if currently connected
             print("Stopping NIRS connection")
             self.data_generator.stop(nirs=True, force=False)
-            self.nirs_connect_button.setText("NIRS not Connected")
+            self.nirs_connect_button.setText("NIRS disconnected")
             self.nirs_connect_button.setStyleSheet(self.button_styles['default'])
             print("NIRS connection stopped")
         else:
@@ -192,7 +192,7 @@ class TestPage(QWidget):
         
             if not success:
                 print("NIRS Connection Debug: Failed to start connection process")
-                self.nirs_connect_button.setText("NIRS not Connected")
+                self.nirs_connect_button.setText("NIRS disconnected")
                 self.nirs_connect_button.setStyleSheet(self.button_styles['error'])
                 return
         
@@ -275,7 +275,7 @@ class TestPage(QWidget):
         """
 
         # Reset the NIRS button to "Connect" state
-        self.nirs_connect_button.setText("NIRS not Connected")
+        self.nirs_connect_button.setText("NIRS disconnected")
         self.nirs_connect_button.setStyleSheet(nirs_button_style)
 
         # Close the dialog after a brief delay
@@ -341,7 +341,7 @@ class TestPage(QWidget):
         self.data_generator.pause_data_forwarding()
 
         # Set calibration and create dialog window
-        self.data_generator.update_calibration(39, 155)
+        self.data_generator.update_calibration(43, 155)
         dialog = QDialog(self)
         dialog.setWindowTitle("Test Window")
         dialog.setMinimumSize(800, 600)

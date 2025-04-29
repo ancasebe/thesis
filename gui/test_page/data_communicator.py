@@ -3,8 +3,8 @@ import time
 
 import numpy as np
 import pyqtgraph as pg
-from PySide6.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QMessageBox
-from PySide6.QtCore import Signal
+from PySide6.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QMessageBox, QLabel, QDialog, QHBoxLayout, QApplication
+from PySide6.QtCore import Signal, QTimer, Qt
 
 from gui.test_page.data_gen import DataGenerator
 from gui.test_page.evaluations.nirs_evaluation import NIRSEvaluation
@@ -33,9 +33,9 @@ class CombinedDataCommunicator(QMainWindow):
         self.admin_id = admin_id
         self.climber_id = climber_id
         if arm_tested == "Dominant":
-            self.arm_tested = "D"
+            self.arm_tested = "d"
         elif arm_tested == "Non-dominant":
-            self.arm_tested = "N"
+            self.arm_tested = "nd"
         else:
             self.arm_tested = "-"
         self.data_type = data_type
@@ -59,6 +59,17 @@ class CombinedDataCommunicator(QMainWindow):
         self.timestamp = None
         self.acquisition_started = False
         self.finalized  = False
+
+        self._make_counter_window()
+        self.pre_delay = 5  # seconds before first beep
+        self.pull_dur = 7  # default for ao
+        self.rest_dur = 3
+        self.state = None  # will be "pre", "pull", "rest", or "run" (for sit/mvc)
+        self.remaining = None
+        # timers
+        self.countdown_timer = QTimer(self, interval=1000)
+        self.countdown_timer.timeout.connect(self._on_countdown_tick)
+        self.segment_timer = QTimer(self)  # single-shot per segment
 
         self._setup_ui()
         
@@ -119,6 +130,72 @@ class CombinedDataCommunicator(QMainWindow):
             # Initialize the views to match initially
             self._update_views()
 
+    def _make_counter_window(self):
+        """Creates a small dialog with a big QLabel to show seconds left/elapsed."""
+        self.counter_win = QDialog(self)
+        self.counter_win.setWindowTitle("Timer")
+        self.lbl = QLabel("0", self.counter_win)
+        self.lbl.setAlignment(Qt.AlignCenter)
+        font = self.lbl.font()
+        font.setPointSize(32)
+        self.lbl.setFont(font)
+        lay = QHBoxLayout(self.counter_win)
+        lay.addWidget(self.lbl)
+        self.counter_win.setLayout(lay)
+        self.counter_win.setFixedSize(200, 100)
+
+    def _configure_durations(self):
+        """Set pull/rest durations based on test_type."""
+        if self.test_type == "ao":
+            self.pull_dur, self.rest_dur = 7, 3
+        elif self.test_type == "iit":
+            self.pull_dur, self.rest_dur = 6, 4
+        elif self.test_type == "mvc":
+            self.pull_dur, self.rest_dur = None, None
+        elif self.test_type == "sit":
+            self.pull_dur, self.rest_dur = None, None
+
+    def _on_countdown_tick(self):
+        """Handles both the initial countdown and the per‐segment counters."""
+        self.remaining -= 1
+        self.lbl.setText(str(self.remaining))
+        if self.remaining <= 0:
+            self.countdown_timer.stop()
+            # time for a beep and next action
+            QApplication.beep()
+            if self.state == "pre":
+                # test is now truly started
+                if self.test_type in ("ao", "iit"):
+                    self.state = "pull"
+                    self.remaining = self.pull_dur
+                    # start segment countdown
+                    self.countdown_timer.start()
+                elif self.test_type == "mvc":
+                    # one more beep after 5s, then done
+                    QTimer.singleShot(5000, QApplication.beep)
+                    self.state = "run"  # no further segments
+                elif self.test_type == "sit":
+                    # just run an elapsed timer
+                    self.state = "run"
+                    self.remaining = 0
+                    # restart for elapsed time display
+                    self.countdown_timer.start()
+            elif self.state in ("pull", "rest"):
+                # toggle pull/rest
+                if self.state == "pull":
+                    self.state = "rest"
+                    self.remaining = self.rest_dur
+                else:
+                    self.state = "pull"
+                    self.remaining = self.pull_dur
+                # beep already emitted, restart countdown
+                self.countdown_timer.start()
+            elif self.state == "run":
+                # in sit or mvc elapsed mode: just keep counting up
+                self.remaining += 1
+                self.countdown_timer.start()
+        # else: simply updating the label each second
+
     def _update_views(self):
         """Synchronize the geometry of the secondary NIRS view with the main view."""
         self.nirs_view.setGeometry(self.plot.getViewBox().sceneBoundingRect())
@@ -151,6 +228,15 @@ class CombinedDataCommunicator(QMainWindow):
             
             # Resume forwarding data to our UI
             self.dg.resume_data_forwarding()
+
+            # Then kick off our test‐timer sequence:
+            self._configure_durations()
+            self.state = "pre"
+            self.remaining = self.pre_delay
+            self.counter_win.show()
+            self.lbl.setText(str(self.remaining))
+            QApplication.beep()  # optional “ready” click
+            self.countdown_timer.start()
             
             # launch sensors if they're not already running
             self.dg.start(nirs=(self.data_type != 'force'), force=(self.data_type != 'nirs'))
@@ -219,6 +305,10 @@ class CombinedDataCommunicator(QMainWindow):
         """
         # Pause data forwarding to UI
         self.dg.pause_data_forwarding()
+
+        self.countdown_timer.stop()
+        self.segment_timer.stop()
+        self.counter_win.hide()
         
         # Stop sensors
         self.dg.stop(nirs=False, force=True)

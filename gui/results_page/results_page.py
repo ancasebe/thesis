@@ -60,7 +60,7 @@ class ResultsPage(QWidget):
         self.test_selector = QComboBox()
         # First option to show all tests, then individual test labels
         self.test_selector.addItem("All Tests")
-        for test in ["MVC", "AO", "IIT", "DH", "SIT", "IIRT"]:
+        for test in ["MVC", "AO", "IIT", "SIT"]:
             self.test_selector.addItem(test)
         self.test_selector.currentIndexChanged.connect(self.on_test_filter_changed)
         top_layout.addWidget(QLabel("Test:"))
@@ -69,7 +69,7 @@ class ResultsPage(QWidget):
         # Data type selection combo box
         self.data_type_selector = QComboBox()
         self.data_type_selector.addItem("All Data")
-        for data in ["Force", "NIRS", "Force and NIRS"]:
+        for data in ["Force", "Force and NIRS"]:
             self.data_type_selector.addItem(data)
         self.data_type_selector.currentIndexChanged.connect(self.on_data_type_changed)
         top_layout.addWidget(QLabel("Data type:"))
@@ -114,7 +114,7 @@ class ResultsPage(QWidget):
         bottom_buttons = [
             ("Show Info", self.show_info),
             ("Show Results", self.show_results),
-            ("Units", self.show_units),
+            # ("Units", self.show_units),
             ("Export", self.export_data),
             ("Delete Test", self.delete_test)
         ]
@@ -153,6 +153,7 @@ class ResultsPage(QWidget):
 
     def on_climber_changed(self, index):
         self.selected_climber_id = self.climber_selector.itemData(index)
+        print(self.selected_climber_id)
         self.load_tests()
 
     def on_test_filter_changed(self):
@@ -181,7 +182,6 @@ class ResultsPage(QWidget):
         self.tests_table.setRowCount(0)
 
         if self.selected_climber_id:
-            print('SELECTED CLIMBER:', self.selected_climber_id.dtype)
             tests = self.test_db_manager.fetch_results_by_participant(participant_id=self.selected_climber_id)
         else:
             tests = self.test_db_manager.fetch_results_by_admin(admin_id=self.admin_id)
@@ -197,7 +197,7 @@ class ResultsPage(QWidget):
         for row_index, test in enumerate(tests):
             self.tests_table.insertRow(row_index)
 
-            climber_data = self.climber_db_manager.get_user_data(self.admin_id, test["participant_id"])
+            climber_data = self.climber_db_manager.get_user_data(self.admin_id, int(test["participant_id"]))
             name = climber_data.get("name", "") if climber_data else ""
             surname = climber_data.get("surname", "") if climber_data else ""
 
@@ -322,11 +322,11 @@ class ResultsPage(QWidget):
                                          parent=self)
         report_window.show()
 
-    def show_units(self):
-        """
-        Placeholder slot for the Units feature.
-        """
-        QMessageBox.information(self, "Units", "Units feature not implemented yet.")
+    # def show_units(self):
+    #     """
+    #     Placeholder slot for the Units feature.
+    #     """
+    #     QMessageBox.information(self, "Units", "Units feature not implemented yet.")
 
     def export_data(self):
         """

@@ -189,11 +189,11 @@ class ClimberDatabaseManager:
             dict: A dictionary of the climber's field values if accessible by the admin; None if access is denied.
         """
         # Convert parameters to integers to ensure correct comparison
-        if admin_id is str:
+        if isinstance(admin_id, str):
             admin_id = int(admin_id)
-        if climber_id is str:
-            participant_id = int(climber_id)
-        
+        if isinstance(climber_id, str):
+            climber_id = int(climber_id)
+
         cursor = self.connection.cursor()
         print(f"Querying climber ID: {climber_id} for admin ID: {admin_id}")
         
