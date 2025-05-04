@@ -231,3 +231,14 @@ class MainPage(QWidget):
             statistics_page = StatisticsPage(admin_id=self.admin_id)
             self.add_widget_to_stack(statistics_page, "statistics")
         self.app_stacked_widget.setCurrentWidget(self.widget_mapping["statistics"])
+
+    def closeEvent(self, event):
+        """
+        Clean up resources when the window is closed, including stopping any running threads.
+        """
+        # Propagate closeEvent to all widgets that might have active threads
+        for key, widget in self.widget_mapping.items():
+            if hasattr(widget, 'closeEvent'):
+                widget.closeEvent(event)
+        
+        event.accept()

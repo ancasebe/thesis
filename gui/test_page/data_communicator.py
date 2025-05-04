@@ -1,9 +1,8 @@
-
 import time
 
 import numpy as np
 import pyqtgraph as pg
-from PySide6.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QMessageBox, QLabel, QDialog, QHBoxLayout, QApplication
+from PySide6.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QMessageBox, QLabel, QDialog, QHBoxLayout, QApplication, QVBoxLayout
 from PySide6.QtCore import Signal, QTimer, Qt
 
 from gui.test_page.data_gen import DataGenerator
@@ -61,7 +60,11 @@ class CombinedDataCommunicator(QMainWindow):
         self.finalized  = False
 
         self._make_counter_window()
-        self.pre_delay = 5  # seconds before first beep
+
+        if self.data_type == "force":
+            self.pre_delay = 5  # seconds before first beep
+        else:
+            self.pre_delay = 15
         self.pull_dur = 7  # default for ao
         self.rest_dur = 3
         self.state = None  # will be "pre", "pull", "rest", or "run" (for sit/mvc)
@@ -134,15 +137,24 @@ class CombinedDataCommunicator(QMainWindow):
         """Creates a small dialog with a big QLabel to show seconds left/elapsed."""
         self.counter_win = QDialog(self)
         self.counter_win.setWindowTitle("Timer")
+        self.state_lbl = QLabel("Preparing...", self.counter_win)
+        self.state_lbl.setAlignment(Qt.AlignCenter)
+        state_font = self.state_lbl.font()
+        state_font.setPointSize(14)
+        state_font.setBold(True)
+        self.state_lbl.setFont(state_font)
+        
         self.lbl = QLabel("0", self.counter_win)
         self.lbl.setAlignment(Qt.AlignCenter)
         font = self.lbl.font()
         font.setPointSize(32)
         self.lbl.setFont(font)
-        lay = QHBoxLayout(self.counter_win)
-        lay.addWidget(self.lbl)
-        self.counter_win.setLayout(lay)
-        self.counter_win.setFixedSize(200, 100)
+        
+        layout = QVBoxLayout(self.counter_win)
+        layout.addWidget(self.state_lbl)
+        layout.addWidget(self.lbl)
+        self.counter_win.setLayout(layout)
+        self.counter_win.setFixedSize(250, 150)
 
     def _configure_durations(self):
         """Set pull/rest durations based on test_type."""
@@ -168,26 +180,39 @@ class CombinedDataCommunicator(QMainWindow):
                 if self.test_type in ("ao", "iit"):
                     self.state = "pull"
                     self.remaining = self.pull_dur
+                    self.state_lbl.setText("Pull")
                     # start segment countdown
                     self.countdown_timer.start()
                 elif self.test_type == "mvc":
-                    # one more beep after 5s, then done
-                    QTimer.singleShot(5000, QApplication.beep)
-                    self.state = "run"  # no further segments
+                    # Change to countdown for 5 seconds instead of using singleShot
+                    self.state = "mvc_countdown"
+                    self.remaining = 5
+                    self.state_lbl.setText("Pull")
+                    self.countdown_timer.start()
                 elif self.test_type == "sit":
                     # just run an elapsed timer
                     self.state = "run"
                     self.remaining = 0
+                    self.state_lbl.setText("Pull")
                     # restart for elapsed time display
                     self.countdown_timer.start()
+            elif self.state == "mvc_countdown":
+                # After the 5-second MVC countdown, switch to run state
+                self.state = "run"
+                self.remaining = 0
+                self.state_lbl.setText("Pull")
+                # restart for elapsed time display
+                self.countdown_timer.start()
             elif self.state in ("pull", "rest"):
                 # toggle pull/rest
                 if self.state == "pull":
                     self.state = "rest"
                     self.remaining = self.rest_dur
+                    self.state_lbl.setText("Rest")
                 else:
                     self.state = "pull"
                     self.remaining = self.pull_dur
+                    self.state_lbl.setText("Pull")
                 # beep already emitted, restart countdown
                 self.countdown_timer.start()
             elif self.state == "run":
@@ -233,39 +258,59 @@ class CombinedDataCommunicator(QMainWindow):
             self._configure_durations()
             self.state = "pre"
             self.remaining = self.pre_delay
+            self.state_lbl.setText("Test starts in:")
             self.counter_win.show()
             self.lbl.setText(str(self.remaining))
-            QApplication.beep()  # optional “ready” click
+            QApplication.beep()  # optional "ready" click
             self.countdown_timer.start()
-            
-            # launch sensors if they're not already running
-            self.dg.start(nirs=(self.data_type != 'force'), force=(self.data_type != 'nirs'))
-            self.acquisition_started = True
+        
+        # launch sensors if they're not already running
+        self.dg.start(nirs=(self.data_type != 'force'), force=(self.data_type != 'nirs'))
+        self.acquisition_started = True
 
     def handle_new_data(self, data_str):
         """
         Slot that handles new data coming from the worker thread.
         The data string is expected in the format "sensorID_timestamp_value".
         Update internal data arrays and call updatePlot.
+        Only plot and log force (sid='1') and SMO2 (sid='2') data.
         """
-        sid, ts, val = data_str.split('_')
-        ts, val = float(ts), float(val)
+        parts = data_str.split('_')
+        if len(parts) < 3:
+            return
+        
+        try:
+            sid = parts[0]
+            ts = float(parts[1])
+            val = float(parts[2])
+        except ValueError:
+            return
+        
         if sid == '1':  # force
             print('plotting Force:', ts, val)
             self.force_data['timestamps'].append(ts)
             self.force_data['values'].append(val)
             if self.force_file:
                 self.force_file.log(ts, val)
-        else:           # NIRS channels: '2','3','4'
-            # Apply smoothing to NIRS data before displaying
+            # Update plot for force data
+            if self.data_type in ("force", "force_nirs"):
+                self.update_plot()
+        elif sid == '2':  # NIRS SMO2 data (only process sensor ID 2)
+            # print('plotting NIRS SMO2:', ts, val)
+            # self.nirs_data['timestamps'].append(ts)
+            # self.nirs_data['values'].append(val)
             smoothed_val = self.smooth_nirs_data(float(val))
             print('plotting NIRS:', ts, smoothed_val)
             self.nirs_data['timestamps'].append(ts)
             self.nirs_data['values'].append(smoothed_val)
-            # Always log the original (unsmoothed) value
+            # Log only SMO2 values
             if self.nirs_file:
-                self.nirs_file.log(ts, val)  # Log the original value
-        self.update_plot()
+                self.nirs_file.log(ts, val)
+            # Update plot for NIRS SMO2 data
+            if self.data_type in ("nirs", "force_nirs"):
+                self.update_plot()
+    
+    # Skip logging and plotting for sensor IDs 3 and 4 entirely
 
     def update_plot(self):
         """
@@ -464,7 +509,7 @@ class CombinedDataCommunicator(QMainWindow):
     #     self.last_smoothed_value = smoothed_value
     #     return smoothed_value
 
-    def smooth_nirs_data(self, value, nirs_smoothing_window=11):
+    def smooth_nirs_data(self, value, nirs_smoothing_window=7):
         """
         Apply a simple moving average smoothing to NIRS data in real-time.
 

@@ -556,16 +556,37 @@ class DataGenerator:
 
     def stop(self, nirs=True, force=True):
         """
-        Stop data acquisition.
+        Stop data acquisition and ensure threads are properly terminated.
         
         Args:
             nirs (bool, optional): Whether to stop NIRS data acquisition. Defaults to True.
             force (bool, optional): Whether to stop force data acquisition. Defaults to True.
         """
+        print("Stopping data generator...")
+        
+        # First pause any callbacks to prevent UI updates during shutdown
+        self.pause_callbacks = True
+        
+        # Stop each sensor communicator as requested
         if nirs:
+            print("Stopping NIRS communication...")
             self.bluetooth_com.stop()
+        
         if force:
+            print("Stopping force sensor communication...")
             self.serial_com.stop()
+        
+        # Wait for a moment to ensure threads have properly terminated
+        time.sleep(0.5)
+        
+        # Check if threads have properly stopped
+        if nirs and self.bluetooth_com.thread and self.bluetooth_com.thread.is_alive():
+            print("Warning: NIRS thread did not terminate properly")
+        
+        if force and self.serial_com.thread and self.serial_com.thread.is_alive():
+            print("Warning: Force sensor thread did not terminate properly")
+        
+        print("Data generator stopped")
 
     def get_force_dataframe(self):
         """

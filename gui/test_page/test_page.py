@@ -399,6 +399,7 @@ class TestPage(QWidget):
     def edit_climber_info(self):
         """Opens an edit dialog for the selected climber."""
         climber_id = self.climber_selector.currentData()
+        name = self.climber_selector.currentText()
         if climber_id:
             edit_dialog = QDialog(self)
             edit_dialog.setWindowTitle("Edit Climber Info")
@@ -508,8 +509,18 @@ class TestPage(QWidget):
 
     def closeEvent(self, event):
         """
-        Handle application close event to properly disconnect all sensors.
+        Handles application closure by stopping all threads and connections.
         """
-        print("Test page closing - disconnecting all sensors")
-        self.data_generator.stop(nirs=True, force=True)
+        # Stop the NIRS connection timer
+        if hasattr(self, 'connection_timer') and self.connection_timer is not None:
+            self.connection_timer.stop()
+        
+        # Stop any running data generators and their associated threads
+        if hasattr(self, 'data_generator') and self.data_generator is not None:
+            self.data_generator.stop(nirs=True, force=True)
+        
+        # Close database connections
+        if hasattr(self, 'db_manager') and self.db_manager is not None:
+            self.db_manager.close()
+        
         event.accept()

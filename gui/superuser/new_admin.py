@@ -76,31 +76,31 @@ class RegistrationPage(QWidget):
         logos_layout = QHBoxLayout()
         logos_layout.setAlignment(Qt.AlignCenter)
 
-        # Logo 1
-        logo1 = QLabel()
-        pixmap1 = QPixmap('gui/resources/logo_uibk.jpg')
-        if pixmap1.isNull():
-            logo1.setText("UIBK")
-            logo1.setAlignment(Qt.AlignCenter)
-        else:
-            pixmap1 = pixmap1.scaled(100, 100, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-            logo1.setPixmap(pixmap1)
-            logo1.setAlignment(Qt.AlignCenter)
-        logos_layout.addWidget(logo1)
-
-        # Logo 2
-        logo2 = QLabel()
-        pixmap2 = QPixmap('gui/resources/logo_uct.png')
-        if pixmap2.isNull():
-            logo2.setText("UCT Prague")
-            logo2.setAlignment(Qt.AlignCenter)
-        else:
-            pixmap2 = pixmap2.scaled(100, 100, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-            logo2.setPixmap(pixmap2)
-            logo2.setAlignment(Qt.AlignCenter)
-        logos_layout.addWidget(logo2)
-
-        layout.addLayout(logos_layout)
+        # # Logo 1
+        # logo1 = QLabel()
+        # pixmap1 = QPixmap('gui/resources/logo_uibk.jpg')
+        # if pixmap1.isNull():
+        #     logo1.setText("UIBK")
+        #     logo1.setAlignment(Qt.AlignCenter)
+        # else:
+        #     pixmap1 = pixmap1.scaled(100, 100, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        #     logo1.setPixmap(pixmap1)
+        #     logo1.setAlignment(Qt.AlignCenter)
+        # logos_layout.addWidget(logo1)
+        #
+        # # Logo 2
+        # logo2 = QLabel()
+        # pixmap2 = QPixmap('gui/resources/logo_uct.png')
+        # if pixmap2.isNull():
+        #     logo2.setText("UCT Prague")
+        #     logo2.setAlignment(Qt.AlignCenter)
+        # else:
+        #     pixmap2 = pixmap2.scaled(100, 100, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        #     logo2.setPixmap(pixmap2)
+        #     logo2.setAlignment(Qt.AlignCenter)
+        # logos_layout.addWidget(logo2)
+        #
+        # layout.addLayout(logos_layout)
 
         self.setLayout(layout)
 

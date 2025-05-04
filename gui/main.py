@@ -112,9 +112,22 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event):
         """
-        Ensures the database connection is closed before closing the application.
+        Ensures the database connection is closed and all threads are stopped 
+        before closing the application.
         """
+        # Ensure any active threads are stopped
+        for i in range(self.stacked_widget.count()):
+            widget = self.stacked_widget.widget(i)
+            if hasattr(widget, 'closeEvent'):
+                widget.closeEvent(event)
+        
+        # Close db connection
         self.login_db_manager.close()
+        
+        # If any widget requested to ignore the close event
+        if event.isAccepted():
+            print("Application closing - all threads stopped")
+        
         event.accept()
 
 
