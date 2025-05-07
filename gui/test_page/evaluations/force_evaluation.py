@@ -271,10 +271,10 @@ def compute_critical_force(rep_metrics, peak_window=3):
         if len(rep_metrics) < peak_window:
             return None
         last_reps = rep_metrics[-peak_window:]
-        mvc_values = [rep["Max Force (kg)"] for rep in last_reps if rep.get("Max Force (kg)") is not None]
-        if not mvc_values:
+        avg_values = [rep["Avg Force (kg)"] for rep in last_reps if rep.get("Avg Force (kg)") is not None]
+        if not avg_values:
             return None
-        return round(sum(mvc_values) / len(mvc_values), 2)
+        return round(sum(avg_values) / len(avg_values), 2)
     except Exception as e:
         print(f"Error computing critical force: {e}")
         return None
