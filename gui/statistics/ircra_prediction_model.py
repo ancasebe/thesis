@@ -54,12 +54,6 @@ class PredictionIRCRA:
         """
         Load and merge climber demographic data with test metrics.
         """
-        # Existing implementation
-        # ...
-        # Rest of method remains the same
-        """
-        Load and merge climber demographic data with test metrics.
-        """
         # Fetch test entries for this admin - pass admin_id as an integer
         tests = self.test_manager.fetch_results_by_admin(self.admin_id)
         print(f"Number of tests fetched: {len(tests)}")
@@ -184,7 +178,7 @@ class PredictionIRCRA:
                 'dominant_arm', 'weight', 'height', 'climbing_freq'
             ]
         if include_metrics is None:
-            include_metrics = ['max_strength', 'sum_work',
+            include_metrics = ['max_strength', 'sum_work_above_cf', 'sum_work',
                                'critical_force', 'rfd_norm_overall']
 
         # Create a copy of the dataframe to avoid modifying the original
@@ -323,7 +317,8 @@ class PredictionIRCRA:
         # Return the data and the path to the plot
         return final_df
 
-    def prepare_pca_features(self, pca_df):
+    @staticmethod
+    def prepare_pca_features(pca_df):
         """
         Prepare PCA-transformed features for regression models.
 
@@ -366,6 +361,7 @@ class PredictionIRCRA:
         """
         Train SVR models with different kernels and regularization parameters, and find the best model.
 
+        :param model_dir: models directory
         :param X: pandas DataFrame, feature matrix
         :param y: pandas Series, target variable
         :param kernels: list, list of kernel types (default: ["poly", "rbf", "sigmoid"])

@@ -301,41 +301,20 @@ def compute_work_above_cf(force_df, cf):
         print(f"Error computing work above CF: {e}")
         return None
 
-#
-# def compute_sum_work_above_cf(force_df, cf):
-#     """
-#     Compute the total work performed above the critical force (CF) as the sum.
-#
-#     Parameters:
-#         force_df (pd.DataFrame): DataFrame with 'value' and 'time' columns.
-#         cf (float): Critical force.
-#
-#     Returns:
-#         float: Sum of work above CF, rounded to two decimals.
-#     """
-#     try:
-#         force_values = force_df['value'].values
-#         times = force_df['time'].values
-#         work_above = np.trapezoid(np.maximum(force_values - cf, 0), x=times)
-#         return round(work_above, 2)
-#     except Exception as e:
-#         print(f"Error computing sum work above CF: {e}")
-#         return None
 
-
-def compute_avg_work_above_cf(rep_metrics):
+def compute_sum_work_above_cf(rep_metrics):
     """
-    Compute the average work above CF over the test duration using rep metrics.
+    Compute the total work performed above the critical force (CF) as the sum.
 
     Parameters:
-        rep_metrics (list of dict): Each dict should contain "Work Above CF (kg·s)".
+        rep_metrics (list of dict): Each dict should contain "Work Above CF (kg/s)".
 
     Returns:
-        float: Average work above CF, rounded to two decimals, or None.
+        float: Sum of work above CF, rounded to two decimals.
     """
     try:
-        works = [rep["Work Above CF (kg·s)"] for rep in rep_metrics if rep.get("Work Above CF (kg·s)") is not None]
-        return round(sum(works) / len(works), 2) if works else None
+        works = [rep["Work Above CF (kg/s)"] for rep in rep_metrics if rep.get("Work Above CF (kg/s)") is not None]
+        return round(sum(works), 2) if works else None
     except Exception as e:
         print(f"Error computing average work above CF: {e}")
         return None
@@ -553,15 +532,7 @@ class RepMetrics:
             min_rep_sec (float): Minimum valid repetition duration (in seconds).
             max_rep_sec (float): Maximum valid repetition duration (in seconds).
         """
-        # self.force_df = force_df
-        # self.sampling_rate = sampling_rate
-        # self.threshold_ratio = threshold_ratio
-        # self.min_rep_samples = int(min_rep_sec * sampling_rate)
-        # self.max_rep_samples = int(max_rep_sec * sampling_rate)
-        # self.reps = self._detect_reps()
-
         self.force_df = force_df
-        # self.sampling_rate = sampling_rate
         self.threshold_ratio = threshold_ratio
         self.min_rep_sec = min_rep_sec
         self.max_rep_sec = max_rep_sec
@@ -649,66 +620,6 @@ class RepMetrics:
             print(f"Error detecting repetitions: {e}")
             return []
 
-    # def _detect_reps(self):
-    #     """
-    #     Detect repetitions in the force data using actual times.
-    #
-    #     Process:
-    #       1. Smooth the force values.
-    #       2. Determine a threshold as a fraction of the maximum smoothed value.
-    #       3. Detect contiguous intervals where the smoothed force exceeds the threshold.
-    #       4. Merge intervals that are separated by a gap shorter than a constant (e.g. 1.0 sec).
-    #       5. For each merged interval, compute the duration using the actual times.
-    #          Only retain intervals whose duration is between min_rep_sec and max_rep_sec.
-    #
-    #     Returns:
-    #         list of tuple: Each tuple is (start_index, end_index) for a detected repetition.
-    #     """
-    #     try:
-    #         force_values = self.force_df['value'].values
-    #         smoothed = self._smooth(force_values, window_size=5)
-    #         threshold = self.threshold_ratio * np.max(smoothed)
-    #         active_intervals = []
-    #         start_idx = None
-    #         for i, val in enumerate(smoothed):
-    #             # i += 1
-    #             if val > threshold and start_idx is None:
-    #                 start_idx = i
-    #             elif val <= threshold and start_idx:
-    #                 active_intervals.append((start_idx, i))
-    #                 start_idx = None
-    #         if start_idx or start_idx == 0:
-    #             print(len(smoothed))
-    #             active_intervals.append((start_idx, len(smoothed) - 1))
-    #
-    #         # Merge segments with small gaps based on time difference.
-    #         min_gap_sec = 1.0  # Merge segments separated by less than 1.0 second.
-    #         merged_intervals = []
-    #         times = self.force_df['time'].values
-    #         for interval in active_intervals:
-    #             if not merged_intervals:
-    #                 merged_intervals.append(interval)
-    #             else:
-    #                 prev_start, prev_end = merged_intervals[-1]
-    #                 cur_start, cur_end = interval
-    #                 gap = times[cur_start] - times[prev_end]
-    #                 if gap < min_gap_sec:
-    #                     merged_intervals[-1] = (prev_start, cur_end)
-    #                 else:
-    #                     merged_intervals.append(interval)
-    #
-    #         # Filter intervals based on actual repetition duration.
-    #         rep_intervals = []
-    #         for (s, e) in merged_intervals:
-    #             duration = times[e] - times[s]
-    #             if self.min_rep_sec <= duration <= self.max_rep_sec:
-    #                 rep_intervals.append((s, e))
-    #         print("Detected repetition intervals (using time):", rep_intervals)
-    #         return rep_intervals
-    #     except Exception as e:
-    #         print(f"Error detecting repetitions: {e}")
-    #         return []
-
     def compute_rep_metrics(self):
         """
         Compute metrics for each detected repetition.
@@ -757,6 +668,7 @@ class RepMetrics:
             return rep_metrics
         except Exception as e:
             print(f"Error computing rep metrics {e}")
+            return None
 
 
 # ------------------------------
@@ -884,7 +796,7 @@ class ForceMetrics:
                         # Add the computed work above CF to the corresponding rep metric.
                         self.rep_metrics[i]['Work Above CF (kg/s)'] = rep_work_above_cf
 
-                    results['sum_work_above_cf'] = compute_work_above_cf(self.df, results['critical_force'])
+                    results['sum_work_above_cf'] = compute_sum_work_above_cf(self.rep_metrics)
 
             return results, self.rep_metrics
 

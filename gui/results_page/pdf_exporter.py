@@ -43,39 +43,39 @@ def filter_parameters_explanation(test_results, explanation_dict):
     return "<br/><br/>".join(explanations)
 
 
-def generate_pdf_report(pdf_path, title_text, basic_info, participant_info, test_results, nirs_results=None,
-                        graph_image_path=None, norm_force_graph_image_path=None, rep_results=None, 
-                        rep_graph_image_path=None, parameters_explanation=None):
+# Modify the generate_pdf_report function signature to add a new parameter
+def generate_pdf_report(
+    pdf_path,
+    title_text,
+    basic_info,
+    participant_info,
+    test_results,
+    nirs_results=None,
+    graph_image_path=None,
+    rep_results=None,
+    rep_graph_image_path=None,
+    norm_force_graph_image_path=None,
+    ircra_prediction=None,  # New parameter for IRCRA prediction
+    parameters_explanation=None
+):
     """
-    Generates a PDF report with the following sections (in order):
-      - Title
-      - Basic Test Information (table)
-      - Participant Information (table)
-      - Force-Time Graph (image)
-      - Normalized Max Force Analysis (image)
-      - Test Metrics (table)
-      - Repetition Metrics (table)
-      - Repetition Graph (image)
-      - Parameters Explanation (text)
-
-    All tables have a white background with black text.
-    Only the first column is rendered in bold.
-    The repetition metrics header row is split into two lines.
-    Both graph images are scaled (if needed) to fit within the available width on an A4 page
-    while preserving aspect ratio.
-
+    Generate a complete PDF report with:
+      - Basic info, Participant info, Test Metrics, Force-Time Graph,
+      - Repetition Metrics table, Repetition Graph, IRCRA Prediction, and Parameters Explanation.
+      
     Args:
-        pdf_path (str): Path to save the PDF.
-        title_text (str): Report title.
-        basic_info (list of tuple): Basic test info.
-        participant_info (list of tuple): Participant info.
-        test_results (list of tuple): Test force metrics.
-        nirs_results (list of tuple, optional): NIRS metrics.
-        graph_image_path (str or file-like, optional): Force-Time Graph image.
-        norm_force_graph_image_path (str or file-like, optional): Normalized Max Force Analysis image.
-        rep_results (list of list, optional): Repetition metrics table (first row header).
-        rep_graph_image_path (str or file-like, optional): Repetition Graph image.
-        parameters_explanation (str, optional): Explanation text.
+        pdf_path (str): Path to save the PDF file.
+        title_text (str): Title of the report.
+        basic_info (list): List of (label, value) pairs for basic test info.
+        participant_info (list): List of (label, value) pairs for participant info.
+        test_results (list): List of (label, value) pairs for test metrics.
+        nirs_results (list, optional): List of (label, value) pairs for NIRS metrics.
+        graph_image_path (str, optional): Path to the force-time graph image.
+        rep_results (list, optional): List of rows for repetition metrics table.
+        rep_graph_image_path (str, optional): Path to the repetition graph image.
+        norm_force_graph_image_path (str, optional): Path to normalized max force graph image.
+        ircra_prediction (dict, optional): Dictionary with IRCRA prediction information.
+        parameters_explanation (str, optional): Text explaining test parameters.
     """
     doc = SimpleDocTemplate(pdf_path, pagesize=A4, rightMargin=72, leftMargin=72,
                             topMargin=72, bottomMargin=72)
@@ -177,7 +177,22 @@ def generate_pdf_report(pdf_path, title_text, basic_info, participant_info, test
         story.append(KeepTogether([Paragraph("Normalized Max Force Analysis", heading_style), im_norm]))
     story.append(Spacer(1, 12))
 
-    # 7. Repetition Graph Image
+    # 7. IRCRA Prediction section
+    if ircra_prediction and ircra_prediction.get('test_type') == 'ao':
+        prediction_text = f"With your predispositions, you could be able to climb IRCRA grade: {ircra_prediction.get('predicted_ircra', '-')}"
+
+        prediction_parts = [Paragraph("Performance Prediction", heading_style),
+                            Paragraph(prediction_text, normal_style)]
+
+        # Add analysis if available
+        if 'analysis_text' in ircra_prediction:
+            prediction_parts.append(Spacer(1, 6))
+            prediction_parts.append(Paragraph(ircra_prediction['analysis_text'], normal_style))
+
+        story.append(KeepTogether(prediction_parts))
+        story.append(Spacer(1, 12))
+    
+    # 8. Repetition Graph Image
     if rep_graph_image_path:
         im_rep = Image(rep_graph_image_path)
         available_width = A4[0] - 5 - 5
@@ -188,7 +203,7 @@ def generate_pdf_report(pdf_path, title_text, basic_info, participant_info, test
         story.append(KeepTogether([Paragraph("Repetition Graph", heading_style), im_rep]))
     story.append(Spacer(1, 12))
 
-    # 8. Repetition Metrics Table
+    # 9. Repetition Metrics Table
     if rep_results:
         table_rep = Table(rep_results, hAlign='CENTER')
         table_rep.setStyle(TableStyle([
@@ -203,7 +218,7 @@ def generate_pdf_report(pdf_path, title_text, basic_info, participant_info, test
         story.append(KeepTogether([Paragraph("Repetition Results", heading_style), table_rep]))
         story.append(Spacer(1, 12))
 
-    # 9. Parameters Explanation
+    # 10. Parameters Explanation
     if parameters_explanation:
         story.append(KeepTogether([Paragraph("Measured Parameters Explanation", heading_style),
                                    Paragraph(parameters_explanation, normal_style)]))

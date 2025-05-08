@@ -313,7 +313,6 @@ class ResultsPage(QWidget):
             participant_info = {"Name": "Unknown"}
         db_data = self.test_db_manager.get_test_data(test_id=test['id'])
         print(db_data)
-        # test_metrics = {"Max Strength": "N/A", "Critical Force": "N/A", "W Prime": "N/A"}
         report_window = TestReportWindow(participant_info=participant_info,
                                          db_data=db_data,
                                          admin_id=self.admin_id,

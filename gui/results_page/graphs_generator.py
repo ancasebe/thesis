@@ -115,9 +115,8 @@ def create_combined_figure(force_file, nirs_file, test_metrics):
     ax1.plot(time_array, force_array, label='Force [kg]', color='darkblue')
     max_idx = force_array.argmax()
     ax1.plot(time_array.iloc[max_idx] if hasattr(time_array, 'iloc') else time_array[max_idx],
-             max_force, 'r.', label=f'Maximum strength: {max_force:.2f}')
-    # ax1.text(time_array.iloc[max_idx] if hasattr(time_array, 'iloc') else time_array[max_idx],
-    #          max_force, f'{max_force:.2f}', fontsize=10, ha='left', va='bottom')
+             max_force, 'r.', label=f'Maximum force: {max_force:.2f}')
+
     ax1.set_xlabel('Time [s]', fontsize=14)
     ax1.set_ylabel('Force [kg]', fontsize=14, color='darkblue')
     ax1.tick_params(axis='y', labelcolor='darkblue')
@@ -197,22 +196,16 @@ def create_force_figure(force_file, test_metrics):
 
     # Find the index of maximum strength for labeling (if it exists)
     if max_strength is not None:
-        max_index = force_array.argmax()
-        ax.plot(time_array[max_index], max_strength, 'r.',
-                label=f'Maximum strength: {max_strength:.2f}')
-        # Optionally annotate the exact value near the point
-        ax.text(time_array[max_index], max_strength,
-                f'{max_strength:.2f}', fontsize=10, ha='left', va='bottom')
-
-    # # Shade area above critical force for w_prime
-    # # only if critical_force is valid
-    # if (critical_force is not None) and (w_prime is not None):
-    #     ax.fill_between(
-    #         time_array, force_array, critical_force,
-    #         where=(force_array > critical_force),
-    #         color='lightblue', alpha=0.8,
-    #         label=f'Work above CF: {w_prime:.2f} [kg/s]'
-    #     )
+        max_idx = force_array.argmax()
+        print('max_idx:', max_idx)
+        ax.plot(time_array.iloc[max_idx] if hasattr(time_array, 'iloc') else time_array[max_idx],
+                 max_strength, 'r.', label=f'Maximum strength: {max_strength:.2f}')
+        # max_index = force_array.argmax()
+        # ax.plot(time_array[max_index], max_strength, 'r.',
+        #         label=f'Maximum strength: {max_strength:.2f}')
+        # # Optionally annotate the exact value near the point
+        # ax.text(time_array[max_index], max_strength,
+        #         f'{max_strength:.2f}', fontsize=10, ha='left', va='bottom')
 
     ax.set_xlabel('Time [s]', fontsize=14)
     ax.set_ylabel('Force [kg]', fontsize=14)

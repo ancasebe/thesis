@@ -167,53 +167,6 @@ class PlotViewerDialog(QDialog):
                     )
                     self.image_label.setPixmap(scaled_pixmap)
 
-
-# class PlotViewerDialog(QDialog):
-#     """Dialog for displaying high-resolution plots"""
-#
-#     def __init__(self, plot_path, title, parent=None):
-#         super().__init__(parent)
-#         self.setWindowTitle(title)
-#         self.setMinimumSize(800, 600)  # Larger default size for high resolution
-#
-#         # Create layout
-#         layout = QVBoxLayout(self)
-#
-#         # Create image label
-#         self.image_label = QLabel()
-#         self.image_label.setAlignment(Qt.AlignCenter)
-#
-#         # Load high-resolution image
-#         pixmap = QPixmap(plot_path)
-#         if not pixmap.isNull():
-#             # No scaling to preserve resolution
-#             self.image_label.setPixmap(pixmap)
-#         else:
-#             self.image_label.setText(f"Error loading image from {plot_path}")
-#
-#         # Add to layout
-#         layout.addWidget(self.image_label)
-#
-#         # Add close button
-#         close_button = QPushButton("Close")
-#         close_button.clicked.connect(self.accept)
-#         layout.addWidget(close_button)
-#
-#     def resizeEvent(self, event):
-#         """Handle resize events to show full image while preserving aspect ratio"""
-#         super().resizeEvent(event)
-#
-#         # If we have a pixmap, scale it to fit the current window size
-#         if self.image_label.pixmap() and not self.image_label.pixmap().isNull():
-#             scaled_pixmap = self.image_label.pixmap().scaled(
-#                 self.image_label.width(),
-#                 self.image_label.height(),
-#                 Qt.KeepAspectRatio,
-#                 Qt.SmoothTransformation
-#             )
-#             self.image_label.setPixmap(scaled_pixmap)
-
-
 class ModelTrainingThread(QThread):
     """Thread for training IRCRA prediction models without freezing the UI"""
     progress_updated = Signal(int)
@@ -257,6 +210,7 @@ class ModelTrainingThread(QThread):
             self.progress_updated.emit(40)
             self.status_updated.emit("Preparing features...")
             df_selected, X, y = model.prepare_features(df)
+            print('X', X)
 
             # Create correlation matrix
             self.status_updated.emit("Generating correlation matrix...")

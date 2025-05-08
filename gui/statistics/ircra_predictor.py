@@ -78,10 +78,7 @@ class IRCRAPredictor:
                 
             # Load SVR model
             svr_path = os.path.join(self.model_dir, 'svr_model.joblib')
-            # if not os.path.exists(svr_path):
-            #     # Try alternative path with .pkl extension as fallback
-            #     svr_path = os.path.join(self.model_dir, 'svr_model.pkl')
-                
+
             if os.path.exists(svr_path):
                 self.svr_model = joblib.load(svr_path)
                 print(f"SVR model loaded from {svr_path}")
@@ -91,16 +88,16 @@ class IRCRAPredictor:
             # Load Linear Regression model (PCR)
             # linreg_path = os.path.join(self.model_dir, 'pcr_model.joblib')
             # if not os.path.exists(linreg_path):
-            linreg_path = os.path.join(self.model_dir, 'linreg_model.joblib')
-                # if not os.path.exists(linreg_path):
-                #     # Try alternative extension
-                #     linreg_path = os.path.join(self.model_dir, 'linreg_model.pkl')
-                
-            if os.path.exists(linreg_path):
-                self.linreg_model = joblib.load(linreg_path)
-                print(f"Linear Regression model loaded from {linreg_path}")
-            else:
-                print(f"Warning: Linear Regression model not found at {linreg_path}")
+            # linreg_path = os.path.join(self.model_dir, 'linreg_model.joblib')
+            #     # if not os.path.exists(linreg_path):
+            #     #     # Try alternative extension
+            #     #     linreg_path = os.path.join(self.model_dir, 'linreg_model.pkl')
+            #
+            # if os.path.exists(linreg_path):
+            #     self.linreg_model = joblib.load(linreg_path)
+            #     print(f"Linear Regression model loaded from {linreg_path}")
+            # else:
+            #     print(f"Warning: Linear Regression model not found at {linreg_path}")
                 
         except Exception as e:
             print(f"Error loading models: {str(e)}")
@@ -163,14 +160,13 @@ class IRCRAPredictor:
         Returns:
             DataFrame: Feature matrix X
         """
-        # Default columns if not specified
         if include_demographics is None:
             include_demographics = [
                 'gender', 'age', 'years_climbing', 'bouldering', 'climbing_indoor',
                 'dominant_arm', 'weight', 'height', 'climbing_freq'
             ]
         if include_metrics is None:
-            include_metrics = ['max_strength', 'sum_work',
+            include_metrics = ['max_strength', 'sum_work', 'sum_work_above_cf',
                                'critical_force', 'rfd_norm_overall']
         
         # Create DataFrame with a single row
@@ -238,10 +234,7 @@ class IRCRAPredictor:
             
         if model_type == 'svr' and self.svr_model is None:
             raise ValueError("SVR model not loaded")
-            
-        if model_type == 'linear' and self.linreg_model is None:
-            raise ValueError("Linear Regression model not loaded")
-        
+
         # Extract the scaler and PCA components
         scaler = self.pca_data.get('scaler')
         pca = self.pca_data.get('pca')
@@ -252,6 +245,7 @@ class IRCRAPredictor:
         # Get data
         if test_id is not None:
             data = self.load_test_data(test_id)
+            print('data', data)
         elif feature_data is not None:
             data = feature_data
         else:
@@ -272,126 +266,53 @@ class IRCRAPredictor:
         
         # Return rounded prediction
         return round(prediction)
-    
-    def train_models(self, test_type='ao', admin_id=1):
-        """
-        Train new models using data from the databases and save them in the statistics/models directory.
-        
-        Args:
-            test_type (str): Type of test to use
-            admin_id (int): Admin ID to filter by
-            
-        Returns:
-            bool: True if training successful, False otherwise
-        """
-        try:
-            # Import here to avoid circular imports
-            from ircra_prediction_model import PredictionIRCRA
-            
-            # Create processor with model_dir pointing to statistics/models
-            proc = PredictionIRCRA(
-                climber_db=self.climber_db,
-                tests_db=self.tests_db,
-                admin_id=admin_id
-            )
-            
-            # Override the model_dir to use our local models directory
-            proc.model_dir = self.model_dir
-            
-            # Load and process data
-            df = proc.load_data(test_type=test_type)
-            if df.empty:
-                print("No data found for training")
-                return False
-                
-            # Perform PCA
-            pca_df = proc.pca_df(df)
-            if pca_df is None or pca_df.empty:
-                print("PCA failed to produce valid results")
-                return False
-                
-            # Prepare features
-            X, y = proc.prepare_pca_features(pca_df)
-            if X.empty or y.empty:
-                print("No valid features/target for training")
-                return False
-                
-            # Train SVR model
-            kernels = ["poly", "rbf", "sigmoid"]
-            C_params = np.array([0.1, 1, 5, 10, 20, 100, 500, 1000])
-            
-            best_regr, x_train, x_test, y_train, y_test = proc.train_best_svr(X, y, kernels, C_params)
-            
-            # Create and save SVR model
-            svr_model = svm.SVR(kernel=best_regr['kernel'], C=best_regr['C'])
-            svr_model.fit(x_train, y_train)
-            svr_path = os.path.join(self.model_dir, 'svr_model.joblib')
-            joblib.dump(svr_model, svr_path)
-            print(f"SVR model saved to {svr_path}")
-            
-            # Create and save Linear Regression model
-            linreg_model = LinearRegression()
-            linreg_model.fit(x_train, y_train)
-            linreg_path = os.path.join(self.model_dir, 'linreg_model.joblib')
-            joblib.dump(linreg_model, linreg_path)
-            print(f"Linear Regression model saved to {linreg_path}")
-            
-            # Reload models
-            self.load_models()
-            
-            return True
-            
-        except Exception as e:
-            print(f"Error training models: {str(e)}")
-            return False
 
-
-# Example usage
+# # Example usage
 if __name__ == "__main__":
     # Initialize with the correct models directory
     predictor = IRCRAPredictor(
         model_dir=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'models')
     )
-    
+
     # Check if models exist and retrain if needed
-    if predictor.pca_data is None or predictor.svr_model is None:
-        print("Models not found or incompletely loaded. Would you like to train new models? (y/n)")
-        response = input().lower()
-        if response == 'y':
-            print("Training models...")
-            predictor.train_models()
-    
+    # if predictor.pca_data is None or predictor.svr_model is None:
+    #     print("Models not found or incompletely loaded. Would you like to train new models? (y/n)")
+    #     response = input().lower()
+    #     if response == 'y':
+    #         print("Training models...")
+    #         predictor.train_models()
+
     # Example: Predict IRCRA for a specific test
     try:
-        test_id = 111  # Replace with actual test ID
-        
+        test_id = 8  # Replace with actual test ID
+
         # Try SVR prediction
         if predictor.svr_model is not None:
             svr_prediction = predictor.predict_ircra(test_id=test_id, model_type='svr')
             print(f"Predicted IRCRA (SVR): {svr_prediction}")
         else:
             print("SVR model not available for prediction")
-        
-        # Try Linear prediction
-        if predictor.linreg_model is not None:
-            linear_prediction = predictor.predict_ircra(test_id=test_id, model_type='linear')
-            print(f"Predicted IRCRA (Linear): {linear_prediction}")
-        else:
-            print("Linear model not available for prediction")
-        
+
+        # # Try Linear prediction
+        # if predictor.linreg_model is not None:
+        #     linear_prediction = predictor.predict_ircra(test_id=test_id, model_type='linear')
+        #     print(f"Predicted IRCRA (Linear): {linear_prediction}")
+        # else:
+        #     print("Linear model not available for prediction")
+
         # Print test data info
         test_data = predictor.load_test_data(test_id)
         print("\nClimber Information:")
         for key in ['name', 'ircra', 'age', 'gender', 'weight', 'height', 'years_climbing']:
             if key in test_data:
                 print(f"  {key}: {test_data.get(key)}")
-                
+
         # Print test metrics
         print("\nTest Metrics:")
         test_results = test_data.get('test_results', {})
         if isinstance(test_results, dict):
             for key, value in test_results.items():
                 print(f"  {key}: {value}")
-        
+
     except Exception as e:
         print(f"Error predicting IRCRA: {str(e)}")

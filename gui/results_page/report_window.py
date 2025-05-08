@@ -14,6 +14,7 @@ from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from gui.results_page.pdf_exporter import generate_pdf_report, parameters_explanation_dict, filter_parameters_explanation
 from gui.results_page.rep_report_window import RepReportWindow
 from gui.results_page.graphs_generator import create_combined_figure, create_force_figure, create_nirs_figure, plot_normalized_max_force
+from gui.statistics.ircra_predictor import IRCRAPredictor
 
 
 class TestReportWindow(QMainWindow):
@@ -78,6 +79,7 @@ class TestReportWindow(QMainWindow):
         
         self.participant_info = participant_info
         self.db_data = db_data
+        self.ircra_prediction = None
         
         # Create the matplotlib figure
         print('data_type:', db_data['data_type'])
@@ -188,9 +190,21 @@ class TestReportWindow(QMainWindow):
 
         # Put participant info & metrics side-by-side
         info_metrics_layout = QHBoxLayout()
-        info_metrics_layout.addWidget(participant_group, stretch=1)
+        # info_metrics_layout.addWidget(participant_group, stretch=1)    # Create a vertical layout for participant info + prediction (if applicable)
+        participant_layout = QVBoxLayout()
+        participant_layout.addWidget(participant_group)
+
+        # Add the prediction box only for 'ao' tests
+        if self.db_data.get('test_type') == 'ao':
+            prediction_group = self.create_performance_prediction_group()
+            if prediction_group:
+                participant_layout.addWidget(prediction_group)
+
+        # Add participant section and metrics to the info_metrics layout
+        info_metrics_layout.addLayout(participant_layout, stretch=1)
         info_metrics_layout.addWidget(metrics_group, stretch=1)
         container_layout.addLayout(info_metrics_layout)
+        # participant_section_layout.addWidget(self.create_performance_prediction_group())
 
         # 5) Graph Section
         if fig is not None:
@@ -346,6 +360,103 @@ class TestReportWindow(QMainWindow):
             pairs.append((label, str(value)))
         return pairs
 
+    def create_performance_prediction_group(self):
+        """Create a group for performance prediction"""
+        # Create group box
+        group_box = QGroupBox("Performance Prediction")
+        group_box.setStyleSheet("""
+                QGroupBox::title {
+                font-size: 14pt;
+                font-weight: bold;
+            }
+        """)
+
+        layout = QVBoxLayout(group_box)
+        layout.setContentsMargins(10, 20, 10, 10)
+
+        # First, check if this is an AO test - if not, don't show prediction
+        test_type = self.db_data.get('test_type', '').lower()
+        if test_type != 'ao':
+            info_label = QLabel("Performance prediction is only available for All-Out tests.")
+            info_label.setWordWrap(True)
+            info_label.setStyleSheet("font-size: 13px; color: #888888; margin: 5px;")
+            layout.addWidget(info_label)
+            return group_box
+
+        try:
+            # Get the test ID from the database data
+            test_id = self.db_data.get('id')
+            print('test_id:', test_id)
+            if test_id:
+                # Initialize the predictor
+                predictor = IRCRAPredictor(
+                    # model_dir=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'models')
+                )
+                print('blablabla')
+
+                # Check if models are loaded (trained)
+                if predictor.pca_data is not None and predictor.svr_model is not None:
+                    print('after modeeeeels')
+                    # Predict IRCRA grade
+                    predicted_ircra = predictor.predict_ircra(test_id=test_id, model_type='svr')
+                    print('predicted_ircra:', predicted_ircra)
+
+                    # Create prediction label
+                    prediction_label = QLabel(
+                        f"With your predispositions, you could be able to climb IRCRA grade: {predicted_ircra}")
+                    prediction_label.setWordWrap(True)
+                    prediction_label.setStyleSheet("font-size: 14px; margin: 5px;")
+                    layout.addWidget(prediction_label)
+
+                    # Add additional analysis
+                    current_ircra = int(self.participant_info.get('ircra'))
+                    print('current_ircra:', current_ircra)
+                    if current_ircra and isinstance(current_ircra, (int, float)) and isinstance(predicted_ircra,
+                                                                                                (int, float)):
+                        difference = predicted_ircra - current_ircra
+                        print('difference:', difference)
+
+                        if abs(difference) <= 1:
+                            analysis_text = "Your current performance level aligns perfectly with your physical metrics."
+                        elif difference > 1:
+                            analysis_text = f"Your test results suggest potential for higher performance. You might be able to climb {abs(difference)} grade{'s' if abs(difference) > 1 else ''} harder with optimal technique and training."
+                        else:
+                            analysis_text = f"Your climbing experience and technique likely compensate for physical metrics, allowing you to climb {abs(difference)} grade{'s' if abs(difference) > 1 else ''} harder than predicted."
+
+                        analysis_label = QLabel(analysis_text)
+                        analysis_label.setWordWrap(True)
+                        analysis_label.setStyleSheet("font-size: 13px; margin: 5px;")
+                        layout.addWidget(analysis_label)
+                        self.ircra_prediction = {'test_type': self.db_data.get('test_type'),
+                                                 'predicted_ircra': predicted_ircra,
+                                                 'analysis_text': analysis_text,
+                                                 'current_ircra': current_ircra,
+                                                 'difference': difference}
+
+
+                else:
+                    # Models not loaded message
+                    error_label = QLabel(
+                        "Performance prediction not available - prediction models not found or not trained.")
+                    error_label.setWordWrap(True)
+                    error_label.setStyleSheet("font-size: 13px; color: #888888; margin: 5px;")
+                    layout.addWidget(error_label)
+            else:
+                # No test ID message
+                error_label = QLabel("Performance prediction not available for this test.")
+                error_label.setWordWrap(True)
+                error_label.setStyleSheet("font-size: 13px; color: #888888; margin: 5px;")
+                layout.addWidget(error_label)
+
+        except Exception as e:
+            # Error message
+            error_label = QLabel(f"Unable to generate performance prediction: {str(e)}")
+            error_label.setWordWrap(True)
+            error_label.setStyleSheet("font-size: 13px; color: #888888; margin: 5px;")
+            layout.addWidget(error_label)
+
+        return group_box
+
     def build_basic_info_pairs(self):
         """
         Returns a list of (label, value) pairs for the basic test info section,
@@ -468,15 +579,7 @@ class TestReportWindow(QMainWindow):
             except json.JSONDecodeError:
                 # Fallback for old format
                 rep_results = eval(rep_results_db)
-            # if rep_results_str:
-            #     try:
-            #         if isinstance(rep_results_str, list):
-            #             rep_results = eval(rep_results_str, {"np": np})
-            #     except Exception as e:
-            #         QMessageBox.warning(self, "Error", f"Could not parse rep metrics: {e}")
-            #         return
-            # else:
-            #     rep_results = []
+
             if rep_results:
                 df_rep = pd.DataFrame(rep_results)
                 rep_table = [df_rep.columns.tolist()] + df_rep.values.tolist()
@@ -541,6 +644,7 @@ class TestReportWindow(QMainWindow):
                 rep_results=rep_table,          # Repetition Metrics table
                 rep_graph_image_path=rep_graph_filepath,   # Repetition Graph
                 norm_force_graph_image_path=norm_force_graph_filepath,  # Normalized Max Force Graph
+                ircra_prediction=self.ircra_prediction,  # IRCRA prediction data
                 parameters_explanation=filtered_parameters_text
             )
             QMessageBox.information(self, "Export Report", "PDF report generated successfully!")
