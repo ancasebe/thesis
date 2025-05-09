@@ -57,7 +57,10 @@ Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
-🧪 Usage
+
+---
+
+## 🧪 Usage
 
 The application is modular, with separate scripts for different functionalities:
 
@@ -66,7 +69,9 @@ Test Evaluation: Run evaluation scripts to process test data and compute metrics
 Model Training: Train prediction models using the provided training scripts.
 Prediction: Use trained models to predict IRCRA levels for new test data.
 
-📥 Data Import
+---
+
+## 📥 Data Import
 
 To import data from an Excel file:
 
@@ -76,7 +81,10 @@ This script will:
 Read test data and participant metadata from the Excel file
 Create entries in the climber and test databases
 Compute evaluation metrics and store them in the database
-🧠 Model Training
+
+---
+
+## 🧠 Model Training
 
 To train the prediction models:
 
@@ -91,7 +99,10 @@ Extract features and labels from the database
 Perform PCA for dimensionality reduction
 Train Linear Regression and SVR models
 Evaluate model performance and save the trained models
-📈 Prediction
+
+---
+
+## 📈 Prediction
 
 To predict the IRCRA level for a new test:
 
@@ -103,10 +114,15 @@ This will:
 Load the trained model
 Extract features for the specified test
 Predict the IRCRA level and display the result
-🤝 Contributing
+
+---
+
+## 🤝 Contributing
 
 Contributions are welcome! If you have suggestions or improvements, feel free to fork the repository and submit a pull request.
 
-📄 License
+---
+
+## 📄 License
 
 This project is licensed under the MIT License. See the LICENSE file for details.
