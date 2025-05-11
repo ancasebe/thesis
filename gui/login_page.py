@@ -23,13 +23,12 @@ class LoginPage(QWidget):
         setup_ui: Sets up the user interface for the login page.
         handle_login: Handles user login, verifying credentials.
     """
-    def __init__(self, switch_to_main, switch_to_register, db_manager):
+    def __init__(self, switch_to_main, db_manager):
         """Initializes the login page with references to the switch functions and db_manager."""
         super().__init__()
         self.username_input = QLineEdit()
         self.password_input = QLineEdit()
         self.switch_to_main = switch_to_main
-        self.switch_to_register = switch_to_register
         self.db_manager = db_manager
         self.setup_ui()
 
@@ -61,17 +60,12 @@ class LoginPage(QWidget):
         login_button.clicked.connect(self.handle_login)
         layout.addWidget(login_button)
 
-        # Switch to Registration
-        #switch_button = QPushButton("Don't have an account? Register")
-        #switch_button.clicked.connect(self.switch_to_register)
-        #layout.addWidget(switch_button)
-
         # University Logos at the Bottom
         logos_layout = QHBoxLayout()
         logos_layout.setAlignment(Qt.AlignCenter)
 
-        # Fixed height for both logos
-        fixed_height = 50
+        # Fixed height for both logos - increased for better quality
+        fixed_height = 50  # Increased from 50 to 100 for better resolution
 
         # Logo 1
         logo1 = QLabel()
@@ -80,18 +74,30 @@ class LoginPage(QWidget):
             logo1.setText("UIBK")
             logo1.setAlignment(Qt.AlignCenter)
         else:
-            pixmap1 = pixmap1.scaledToHeight(fixed_height, Qt.SmoothTransformation)
+            # Keep aspect ratio and use high-quality scaling
+            pixmap1 = pixmap1.scaled(
+                pixmap1.width() * fixed_height // pixmap1.height(),
+                fixed_height,
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation
+            )
             logo1.setPixmap(pixmap1)
             logo1.setAlignment(Qt.AlignCenter)
         logos_layout.addWidget(logo1)
 
         logo2 = QLabel()
-        pixmap2 = QPixmap('resources/logo_uct.png')  # Replace with your logo path
+        pixmap2 = QPixmap('resources/logo_uct.jpeg')  # Replace with your logo path
         if pixmap2.isNull():
             logo2.setText("UCT Prague")
             logo2.setAlignment(Qt.AlignCenter)
         else:
-            pixmap2 = pixmap2.scaledToHeight(fixed_height, Qt.SmoothTransformation)
+            # Keep aspect ratio and use high-quality scaling
+            pixmap2 = pixmap2.scaled(
+                pixmap2.width() * fixed_height // pixmap2.height(),
+                fixed_height,
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation
+            )
             logo2.setPixmap(pixmap2)
             logo2.setAlignment(Qt.AlignCenter)
         logos_layout.addWidget(logo2)

@@ -12,7 +12,6 @@ import sys
 from PySide6.QtWidgets import QApplication, QMainWindow, QStackedWidget, QMessageBox
 from gui.superuser.login_db_manager import LoginDatabaseManager
 from gui.login_page import LoginPage
-from gui.superuser.new_admin import RegistrationPage
 from gui.main_page import MainPage
 
 
@@ -43,17 +42,11 @@ class MainWindow(QMainWindow):
         # Initialize Pages
         self.login_page = LoginPage(
             switch_to_main=self.show_main_app,
-            switch_to_register=self.show_registration,
-            db_manager=self.login_db_manager
-        )
-        self.registration_page = RegistrationPage(
-            switch_to_main=self.show_main_app,
             db_manager=self.login_db_manager
         )
 
         # Add Pages to Stacked Widget
         self.stacked_widget.addWidget(self.login_page)          # Index 0
-        self.stacked_widget.addWidget(self.registration_page)   # Index 1
 
         # Start with Login Page
         self.stacked_widget.setCurrentIndex(0)
@@ -83,13 +76,13 @@ class MainWindow(QMainWindow):
         else:
             QMessageBox.warning(self, "Error", "Failed to retrieve admin ID.")
 
-    def show_login(self):
-        """Switches to the login page."""
-        self.stacked_widget.setCurrentIndex(0)
-
-    def show_registration(self):
-        """Switches to the registration page."""
-        self.stacked_widget.setCurrentIndex(1)
+    # def show_login(self):
+    #     """Switches to the login page."""
+    #     self.stacked_widget.setCurrentIndex(0)
+    #
+    # def show_registration(self):
+    #     """Switches to the registration page."""
+    #     self.stacked_widget.setCurrentIndex(1)
 
     def logout(self):
         """

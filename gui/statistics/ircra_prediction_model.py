@@ -178,7 +178,7 @@ class PredictionIRCRA:
                 'dominant_arm', 'weight', 'height', 'climbing_freq'
             ]
         if include_metrics is None:
-            include_metrics = ['max_strength', 'sum_work_above_cf', 'sum_work',
+            include_metrics = ['max_strength', 'sum_work', 'sum_work_above_cf',
                                'critical_force', 'rfd_norm_overall']
 
         # Create a copy of the dataframe to avoid modifying the original
@@ -239,7 +239,7 @@ class PredictionIRCRA:
         plt.close(fig)  # Close the figure to free memory
         return save_path
 
-    def pca_df(self, X_raw, y, save_model=True, model_dir="models"):
+    def pca_df(self, X_raw, y, save_model=True):
         """
         Perform PCA, plot explained variance and PCA scatter,
         and optionally save the scaler + PCA model for later.
@@ -307,8 +307,7 @@ class PredictionIRCRA:
 
         # Save scaler + PCA for reuse
         if save_model:
-            # Ensure models directory exists
-            save_path = os.path.join(model_dir, 'pca_pipeline.joblib')
+            save_path = os.path.join(self.model_dir, 'pca_pipeline.joblib')
             joblib.dump({'scaler': scaler, 'pca': pca}, save_path)
             print(f"PCA model saved to: {save_path}")
 
@@ -357,11 +356,10 @@ class PredictionIRCRA:
 
         return X, y
 
-    def train_best_svr(self, X, y, kernels=None, C_params=None, model_dir="models"):
+    def train_best_svr(self, X, y, kernels=None, C_params=None):
         """
         Train SVR models with different kernels and regularization parameters, and find the best model.
 
-        :param model_dir: models directory
         :param X: pandas DataFrame, feature matrix
         :param y: pandas Series, target variable
         :param kernels: list, list of kernel types (default: ["poly", "rbf", "sigmoid"])
@@ -393,7 +391,7 @@ class PredictionIRCRA:
         regre = svm.SVR(kernel=best_regr['kernel'], C=best_regr['C'])
         regre.fit(x_train, y_train)
         y_pred_test_svr = regre.predict(x_test)
-        svr_path = os.path.join(model_dir, 'svr_model.joblib')
+        svr_path = os.path.join(self.model_dir, 'svr_model.joblib')
         joblib.dump(regre, svr_path)
 
         # Create scatter plot
@@ -420,7 +418,7 @@ class PredictionIRCRA:
         linreg = LinearRegression()
         linreg.fit(x_train, y_train)
         y_pred_test_linreg = linreg.predict(x_test)
-        linreg_path = os.path.join(model_dir, 'linreg_model.joblib')
+        linreg_path = os.path.join(self.model_dir, 'linreg_model.joblib')
         joblib.dump(linreg, linreg_path)
         
         # Plot Linear Regression results

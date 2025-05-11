@@ -2,8 +2,6 @@ import json
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from gui.research_members.climber_db_manager import ClimberDatabaseManager
-from gui.test_page.test_db_manager import ClimbingTestManager
 
 
 def smooth_data(data, window_size=11):
@@ -184,6 +182,7 @@ def create_force_figure(force_file, test_metrics):
 
     critical_force = test_metrics.get("critical_force")
     max_strength = test_metrics.get("max_strength")
+    print('max_strength: ', max_strength)
     # w_prime = test_metrics.get("sum_work_above_cf")
 
     fig, ax = plt.subplots(figsize=(10, 6))

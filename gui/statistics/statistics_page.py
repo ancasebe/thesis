@@ -187,6 +187,10 @@ class ModelTrainingThread(QThread):
             # Create the prediction model
             model = PredictionIRCRA()
 
+            # Make sure the model uses the correct directories
+            model.model_dir = MODEL_DIR
+            model.plots_dir = PLOTS_DIR
+
             # More detailed progress reporting
             self.progress_updated.emit(10)
             self.status_updated.emit("Creating model instance...")
