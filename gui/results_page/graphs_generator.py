@@ -182,8 +182,6 @@ def create_force_figure(force_file, test_metrics):
 
     critical_force = test_metrics.get("critical_force")
     max_strength = test_metrics.get("max_strength")
-    print('max_strength: ', max_strength)
-    # w_prime = test_metrics.get("sum_work_above_cf")
 
     fig, ax = plt.subplots(figsize=(10, 6))
     ax.plot(time_array, force_array, label='Duration of test', color='darkblue')
@@ -196,7 +194,6 @@ def create_force_figure(force_file, test_metrics):
     # Find the index of maximum strength for labeling (if it exists)
     if max_strength is not None:
         max_idx = force_array.argmax()
-        print('max_idx:', max_idx)
         ax.plot(time_array.iloc[max_idx] if hasattr(time_array, 'iloc') else time_array[max_idx],
                  max_strength, 'r.', label=f'Maximum strength: {max_strength:.2f}')
         # max_index = force_array.argmax()
@@ -278,8 +275,7 @@ def plot_normalized_max_force(climber_manager, test_manager, admin_id, current_t
     """
     # Get all tests from database
     all_tests = test_manager.fetch_results_by_admin(str(admin_id))
-    print(f"Retrieved {len(all_tests)} tests from database")
-    
+
     # Process tests to find valid ones with all required data
     valid_tests = []
     
@@ -290,7 +286,6 @@ def plot_normalized_max_force(climber_manager, test_manager, admin_id, current_t
             
             # Skip if missing participant ID
             if not participant_id:
-                print(f"Test ID {test_id}: Missing participant ID")
                 continue
                 
             # Try to get test_results - handle as string or dict
@@ -306,7 +301,6 @@ def plot_normalized_max_force(climber_manager, test_manager, admin_id, current_t
             
             # Skip if no test_results or missing max_strength
             if not test_results or 'max_strength' not in test_results:
-                print(f"Test ID {test_id}: Missing max_strength data")
                 continue
                 
             # Get user data
@@ -314,13 +308,11 @@ def plot_normalized_max_force(climber_manager, test_manager, admin_id, current_t
             
             # Skip if user is missing weight
             if not user or not user.get('weight'):
-                print(f"Test ID {test_id}: User missing weight data")
                 continue
                 
             # Skip if IRCRA is missing or not a number
             ircra = user.get('ircra')
             if not ircra or ircra == 'N/A':
-                print(f"Test ID {test_id}: User missing IRCRA grade")
                 continue
                 
             # Try to convert IRCRA to a number
@@ -343,8 +335,7 @@ def plot_normalized_max_force(climber_manager, test_manager, admin_id, current_t
                 'max_strength': max_strength,
                 'weight': weight
             })
-            print(f"Test ID {test_id}: Valid data (IRCRA={ircra}, Weight={weight}, Max strength={max_strength})")
-            
+
         except Exception as e:
             print(f"Error processing test {test.get('id')}: {e}")
     
@@ -353,18 +344,13 @@ def plot_normalized_max_force(climber_manager, test_manager, admin_id, current_t
     
     # Check if we have any valid data
     if df.empty:
-        print("No valid tests found with all required data (max_strength, weight, IRCRA).")
         return None
-    
-    print(f"\nFound {len(df)} valid tests with all required data")
-    print(f"Valid test IDs: {df['test_id'].tolist()}")
     
     # If no current_test_id specified or the specified one isn't valid,
     # use the first valid test instead
     if current_test_id is None or current_test_id not in df['test_id'].values:
         current_test_id = df['test_id'].iloc[0]
-        print(f"Using test ID {current_test_id} as current test")
-    
+
     # Get the current test data
     curr = df[df['test_id'] == current_test_id].iloc[0]
     
@@ -440,19 +426,14 @@ def plot_normalized_max_force(climber_manager, test_manager, admin_id, current_t
                  transform=ax2.transAxes, fontsize=12)
         ax2.set_title('Distribution of Normalized Max Force', fontsize=14)
         ax2.axis('off')
-    
-    # Add a title for the entire figure
-    # fig.suptitle(f'Normalized Max Force Analysis - Test #{current_test_id}', fontsize=16)
-    
+
     # Adjust spacing between subplots
-    # fig.subplots_adjust(top=0.88)  # Make room for the suptitle
     fig.subplots_adjust(
         left=0.05, right=0.98,  # margins on the left & right
         wspace=0.3,  # space between the two axes
         top=0.90,  # top margin (so titles don’t clip)
         bottom=0.15  # bottom margin for x-labels
     )
-    # fig.tight_layout()
     
     return fig
 

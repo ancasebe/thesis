@@ -113,7 +113,7 @@ class ClimberDatabaseManager:
             if admin_id is str:
                 admin_id = int(admin_id)
             if climber_id is str:
-                participant_id = int(climber_id)
+                climber_id = int(climber_id)
 
                 # Organize data into JSON objects
             basic_info = {
@@ -195,7 +195,7 @@ class ClimberDatabaseManager:
             climber_id = int(climber_id)
 
         cursor = self.connection.cursor()
-        print(f"Querying climber ID: {climber_id} for admin ID: {admin_id}")
+        # print(f"Querying climber ID: {climber_id} for admin ID: {admin_id}")
         
         # First try the JSON-based schema
         if admin_id == 1:
@@ -244,7 +244,7 @@ class ClimberDatabaseManager:
         """, (climber_id, admin_id))
         
         result = cursor.fetchone()
-        print(f"Query result: {result}")
+        # print(f"Query result: {result}")
         
         if result:
             fields = ["name", "surname", "email", "gender", "dominant_arm", "weight", "height", "age",

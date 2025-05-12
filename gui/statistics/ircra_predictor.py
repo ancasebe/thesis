@@ -66,13 +66,9 @@ class IRCRAPredictor:
         try:
             # Load PCA model
             pca_path = os.path.join(self.model_dir, 'pca_pipeline.joblib')
-            # if not os.path.exists(pca_path):
-            #     # Try alternative path with .pkl extension as fallback
-            #     pca_path = os.path.join(self.model_dir, 'pca_model.pkl')
-                
+
             if os.path.exists(pca_path):
                 self.pca_data = joblib.load(pca_path)
-                print(f"PCA model loaded from {pca_path}")
             else:
                 print(f"Warning: PCA model not found at {pca_path}")
                 
@@ -81,7 +77,6 @@ class IRCRAPredictor:
 
             if os.path.exists(svr_path):
                 self.svr_model = joblib.load(svr_path)
-                print(f"SVR model loaded from {svr_path}")
             else:
                 print(f"Warning: SVR model not found at {svr_path}")
                 
@@ -122,7 +117,6 @@ class IRCRAPredictor:
         participant_id = test_data.get('participant_id')
         admin_id = test_data.get('admin_id', 1)  # Default to admin_id 1 if not specified
         
-        print(f"Querying climber ID: {participant_id} for admin ID: {admin_id}")
         climber_data = self.climber_manager.get_user_data(admin_id, participant_id)
         
         if not climber_data:
@@ -245,7 +239,6 @@ class IRCRAPredictor:
         # Get data
         if test_id is not None:
             data = self.load_test_data(test_id)
-            print('data', data)
         elif feature_data is not None:
             data = feature_data
         else:
@@ -274,14 +267,6 @@ if __name__ == "__main__":
         model_dir=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'models')
     )
 
-    # Check if models exist and retrain if needed
-    # if predictor.pca_data is None or predictor.svr_model is None:
-    #     print("Models not found or incompletely loaded. Would you like to train new models? (y/n)")
-    #     response = input().lower()
-    #     if response == 'y':
-    #         print("Training models...")
-    #         predictor.train_models()
-
     # Example: Predict IRCRA for a specific test
     try:
         test_id = 8  # Replace with actual test ID
@@ -289,16 +274,15 @@ if __name__ == "__main__":
         # Try SVR prediction
         if predictor.svr_model is not None:
             svr_prediction = predictor.predict_ircra(test_id=test_id, model_type='svr')
-            print(f"Predicted IRCRA (SVR): {svr_prediction}")
         else:
             print("SVR model not available for prediction")
 
-        # # Try Linear prediction
-        # if predictor.linreg_model is not None:
-        #     linear_prediction = predictor.predict_ircra(test_id=test_id, model_type='linear')
-        #     print(f"Predicted IRCRA (Linear): {linear_prediction}")
-        # else:
-        #     print("Linear model not available for prediction")
+        # Try Linear prediction
+        if predictor.linreg_model is not None:
+            linear_prediction = predictor.predict_ircra(test_id=test_id, model_type='linear')
+            print(f"Predicted IRCRA (Linear): {linear_prediction}")
+        else:
+            print("Linear model not available for prediction")
 
         # Print test data info
         test_data = predictor.load_test_data(test_id)

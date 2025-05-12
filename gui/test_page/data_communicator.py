@@ -1,7 +1,8 @@
 import time
-
+import os
 import numpy as np
 import pyqtgraph as pg
+import json
 from PySide6.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QMessageBox, QLabel, QDialog, QHBoxLayout, QApplication, QVBoxLayout
 from PySide6.QtCore import Signal, QTimer, Qt
 
@@ -287,7 +288,6 @@ class CombinedDataCommunicator(QMainWindow):
             return
         
         if sid == '1':  # force
-            print('plotting Force:', ts, val)
             self.force_data['timestamps'].append(ts)
             self.force_data['values'].append(val)
             if self.force_file:
@@ -296,11 +296,7 @@ class CombinedDataCommunicator(QMainWindow):
             if self.data_type in ("force", "force_nirs"):
                 self.update_plot()
         elif sid == '2':  # NIRS SMO2 data (only process sensor ID 2)
-            # print('plotting NIRS SMO2:', ts, val)
-            # self.nirs_data['timestamps'].append(ts)
-            # self.nirs_data['values'].append(val)
             smoothed_val = self.smooth_nirs_data(float(val))
-            print('plotting NIRS:', ts, smoothed_val)
             self.nirs_data['timestamps'].append(ts)
             self.nirs_data['values'].append(smoothed_val)
             # Log only SMO2 values
@@ -376,50 +372,38 @@ class CombinedDataCommunicator(QMainWindow):
         """
         if not self.finalized:
             if self.data_type == "force":
-                force_evaluator = ForceMetrics(file_path=self.force_file.filename,
-                                          test_type=self.test_type,
-                                          threshold_ratio=0.1)
+                force_evaluator = ForceMetrics(file_path=self.force_file.actual_filename,
+                                               test_type=self.test_type,
+                                               threshold_ratio=0.1)
                 test_results, rep_results = force_evaluator.evaluate()
                 number_of_reps = len(rep_results)
                 nirs_results = None
-                print('number of reps:', number_of_reps)
-                print("Force Evaluation Results:")
-                print(test_results)
-                print("Repetition-by-Repetition Metrics:", rep_results)
+
             elif self.data_type == "nirs":
                 nirs_results = {'Only NIRS': 'TODO'}
                 test_results = rep_results = number_of_reps = None
             elif self.data_type == "force_nirs":
-                force_evaluator = ForceMetrics(file_path=self.force_file.filename,
-                                          test_type=self.test_type)
+                force_evaluator = ForceMetrics(file_path=self.force_file.actual_filename,
+                                               test_type=self.test_type)
                 test_results, rep_results = force_evaluator.evaluate()
-                start_time, test_start_abs, test_end_abs = find_test_interval(self.force_file.filename)
+                start_time, test_start_abs, test_end_abs = find_test_interval(self.force_file.actual_filename)
                 test_start_rel = test_start_abs - start_time
                 test_end_rel = test_end_abs - start_time
-                nirs_eval = NIRSEvaluation(self.nirs_file.filename, smoothing_window=25,
+                nirs_eval = NIRSEvaluation(self.nirs_file.actual_filename, smoothing_window=25,
                                        baseline_threshold=0.1, recovery_tolerance=1.0)
-                print(start_time, test_start_rel, test_end_rel)
                 try:
                     nirs_results = nirs_eval.evaluate(start_time, test_start_rel, test_end_rel)
-                    print("NIRS Evaluation Results:")
-                    print(nirs_results)
+
                 except TypeError as e:
                     print(f"Error in NIRS evaluation: {e}")
                     # Provide fallback results if NIRS evaluation fails
                     nirs_results = {}
                 number_of_reps = len(rep_results)
-                print('number of reps:', number_of_reps)
-                print("Force Evaluation Results:")
-                print(test_results)
-                print("Repetition-by-Repetition Metrics:", rep_results)
+
             else:
                 QMessageBox.warning(self, "Error", "Unknown data type; cannot generate report")
-                print(self.data_type)
                 raise ValueError("Unknown data type; cannot generate report.")
 
-            # Import JSON for serialization
-            import json
-            
             test_db_manager = ClimbingTestManager()
             force_file = self.force_file.filename if self.force_file else ''
             nirs_file = self.nirs_file.filename if self.nirs_file else ''
@@ -441,10 +425,10 @@ class CombinedDataCommunicator(QMainWindow):
                 'nirs_results': nirs_results_json,
                 'rep_results': rep_results_json
             }
-            print("data to db: ", db_data_save)
+            # print("Data to DB: ", db_data_save)
             test_id = test_db_manager.add_test_result(admin_id=self.admin_id,
-                                                 participant_id=self.climber_id,
-                                                 db_data=db_data_save)
+                                                      participant_id=self.climber_id,
+                                                      db_data=db_data_save)
 
             QMessageBox.information(self, "Test saving", "Test was saved successfully.")
             self.finalized = True
@@ -461,6 +445,8 @@ class CombinedDataCommunicator(QMainWindow):
                     "dominant_arm": "N/A"
                 }
             db_data_save['id'] = test_id
+            db_data_save['force_file'] = self.force_file.actual_filename
+            db_data_save['nirs_file'] = self.nirs_file.actual_filename
             report_window = TestReportWindow(
                 participant_info=climber_data,
                 db_data=db_data_save,
@@ -486,28 +472,6 @@ class CombinedDataCommunicator(QMainWindow):
             self.dg.pause_data_forwarding()
         
         event.accept()
-
-    # def smooth_nirs_data(self, value):
-    #     """
-    #     Apply Exponential Moving Average (EMA) smoothing to NIRS data in real-time.
-    #     This is computationally efficient and reduces noise while maintaining responsiveness.
-    #
-    #     Args:
-    #         value (float): The new NIRS value
-    #
-    #     Returns:
-    #         float: The smoothed NIRS value
-    #     """
-    #
-    #     # If it's the first value, just return it without smoothing
-    #     if self.last_smoothed_value is None:
-    #         self.last_smoothed_value = value
-    #         return value
-    #
-    #     # Apply EMA smoothing
-    #     smoothed_value = self.ema_alpha * value + (1 - self.ema_alpha) * self.last_smoothed_value
-    #     self.last_smoothed_value = smoothed_value
-    #     return smoothed_value
 
     def smooth_nirs_data(self, value, nirs_smoothing_window=7):
         """

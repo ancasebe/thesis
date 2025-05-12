@@ -12,25 +12,21 @@ class FeatherBinaryLogger:
     def __init__(self, folder="tests", prefix="processed_data", timestamp="today", db_queue=None):
         script_dir = os.path.dirname(__file__)
         folder_path = os.path.join(script_dir, folder)
-        # filename = os.path.join(folder, f"{prefix}_{timestamp}.feather")
-        filename = f"{folder_path}/{prefix}_{timestamp}.feather"
-        print(f'{prefix} file was prepared:', filename)
-        self.filename = filename
+        self.filename = f"{prefix}_{timestamp}.feather"
+        self.actual_filename = os.path.join(folder_path, self.filename)
         self.db_queue = db_queue
         self.buffer = []  # in-memory buffer for data points
 
     def log(self, ts, val):
         """Append a data point to the buffer."""
         self.buffer.append([ts, val])
-        # print(ts, "_", val)
 
     def flush(self):
         """Write the buffered data to the Feather file and clear the buffer."""
         if self.buffer:
             df = pd.DataFrame(self.buffer, columns=["time", "value"])
             # Write the entire DataFrame to a Feather file
-            df.reset_index(drop=True).to_feather(self.filename)
-            print(self.filename, 'was saved')
+            df.reset_index(drop=True).to_feather(self.actual_filename)
             self.buffer = []
 
     def close(self):

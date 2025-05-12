@@ -613,7 +613,7 @@ class RepMetrics:
                 if self.min_rep_sec <= duration <= self.max_rep_sec:
                     rep_intervals.append((s, e))
 
-            print("Detected repetition intervals (using time):", rep_intervals)
+            # print("Detected repetition intervals (using time):", rep_intervals)
             return rep_intervals
 
         except Exception as e:
@@ -640,7 +640,6 @@ class RepMetrics:
         # time_axis = self.force_df['time'].values
         try:
             for i, (s, e) in enumerate(self.reps, start=1):
-                print('repetition n.', i, 'indexes: ', (s, e))
                 rep_df = self.force_df.iloc[s:e + 1].copy().reset_index(drop=True)
                 rep_df['local_time'] = rep_df['time'] - rep_df['time'].iloc[0]
                 max_force, max_force_idx = compute_max_force(rep_df)
@@ -744,7 +743,6 @@ class ForceMetrics:
 
             # Overall metrics computed from the entire force DataFrame.
             results['max_strength'], _ = compute_max_force(self.df)
-            print('Max force:', results['max_strength'])
             results['avg_pulling_time_ms'] = compute_average_pulling_time(self.rep_metrics)
             n_reps = len(self.rep_metrics)
 
@@ -780,8 +778,6 @@ class ForceMetrics:
 
                 # Compute critical force from rep metrics (average MVC of the last few reps)
                 results['critical_force'] = compute_critical_force(self.rep_metrics)
-                print('Critical force:', results['critical_force'])
-                print('Number of repetitions:', len(self.rep_metrics))
 
                 # Additional metrics that depend on previously computed values.
                 if results['critical_force']:

@@ -163,15 +163,8 @@ class TestPage(QWidget):
         # currently_connected = self.data_generator.is_nirs_connected()
         currently_connected = self.data_generator.bluetooth_com.running
         
-        # Log connection state for debugging
-        print("=== NIRS CONNECTION TOGGLE ===")
-        print(f"running {self.data_generator.bluetooth_com.running}")
-        print(f"debugging {self.data_generator.bluetooth_com.debugging}")
-        print(f"connected? {currently_connected}")
-        
         if currently_connected:
             # Disconnect if currently connected
-            print("Stopping NIRS connection")
             self.data_generator.stop(nirs=True, force=False)
             self.nirs_connect_button.setText("NIRS disconnected")
             self.nirs_connect_button.setStyleSheet(self.button_styles['default'])
@@ -183,22 +176,18 @@ class TestPage(QWidget):
             self.data_generator.pause_data_forwarding()
         
             # Clear previous data
-            print("NIRS Connection Debug: Clearing any previous data")
             self.data_generator.clear_data()
         
             # Start the connection process
-            print("NIRS Connection Debug: Starting NIRS connection process")
             success = self.data_generator.start_nirs_connection()
         
             if not success:
-                print("NIRS Connection Debug: Failed to start connection process")
                 self.nirs_connect_button.setText("NIRS disconnected")
                 self.nirs_connect_button.setStyleSheet(self.button_styles['error'])
                 return
         
             # Start monitoring connection state in a separate thread
-            print("NIRS Connection Debug: Monitor connection thread started")
-        
+
             # Show connecting status in the UI
             self.nirs_connect_button.setText("Connecting...")
             self.nirs_connect_button.setStyleSheet(self.button_styles['connecting'])
@@ -222,29 +211,25 @@ class TestPage(QWidget):
         simulated = self.data_generator.bluetooth_com.debugging
 
         # Print detailed connection state for debugging
-        print(
-            f"NIRS Connection Check - Thread running: {thread_running}, Real connection: {real_connection}, Simulated: {simulated}, Message: {state_msg}")
+        # print(
+        #     f"NIRS Connection Check - Thread running: {thread_running}, Real connection: {real_connection}, Simulated: {simulated}, Message: {state_msg}")
 
         # Update button based on connection state
         if thread_running and real_connection and not simulated:
             # Real connection established and receiving data
-            print("NIRS Connection: Real connection established")
             self.nirs_connect_button.setText("NIRS Connected")
             self.nirs_connect_button.setStyleSheet(self.button_styles['success'])
             self.connection_timer.stop()
         elif thread_running and simulated:
             # Simulation mode active
-            print("NIRS Connection: Simulation mode active")
             self.nirs_connect_button.setText("NIRS Simulated")
             self.nirs_connect_button.setStyleSheet(self.button_styles['warning'])
             self.connection_timer.stop()
-        elif thread_running and "Connected to" in state_msg and not real_connection:
+        # elif thread_running and "Connected to" in state_msg and not real_connection:
             # Connection message received but no data yet - keep waiting
-            print("NIRS Connection: Connection initiated, waiting for data...")
             # Don't stop the timer, keep checking
         elif not thread_running:
             # Connection attempt failed or was stopped
-            print("NIRS Connection: Connection stopped or failed")
             self.nirs_connect_button.setText("Connect NIRS")
             self.nirs_connect_button.setStyleSheet(self.button_styles['default'])
             self.connection_timer.stop()
@@ -284,19 +269,6 @@ class TestPage(QWidget):
         # Log the disconnection
         print(f"{time.strftime('%H:%M:%S')} - NIRS disconnected manually by user")
 
-    # def load_climbers(self):
-    #     """Loads climbers registered by the current admin into the ComboBox."""
-    #     # if self.admin_id == 1:
-    #     #     climbers = self.db_manager.get_all_climbers()
-    #     # else:
-    #     climbers = self.db_manager.get_climbers_by_admin(self.admin_id)
-    #     self.climber_selector.clear()
-    #     self.climber_selector.addItem("Select a climber", None)
-    #     for climber in climbers:
-    #         display_name = f"{climber['name']} {climber['surname']}"
-    #         # Save both the id and email in a dict.
-    #         self.climber_selector.addItem(display_name, climber["id"])
-
     def select_test(self, test_name):
         """Sets the selected test and validates climber and arm selections."""
         climber_id = self.climber_selector.currentData()
@@ -320,7 +292,6 @@ class TestPage(QWidget):
         data_type = data_type.lower()
         if data_type == "force and nirs":
             data_type = "force_nirs"
-        print(test_type, " _ ", data_type)
         self.launch_test_window(data_type, selected_arm, test_type)
 
     def launch_test_window(self, data_type, selected_arm, test_type):

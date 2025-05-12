@@ -61,8 +61,6 @@ class TestReportWindow(QMainWindow):
         self.nirs_results = None
         if db_data.get('nirs_results') and db_data['nirs_results'] != "null":
             try:
-                # Print the raw value to debug
-                print(f"Raw nirs_results value: {repr(db_data['nirs_results'])}")
                 if isinstance(db_data['nirs_results'], dict):
                     self.nirs_results = db_data['nirs_results']
                 else:
@@ -82,7 +80,6 @@ class TestReportWindow(QMainWindow):
         self.ircra_prediction = None
         
         # Create the matplotlib figure
-        print('data_type:', db_data['data_type'])
         self.fig = None
         try:
             if db_data['data_type'] == "force":
@@ -91,7 +88,6 @@ class TestReportWindow(QMainWindow):
             elif db_data['data_type'] == "nirs":
                 nirs_file = db_data['nirs_file']
                 self.fig = create_nirs_figure(nirs_file=nirs_file)
-                print("todo: nirs")
             elif db_data['data_type'] == "force_nirs":
                 force_file = db_data['force_file']
                 nirs_file = db_data['nirs_file']
@@ -145,7 +141,6 @@ class TestReportWindow(QMainWindow):
         # If the test contains NIRS data, add a NIRS Results section.
         if self.db_data["data_type"] in ["nirs", "force_nirs"] and self.nirs_results is not None:
             nirs_results_pairs = self.build_nirs_results_pairs()
-            print("DEBUG: nirs_results_pairs =", nirs_results_pairs)
             if nirs_results_pairs:
                 nirs_results_group = self.create_two_column_group("NIRS Results", nirs_results_pairs)
                 nirs_results_group.setStyleSheet("""
@@ -164,9 +159,7 @@ class TestReportWindow(QMainWindow):
             container_layout.addWidget(basic_info_group)
 
         # 3) Participant Info (two columns)
-        # participant_pairs = list(self.participant_info.items())  # [(key, value), ...]
         participant_pairs = self.build_participant_info_pairs()
-        # participant_group = self.create_two_column_group("Participant Info", participant_pairs)
         # Convert them to label–value
         # For example, participant_pairs = [("name", "Anna"), ("surname", "Sebestikova"), ...]
         participant_group = self.create_two_column_group("Participant Info", participant_pairs)
@@ -190,7 +183,6 @@ class TestReportWindow(QMainWindow):
 
         # Put participant info & metrics side-by-side
         info_metrics_layout = QHBoxLayout()
-        # info_metrics_layout.addWidget(participant_group, stretch=1)    # Create a vertical layout for participant info + prediction (if applicable)
         participant_layout = QVBoxLayout()
         participant_layout.addWidget(participant_group)
 
@@ -217,16 +209,10 @@ class TestReportWindow(QMainWindow):
             graph_group.setLayout(graph_layout)
             container_layout.addWidget(graph_group)
             
-        # current_test_id = self.db_data.get('test_id', None)
         # 6) Normalized Max Force Plots (if managers are available)
         if self.climber_manager and self.test_manager and self.admin_id:
             norm_force_group = self.create_normalized_max_force_group()
-            # norm_force_group = plot_normalized_max_force(
-            #                         climber_manager=self.climber_manager,
-            #                         test_manager=self.test_manager,
-            #                         admin_id=self.admin_id,
-            #                         current_test_id=current_test_id
-            #                     )
+
             if norm_force_group:
                 container_layout.addWidget(norm_force_group)
 
@@ -241,7 +227,6 @@ class TestReportWindow(QMainWindow):
             show_reps_button = QPushButton("Show Repetitions")
             show_reps_button.clicked.connect(self.show_repetitions)
             bottom_layout.addWidget(show_reps_button)
-        # bottom_layout.addStretch()  # Pushes the following widget to the right.
         bottom_layout.addWidget(close_button)
         container_layout.addLayout(bottom_layout)
 
@@ -294,7 +279,6 @@ class TestReportWindow(QMainWindow):
         """
         pairs = []
         # You might have stored it as a dictionary inside test_metrics.
-        print('nirs_results:', self.nirs_results)
         if self.nirs_results:
             mapping = {
                 "baseline_mean": "Baseline Mean (%)",
@@ -386,20 +370,16 @@ class TestReportWindow(QMainWindow):
         try:
             # Get the test ID from the database data
             test_id = self.db_data.get('id')
-            print('test_id:', test_id)
             if test_id:
                 # Initialize the predictor
                 predictor = IRCRAPredictor(
                     # model_dir=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'models')
                 )
-                print('blablabla')
 
                 # Check if models are loaded (trained)
                 if predictor.pca_data is not None and predictor.svr_model is not None:
-                    print('after modeeeeels')
                     # Predict IRCRA grade
                     predicted_ircra = predictor.predict_ircra(test_id=test_id, model_type='svr')
-                    print('predicted_ircra:', predicted_ircra)
 
                     # Create prediction label
                     prediction_label = QLabel(
@@ -410,11 +390,9 @@ class TestReportWindow(QMainWindow):
 
                     # Add additional analysis
                     current_ircra = int(self.participant_info.get('ircra'))
-                    print('current_ircra:', current_ircra)
                     if current_ircra and isinstance(current_ircra, (int, float)) and isinstance(predicted_ircra,
                                                                                                 (int, float)):
                         difference = predicted_ircra - current_ircra
-                        print('difference:', difference)
 
                         if abs(difference) <= 1:
                             analysis_text = "Your current performance level aligns perfectly with your physical metrics."
@@ -570,7 +548,6 @@ class TestReportWindow(QMainWindow):
         if self.db_data['test_type'] in ['ao', 'iit', 'iirt']:
             # Retrieve rep_results from db_data and convert to a table
             rep_results_db = self.db_data.get('rep_results', "")
-            print(rep_results_db)
             try:
                 if isinstance(rep_results_db, list):
                     rep_results = rep_results_db
@@ -665,7 +642,6 @@ class TestReportWindow(QMainWindow):
         if not rep_results_db or rep_results_db == "null":
             QMessageBox.warning(self, "No Data", "No repetition data available.")
             return
-        print('rep_results_db:', rep_results_db)
 
         try:
             if isinstance(rep_results_db, list):

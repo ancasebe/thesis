@@ -4,19 +4,23 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="8d114396-0b52-44aa-9fec-17fceb6230ba" name="Changes" comment="communicator - countdown, beeps">
+    <list default="true" id="8d114396-0b52-44aa-9fec-17fceb6230ba" name="Changes" comment="final edits">
+      <change afterPath="$PROJECT_DIR$/gui/databases/climber_database.db" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gui/databases/tests_database.db" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gui/test_page/path_utils.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/main_page.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/main_page.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/statistics/ircra_prediction_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/statistics/ircra_prediction_model.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/statistics/ircra_prediction_test.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/statistics/ircra_prediction_test.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/statistics/pca_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/statistics/pca_model.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/superuser/new_admin.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/superuser/new_admin.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/superuser/old_db_manager.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/research_members/climber_db_manager.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/research_members/climber_db_manager.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/results_page/graphs_generator.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/results_page/graphs_generator.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/results_page/report_window.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/results_page/report_window.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/results_page/results_page.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/results_page/results_page.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/statistics/ircra_predictor.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/statistics/ircra_predictor.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/statistics/statistics_page.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/statistics/statistics_page.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gui/test_page/data_communicator.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/test_page/data_communicator.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gui/test_page/data_gen.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/test_page/data_gen.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/test_page/evaluations/force_evaluation.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/test_page/evaluations/force_evaluation.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/test_page/feather_logger.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/test_page/feather_logger.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/test_page/test_db_manager.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/test_page/test_db_manager.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gui/test_page/test_page.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/test_page/test_page.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -32,6 +36,7 @@
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="RESET_MODE" value="HARD" />
   </component>
   <component name="GitHubPullRequestSearchHistory">{
   &quot;lastFilter&quot;: {
@@ -56,49 +61,49 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "Python.all_out.executor": "Run",
-    "Python.basics_and_pca.executor": "Run",
-    "Python.climber_db_manager.executor": "Run",
-    "Python.data_com_new.executor": "Run",
-    "Python.data_com_old.executor": "Run",
-    "Python.data_communicator.executor": "Run",
-    "Python.data_communicator_mocked.executor": "Run",
-    "Python.data_generator.executor": "Run",
-    "Python.data_visualisation.executor": "Run",
-    "Python.database_diagnostic_tool.executor": "Run",
-    "Python.database_migration_script.executor": "Run",
-    "Python.force_evaluation.executor": "Run",
-    "Python.graphs_generator.executor": "Run",
-    "Python.ircra_prediction_model.executor": "Run",
-    "Python.ircra_prediction_test.executor": "Run",
-    "Python.main.executor": "Run",
-    "Python.pca_model.executor": "Run",
-    "Python.pdf_exporter.executor": "Run",
-    "Python.rep_another.executor": "Run",
-    "Python.report_window.executor": "Run",
-    "Python.reps.executor": "Run",
-    "Python.reps_excel.executor": "Run",
-    "Python.reps_hdf5.executor": "Run",
-    "Python.test_page.executor": "Run",
-    "Python.test_run.executor": "Run",
-    "Python.try_report.executor": "Run",
-    "RunOnceActivity.OpenProjectViewOnStart": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "git-widget-placeholder": "main",
-    "last_opened_file_path": "/Users/annasebestikova/PycharmProjects/thesis/gui/statistics",
-    "settings.editor.selected.configurable": "ml.llm.LLMConfigurable"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Python.all_out.executor&quot;: &quot;Run&quot;,
+    &quot;Python.basics_and_pca.executor&quot;: &quot;Run&quot;,
+    &quot;Python.climber_db_manager.executor&quot;: &quot;Run&quot;,
+    &quot;Python.data_com_new.executor&quot;: &quot;Run&quot;,
+    &quot;Python.data_com_old.executor&quot;: &quot;Run&quot;,
+    &quot;Python.data_communicator.executor&quot;: &quot;Run&quot;,
+    &quot;Python.data_communicator_mocked.executor&quot;: &quot;Run&quot;,
+    &quot;Python.data_generator.executor&quot;: &quot;Run&quot;,
+    &quot;Python.data_visualisation.executor&quot;: &quot;Run&quot;,
+    &quot;Python.database_diagnostic_tool.executor&quot;: &quot;Run&quot;,
+    &quot;Python.database_migration_script.executor&quot;: &quot;Run&quot;,
+    &quot;Python.force_evaluation.executor&quot;: &quot;Run&quot;,
+    &quot;Python.graphs_generator.executor&quot;: &quot;Run&quot;,
+    &quot;Python.ircra_prediction_model.executor&quot;: &quot;Run&quot;,
+    &quot;Python.ircra_prediction_test.executor&quot;: &quot;Run&quot;,
+    &quot;Python.main.executor&quot;: &quot;Run&quot;,
+    &quot;Python.pca_model.executor&quot;: &quot;Run&quot;,
+    &quot;Python.pdf_exporter.executor&quot;: &quot;Run&quot;,
+    &quot;Python.rep_another.executor&quot;: &quot;Run&quot;,
+    &quot;Python.report_window.executor&quot;: &quot;Run&quot;,
+    &quot;Python.reps.executor&quot;: &quot;Run&quot;,
+    &quot;Python.reps_excel.executor&quot;: &quot;Run&quot;,
+    &quot;Python.reps_hdf5.executor&quot;: &quot;Run&quot;,
+    &quot;Python.test_page.executor&quot;: &quot;Run&quot;,
+    &quot;Python.test_run.executor&quot;: &quot;Run&quot;,
+    &quot;Python.try_report.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/Users/annasebestikova/PycharmProjects/thesis/gui/databases&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;ml.llm.LLMConfigurable&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/gui/databases" />
       <recent name="$PROJECT_DIR$/gui/statistics" />
       <recent name="$PROJECT_DIR$/../Diploma/preprocessing_excel" />
       <recent name="$PROJECT_DIR$/gui/results_page" />
       <recent name="$PROJECT_DIR$/gui/test_page" />
-      <recent name="$PROJECT_DIR$/gui/test_page/evaluations" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/gui/statistics" />
@@ -308,7 +313,23 @@
       <option name="project" value="LOCAL" />
       <updated>1745912944954</updated>
     </task>
-    <option name="localTasksCounter" value="24" />
+    <task id="LOCAL-00024" summary="final edits">
+      <option name="closed" value="true" />
+      <created>1746988448022</created>
+      <option name="number" value="00024" />
+      <option name="presentableId" value="LOCAL-00024" />
+      <option name="project" value="LOCAL" />
+      <updated>1746988448022</updated>
+    </task>
+    <task id="LOCAL-00025" summary="final edits">
+      <option name="closed" value="true" />
+      <created>1746995117109</created>
+      <option name="number" value="00025" />
+      <option name="presentableId" value="LOCAL-00025" />
+      <option name="project" value="LOCAL" />
+      <updated>1746995117109</updated>
+    </task>
+    <option name="localTasksCounter" value="26" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -356,6 +377,7 @@
     <MESSAGE value="Changes in real time plotting" />
     <MESSAGE value="statistics_page.py and the graphs edited. some other edits" />
     <MESSAGE value="communicator - countdown, beeps" />
-    <option name="LAST_COMMIT_MESSAGE" value="communicator - countdown, beeps" />
+    <MESSAGE value="final edits" />
+    <option name="LAST_COMMIT_MESSAGE" value="final edits" />
   </component>
 </project>

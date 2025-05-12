@@ -214,7 +214,6 @@ class ModelTrainingThread(QThread):
             self.progress_updated.emit(40)
             self.status_updated.emit("Preparing features...")
             df_selected, X, y = model.prepare_features(df)
-            print('X', X)
 
             # Create correlation matrix
             self.status_updated.emit("Generating correlation matrix...")
@@ -293,7 +292,6 @@ class StatisticsPage(QWidget):
                 if 'plot_paths' in metadata:
                     self.plot_paths = metadata['plot_paths']
 
-                print(f"Loaded model metadata: SVR accuracy={self.mse_svr}")
             except Exception as e:
                 print(f"Error loading model metadata: {e}")
 
@@ -310,7 +308,6 @@ class StatisticsPage(QWidget):
         try:
             with open(METADATA_FILE, 'w') as f:
                 json.dump(metadata, f, indent=2)
-            print("Model metadata saved successfully")
         except Exception as e:
             print(f"Error saving model metadata: {e}")
 

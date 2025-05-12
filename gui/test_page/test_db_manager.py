@@ -5,6 +5,7 @@ using JSON for efficient storage of complex data structures.
 import os
 import sqlite3
 import json
+from gui.test_page.path_utils import resolve_path
 
 
 class ClimbingTestManager:
@@ -91,7 +92,6 @@ class ClimbingTestManager:
             print("Test result saved successfully.")
 
             new_id = cursor.lastrowid
-            print("Test result saved successfully with id:", new_id, participant_id)
             return new_id
 
     def fetch_results_by_participant(self, participant_id):
@@ -129,6 +129,13 @@ class ClimbingTestManager:
                     **test_metadata_dict,
                     **test_data_dict
                 }
+
+                # Resolve paths for force_file and nirs_file
+                if 'force_file' in result:
+                    result['force_file'] = resolve_path(result['force_file'])
+                if 'nirs_file' in result:
+                    result['nirs_file'] = resolve_path(result['nirs_file'])
+
                 results.append(result)
             return results
 
@@ -172,7 +179,15 @@ class ClimbingTestManager:
                     **test_metadata_dict,
                     **test_data_dict
                 }
+
+                # Resolve paths for force_file and nirs_file
+                if 'force_file' in result:
+                    result['force_file'] = resolve_path(result['force_file'])
+                if 'nirs_file' in result:
+                    result['nirs_file'] = resolve_path(result['nirs_file'])
+
                 results.append(result)
+
             return results
 
     def get_test_data(self, test_id):
@@ -196,7 +211,7 @@ class ClimbingTestManager:
             test_data_dict = json.loads(test_data)
 
             # Combine all data
-            return {
+            result =  {
                 'id': test_id,
                 'admin_id': admin_id,
                 'participant_id': participant_id,
@@ -204,6 +219,15 @@ class ClimbingTestManager:
                 **test_metadata_dict,
                 **test_data_dict
             }
+
+            # Resolve paths for force_file and nirs_file
+            if 'force_file' in result:
+                result['force_file'] = resolve_path(result['force_file'])
+            if 'nirs_file' in result:
+                result['nirs_file'] = resolve_path(result['nirs_file'])
+
+            return result
+
         return None
 
     def close_connection(self):

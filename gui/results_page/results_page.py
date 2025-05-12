@@ -153,7 +153,6 @@ class ResultsPage(QWidget):
 
     def on_climber_changed(self, index):
         self.selected_climber_id = self.climber_selector.itemData(index)
-        print(self.selected_climber_id)
         self.load_tests()
 
     def on_test_filter_changed(self):
@@ -312,7 +311,6 @@ class ResultsPage(QWidget):
         if not participant_info:
             participant_info = {"Name": "Unknown"}
         db_data = self.test_db_manager.get_test_data(test_id=test['id'])
-        print(db_data)
         report_window = TestReportWindow(participant_info=participant_info,
                                          db_data=db_data,
                                          admin_id=self.admin_id,

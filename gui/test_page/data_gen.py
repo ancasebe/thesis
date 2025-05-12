@@ -258,7 +258,6 @@ class BluetoothCommunicator:
             # Explicitly set connected flag when we successfully receive data
             if not self.connected:
                 self.connected = True
-                print("NIRS CONNECTION STATUS: Connected and receiving real data")
         except struct.error as e:
             print(f"{time.strftime('%H:%M:%S')} - NIRS handler error: {e} - Data length: {len(data)}")
         except Exception as e:
@@ -281,21 +280,17 @@ class BluetoothCommunicator:
                     self.connected = loop.run_until_complete(self._connect_and_listen())
                 except Exception as e:
                     self.connection_state = f"{time.strftime('%H:%M:%S')} - NIRS connect attempt {attempt}/{self.max_attempts} error: {e}"
-                    print(self.connection_state)
                     self.connected = False
                 if self.connected:
                     self.connection_state = f"{time.strftime('%H:%M:%S')} - Connected to {self.device_name} on attempt {attempt}"
-                    print(self.connection_state)
                     break
                 else:
                     self.connection_state = f"{time.strftime('%H:%M:%S')} - Could not connect to {self.device_name}. Reconnecting ({attempt}/{self.max_attempts})"
-                    print(self.connection_state)
                     time.sleep(1)
 
             if not self.connected:
                 self.debugging = True
                 self.connection_state = f"{time.strftime('%H:%M:%S')} - Failed to connect after {self.max_attempts} attempts. Starting simulation mode"
-                print(self.connection_state)
                 self._simulate_nirs_data_generator()
                 return
 
@@ -420,7 +415,7 @@ class DataGenerator:
         self.external_nirs_callback = nirs_callback
         # Resume data forwarding by default when setting new callbacks
         self.pause_callbacks = False
-        print("Data callbacks set and forwarding enabled")
+        # print("Data callbacks set and forwarding enabled")
     
     def pause_data_forwarding(self):
         """
@@ -434,14 +429,14 @@ class DataGenerator:
             nirs_running = self.bluetooth_com.running and self.bluetooth_com.connected
             force_running = self.serial_com.running
 
-            if nirs_running and force_running:
-                print("Data forwarding paused - both NIRS and Force data collection continues")
-            elif nirs_running:
-                print("Data forwarding paused - NIRS data collection continues")
-            elif force_running:
-                print("Data forwarding paused - Force data collection continues")
-            else:
-                print("Data forwarding paused - no active data collection")
+            # if nirs_running and force_running:
+            #     print("Data forwarding paused - both NIRS and Force data collection continues")
+            # elif nirs_running:
+            #     print("Data forwarding paused - NIRS data collection continues")
+            # elif force_running:
+            #     print("Data forwarding paused - Force data collection continues")
+            # else:
+            #     print("Data forwarding paused - no active data collection")
 
     def resume_data_forwarding(self):
         """
@@ -449,7 +444,7 @@ class DataGenerator:
         """
         if self.pause_callbacks:
             self.pause_callbacks = False
-            print("Data forwarding resumed")
+            # print("Data forwarding resumed")
 
     def is_nirs_connected(self):
         """
@@ -482,8 +477,6 @@ class DataGenerator:
                 connection_state += "CONNECTING (waiting for data)"
         else:
             connection_state += "NOT RUNNING (disconnected)"
-
-        print(connection_state)
 
         return connection_active
 
@@ -562,8 +555,7 @@ class DataGenerator:
             nirs (bool, optional): Whether to stop NIRS data acquisition. Defaults to True.
             force (bool, optional): Whether to stop force data acquisition. Defaults to True.
         """
-        print("Stopping data generator...")
-        
+
         # First pause any callbacks to prevent UI updates during shutdown
         self.pause_callbacks = True
         
@@ -586,8 +578,6 @@ class DataGenerator:
         if force and self.serial_com.thread and self.serial_com.thread.is_alive():
             print("Warning: Force sensor thread did not terminate properly")
         
-        print("Data generator stopped")
-
     def get_force_dataframe(self):
         """
         Convert collected force data to a pandas DataFrame.
@@ -616,7 +606,6 @@ class DataGenerator:
         """
         self.force_data = []
         self.nirs_data = []
-        print("All collected data has been cleared")
 
 # Example usage:
 # dg = DataGenerator()
