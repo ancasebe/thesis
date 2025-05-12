@@ -1,11 +1,18 @@
 """
-This module defines the `RegistrationPage` class, which handles user registration.
+New climber registration module for the Climbing Testing Application.
+
+This module defines the NewClimber class which provides the user interface
+for adding new climbing participants to the database. It collects personal
+information, climbing experience, and other relevant data.
 
 Key functionalities:
-- Displaying a form to collect user data for registration.
-- Validating user inputs, such as ensuring password confirmation.
-- Registering new users by saving their information to the database.
-- Switching to the main application page upon successful registration.
+- Collect and validate new climber information
+- Store climber data in the database
+- Link climbers to their administering researcher
+- Provide feedback on registration success or errors
+
+The new climber module facilitates the participant onboarding process
+for researchers conducting climbing studies.
 """
 # pylint: disable=E1101
 import re

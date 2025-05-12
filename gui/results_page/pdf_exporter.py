@@ -1,4 +1,20 @@
-# pdf_exporter.py
+"""
+PDF export module for the Climbing Testing Application.
+
+This module provides functionality for generating PDF reports from test data
+and analysis results. It creates formatted, professional reports suitable for
+sharing or archiving research findings.
+
+Key functionalities:
+- Generate comprehensive test reports as PDF documents
+- Include data visualizations and charts in reports
+- Format tabular data for readability
+- Create consistent report layouts with proper branding
+- Support for multiple report templates for different purposes
+
+The PDF exporter enables researchers to produce standardized documentation
+of test results for academic publication or participant feedback.
+"""
 
 from reportlab.lib.pagesizes import A4
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, KeepTogether

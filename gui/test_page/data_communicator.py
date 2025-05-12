@@ -1,9 +1,26 @@
+"""
+Data communication and visualization module for the Climbing Testing Application.
+
+This module defines the CombinedDataCommunicator class which handles real-time
+data acquisition, visualization, and storage during climbing tests. It manages
+force sensor and NIRS data streams, controls test states and timing, and finalizes
+test data for storage in the database.
+
+Key functionalities:
+- Real-time data acquisition from force sensors and NIRS devices
+- Interactive visualization of collected data streams
+- Management of test timing, states, and protocols
+- Data processing and preparation for storage
+- Test finalization and data export
+
+The CombinedDataCommunicator serves as the core interface during test execution,
+providing visual feedback to the tester and processing data for later analysis.
+"""
 import time
-import os
 import numpy as np
 import pyqtgraph as pg
 import json
-from PySide6.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QMessageBox, QLabel, QDialog, QHBoxLayout, QApplication, QVBoxLayout
+from PySide6.QtWidgets import QMainWindow, QWidget, QMessageBox, QLabel, QDialog, QApplication, QVBoxLayout
 from PySide6.QtCore import Signal, QTimer, Qt
 
 from gui.test_page.data_gen import DataGenerator
@@ -17,17 +34,52 @@ from gui.test_page.feather_logger import FeatherBinaryLogger
 
 class CombinedDataCommunicator(QMainWindow):
     """
-    CombinedDataCommunicator visualizes and logs sensor data via direct callbacks and Qt signals.
-
-    It updates plots and logs data (using file loggers) that is being pushed by the
-    DataGenerator. All sensor communicators (Serial and Bluetooth) are assumed to be started
-    externally (via DataGenerator). New readings come in as 'sensorID_timestamp_value' strings.
+    A class for visualizing, logging, and processing sensor data during climbing tests.
+    
+    This class provides real-time visualization of force and NIRS data, manages
+    test protocols (countdown, pull/rest cycles), logs collected data, and evaluates
+    test performance. It serves as the main interface during test execution.
+    
+    Attributes:
+        newData: Signal emitted when new data is received from sensors
+        dg: Data generator for sensor data acquisition
+        admin_id: ID of the administrator running the test
+        climber_id: ID of the climber being tested
+        arm_tested: Arm being tested (converted to "d" or "nd")
+        data_type: Type of data being collected ("force", "nirs", or "force_nirs")
+        test_type: Type of test being conducted ("mvc", "ao", "iit", "sit")
+        window_size: Time window for data visualization (in seconds)
+        nirs_buffer: Buffer for smoothing NIRS data
+        force_data: Dictionary containing force timestamps and values
+        nirs_data: Dictionary containing NIRS timestamps and values
+        force_file: Logger for force data
+        nirs_file: Logger for NIRS data
+        timestamp: Start time of the test
+        acquisition_started: Flag indicating if data acquisition has started
+        finalized: Flag indicating if the test has been finalized
+        state: Current test state ("pre", "pull", "rest", "run", etc.)
+        remaining: Remaining time in current state
     """
+
     # Create signal for new data
     newData = Signal(str)
 
     def __init__(self, data_generator: DataGenerator, admin_id, climber_id, arm_tested, window_size=60, auto_start=True,
                  data_type="force", test_type="ao", parent=None):
+        """
+        Initialize the data communicator with test parameters and setup UI components.
+        
+        Args:
+            data_generator: DataGenerator instance for data acquisition
+            admin_id: ID of the administrator running the test
+            climber_id: ID of the climber being tested
+            arm_tested: Which arm is being tested ("Dominant" or "Non-dominant")
+            window_size: Time window for visualization in seconds (default: 60)
+            auto_start: Whether to start acquisition automatically (default: True)
+            data_type: Type of data to collect ("force", "nirs", "force_nirs")
+            test_type: Type of test to conduct ("mvc", "ao", "iit", "sit")
+            parent: Parent widget (default: None)
+        """
         super().__init__(parent)
         self.dg = data_generator
         self.admin_id = admin_id
@@ -43,9 +95,6 @@ class CombinedDataCommunicator(QMainWindow):
         self.window_size = window_size
         
         # Add NIRS smoothing parameters
-        # self.ema_alpha = 0.2  # Smoothing factor: lower = more smoothing
-        # self.last_smoothed_value = None  # Store the last smoothed value
-        # self.nirs_smoothing_window = 15  # Smaller window for real-time display
         self.nirs_buffer = []  # Buffer to hold recent NIRS values for smoothing
 
         # Connect the signal to the handler
@@ -82,7 +131,13 @@ class CombinedDataCommunicator(QMainWindow):
             self.start_acquisition()
 
     def _setup_ui(self):
-        """Sets up the UI components and dual-axis plot layout."""
+        """
+        Set up the UI components including plots and visualization settings.
+        
+        Creates the main plot widget with appropriate axes, ranges, and legends
+        for force and/or NIRS data visualization. For force_nirs mode, configures
+        a dual-axis plot with synchronized views.
+        """
         main_widget = QWidget()
         self.setCentralWidget(main_widget)
         layout = QVBoxLayout(main_widget)
@@ -106,10 +161,6 @@ class CombinedDataCommunicator(QMainWindow):
             self.force_text.setText("Force: 0.0 kg")
             self.force_text.setPos(-self.window_size, 80)  # top-left of your force axis
 
-            # self.force_text = pg.TextItem(anchor=(0, 1))
-            # self.plot.addItem(self.force_text)
-            # legend.addItem(self.force_curve, "Force [kg]")
-
         if self.data_type in ("nirs", "force_nirs"):
             self.plot.showAxis('right')
             self.plot.getAxis('right').setLabel("NIRS (%)")
@@ -125,9 +176,6 @@ class CombinedDataCommunicator(QMainWindow):
             self.nirs_view.addItem(self.nirs_text)
             self.nirs_text.setText("NIRS: 0.0 %")
             self.nirs_text.setPos(0, 100)
-            # self.nirs_text = pg.TextItem(anchor=(1, 1))  # top-right corner
-            # self.nirs_view.addItem(self.nirs_text)
-            # legend.addItem(self.nirs_curve, "NIRS (%)")
 
             # Connect the updateViews function to the plot's X range change signal
             self.plot.getViewBox().sigXRangeChanged.connect(self._update_views)
@@ -135,7 +183,13 @@ class CombinedDataCommunicator(QMainWindow):
             self._update_views()
 
     def _make_counter_window(self):
-        """Creates a small dialog with a big QLabel to show seconds left/elapsed."""
+        """
+        Create a floating timer window to display test state and countdown.
+        
+        Creates a dialog with two labels:
+        - A state label showing the current test phase (preparing, pull, rest)
+        - A large countdown/timer label showing seconds remaining or elapsed
+        """
         self.counter_win = QDialog(self)
         self.counter_win.setWindowTitle("Timer")
         self.state_lbl = QLabel("Preparing...", self.counter_win)
@@ -158,7 +212,14 @@ class CombinedDataCommunicator(QMainWindow):
         self.counter_win.setFixedSize(250, 150)
 
     def _configure_durations(self):
-        """Set pull/rest durations based on test_type."""
+        """
+        Configure test durations based on the selected test type.
+        
+        Sets the pull and rest durations for different test protocols:
+        - AO: 7 seconds pull, 3 seconds rest
+        - IIT: 6 seconds pull, 4 seconds rest
+        - MVC/SIT: Continuous pull without defined durations
+        """
         if self.test_type == "ao":
             self.pull_dur, self.rest_dur = 7, 3
         elif self.test_type == "iit":
@@ -169,7 +230,14 @@ class CombinedDataCommunicator(QMainWindow):
             self.pull_dur, self.rest_dur = None, None
 
     def _on_countdown_tick(self):
-        """Handles both the initial countdown and the per‐segment counters."""
+        """
+        Handle timer ticks for countdown and test state management.
+        
+        This method updates the countdown display, manages transitions between
+        test states (pre-test, pull, rest), and emits audio cues at state transitions.
+        It handles different test protocols including intermittent tests (AO, IIT) 
+        and continuous tests (MVC, SIT).
+        """
         self.remaining -= 1
         self.lbl.setText(str(self.remaining))
         if self.remaining <= 0:
@@ -223,14 +291,25 @@ class CombinedDataCommunicator(QMainWindow):
         # else: simply updating the label each second
 
     def _update_views(self):
-        """Synchronize the geometry of the secondary NIRS view with the main view."""
+        """
+        Synchronize the NIRS view with the main plot view.
+        
+        Ensures that when the main plot's X-axis changes, the secondary NIRS view
+        is updated to maintain the same X-axis range for synchronized visualization.
+        """
         self.nirs_view.setGeometry(self.plot.getViewBox().sceneBoundingRect())
         self.nirs_view.linkedViewChanged(self.plot.getViewBox(), self.nirs_view.XAxis)
 
     def start_acquisition(self):
         """
-        Initializes file loggers, resets internal data containers, and connects
-        callbacks to start receiving data
+        Initialize data acquisition, file logging, and start the test protocol.
+        
+        This method:
+        1. Clears previous data and initializes file loggers
+        2. Sets up callback functions for data streams
+        3. Configures test durations based on test type
+        4. Starts the pre-test countdown
+        5. Launches sensor data acquisition
         """
         if not self.acquisition_started:
             # Clear data when starting acquisition
@@ -271,10 +350,14 @@ class CombinedDataCommunicator(QMainWindow):
 
     def handle_new_data(self, data_str):
         """
-        Slot that handles new data coming from the worker thread.
-        The data string is expected in the format "sensorID_timestamp_value".
-        Update internal data arrays and call updatePlot.
-        Only plot and log force (sid='1') and SMO2 (sid='2') data.
+        Process incoming sensor data, store it, and update visualizations.
+        
+        Args:
+            data_str: String containing sensor data in format "sensorID_timestamp_value"
+            
+        Parses the data string, identifies the sensor type (force=1, NIRS=2),
+        stores the data in appropriate containers, logs it to files, and
+        triggers plot updates.
         """
         parts = data_str.split('_')
         if len(parts) < 3:
@@ -305,13 +388,15 @@ class CombinedDataCommunicator(QMainWindow):
             # Update plot for NIRS SMO2 data
             if self.data_type in ("nirs", "force_nirs"):
                 self.update_plot()
-    
-    # Skip logging and plotting for sensor IDs 3 and 4 entirely
 
     def update_plot(self):
         """
-        Update the plot curves using the data that has been collected.
-        We adjust the x-axis to be relative to the most recent timestamp.
+        Update the visualization plots with current data.
+        
+        Updates force and/or NIRS plot curves using the collected data,
+        adjusting the x-axis to be relative to the most recent timestamp.
+        Limits the displayed data to the configured window size and
+        updates the current value text displays.
         """
         if self.force_data['timestamps']:
             t0 = self.force_data['timestamps'][-1]
@@ -321,7 +406,6 @@ class CombinedDataCommunicator(QMainWindow):
             self.force_curve.setData(x[mask], y[mask])
             # position in top-left of left axis
             self.force_text.setText(f"Force: {y[-1]:.1f} kg")
-            # yr_left = self.plot.getViewBox().viewRange()[1][1]
             self.force_text.setPos(-self.window_size, 80)
 
         if self.nirs_data['timestamps']:
@@ -332,7 +416,6 @@ class CombinedDataCommunicator(QMainWindow):
             self.nirs_curve.setData(x[mask], y[mask])
             # position in top-right of right axis
             self.nirs_text.setText(f"NIRS: {y[-1]:.1f} %")
-            # yr_right = self.nirs_view.viewRange()[1][1]
             self.nirs_text.setPos(0, 100)
 
         # Update the NIRS view to match the main plot's view
@@ -341,8 +424,11 @@ class CombinedDataCommunicator(QMainWindow):
 
     def stop_acquisition(self):
         """
-        Stops the worker thread, logs any remaining data, stops sensor connections,
-        and finalizes the test evaluation.
+        Stop data acquisition, timers, and finalize the test.
+        
+        Pauses data forwarding, stops countdown timers, hides the counter window,
+        stops force sensors, flushes log files, and triggers test finalization
+        to process and save the results.
         """
         # Pause data forwarding to UI
         self.dg.pause_data_forwarding()
@@ -367,8 +453,16 @@ class CombinedDataCommunicator(QMainWindow):
 
     def finalize_acquisition(self):
         """
-        Finalizes the test by computing evaluation metrics, saving results to the database,
-        and opening a report window. This method is called once acquisition is stopped.
+        Process test data, evaluate performance, and save results to the database.
+        
+        This method:
+        1. Evaluates test metrics using appropriate evaluators
+        2. Prepares results for database storage
+        3. Saves test results to the database
+        4. Creates and displays a test report window
+        
+        Handles different evaluations based on the data type (force only, NIRS only,
+        or combined force and NIRS).
         """
         if not self.finalized:
             if self.data_type == "force":
@@ -445,8 +539,10 @@ class CombinedDataCommunicator(QMainWindow):
                     "dominant_arm": "N/A"
                 }
             db_data_save['id'] = test_id
-            db_data_save['force_file'] = self.force_file.actual_filename
-            db_data_save['nirs_file'] = self.nirs_file.actual_filename
+            if self.force_file.actual_filename:
+                db_data_save['force_file'] = self.force_file.actual_filename
+            if self.nirs_file.actual_filename:
+                db_data_save['nirs_file'] = self.nirs_file.actual_filename
             report_window = TestReportWindow(
                 participant_info=climber_data,
                 db_data=db_data_save,
@@ -461,8 +557,13 @@ class CombinedDataCommunicator(QMainWindow):
 
     def closeEvent(self, event):
         """
-        Handles the window close event by stopping timers, finalizing acquisition,
-        and closing any open log files.
+        Handle the window close event with proper cleanup.
+        
+        Args:
+            event: The close event to be handled
+            
+        Ensures that acquisition is stopped and data forwarding is paused
+        before accepting the close event.
         """
         # Safely stop acquisition
         if not self.finalized:
@@ -475,14 +576,17 @@ class CombinedDataCommunicator(QMainWindow):
 
     def smooth_nirs_data(self, value, nirs_smoothing_window=7):
         """
-        Apply a simple moving average smoothing to NIRS data in real-time.
-
+        Apply moving average smoothing to NIRS data in real-time.
+        
         Args:
-            value (float): The new NIRS value to add to the buffer
-            nirs_smoothing_window (int, optional): The size of the moving average window. Defaults to 11.
-
+            value: The new NIRS value to add to the buffer
+            nirs_smoothing_window: Size of the moving average window (default: 7)
+            
         Returns:
-            float: The smoothed NIRS value
+            float: The smoothed NIRS value based on recent values
+            
+        Implements a simple moving average filter to reduce noise in NIRS data
+        while preserving important trends.
         """
         # Add the new value to the buffer
         self.nirs_buffer.append(value)

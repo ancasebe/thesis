@@ -1,8 +1,23 @@
+"""
+Admin registration module for the Climbing Testing Application.
+
+This module defines the RegistrationPage class which provides the user interface
+for creating new administrator accounts. It handles form validation, user input
+collection, and account creation through the database manager.
+
+Key functionalities:
+- Collect and validate user registration information
+- Create new administrator accounts in the database
+- Validate password strength and confirmation
+- Provide feedback on registration success or errors
+
+The admin registration module ensures that only properly authenticated users
+can create new administrator accounts with appropriate credentials.
+"""
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
     QLineEdit, QFormLayout, QMessageBox, QSizePolicy, QTextEdit
 )
-from PySide6.QtGui import QPixmap
 from PySide6.QtCore import Qt
 
 

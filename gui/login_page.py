@@ -1,10 +1,19 @@
 """
-This module defines the `LoginPage` class, which represents the user interface for logging in.
+Login interface module for the Climbing Testing Application.
+
+This module defines the LoginPage class which provides the user interface for
+authentication. It handles user input, credential verification, and navigation
+to the main application after successful login.
 
 Key functionalities:
-- Displaying a login form where users can input their username and password.
-- Handling user input and verifying credentials against the database.
-- Switching to the main application page upon successful login or the registration page if needed.
+- Display login form for username and password entry
+- Authenticate user credentials against the database
+- Provide feedback for failed login attempts
+- Navigate to appropriate application view after login
+- Support for administrator registration
+
+The login page serves as the entry point to the application, ensuring that
+only authorized users can access research data and testing capabilities.
 """
 
 from PySide6.QtWidgets import (

@@ -1,14 +1,29 @@
+"""
+Test report window module for the Climbing Testing Application.
+
+This module defines the TestReportWindow class which provides a detailed view of test results
+for specific climbing tests. It visualizes force and NIRS data, displays computed metrics,
+and provides options for report export and further analysis.
+
+Key functionalities:
+- Display detailed test metrics and participant information
+- Visualize force and NIRS data through interactive charts
+- Generate performance predictions based on test data
+- Export reports to PDF format
+- Navigate to repetition-specific analysis
+
+The TestReportWindow serves as the primary detailed analysis interface for individual
+test sessions, bringing together raw data visualization and processed metrics.
+"""
 import os
 from datetime import datetime
-
 import numpy as np
 import pandas as pd
 import json
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QGroupBox, QFormLayout, QLabel, QPushButton, \
+from PySide6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QGroupBox, QLabel, QPushButton, \
     QMessageBox, QScrollArea, QHBoxLayout, QSizePolicy, QGridLayout, QFileDialog
-from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 
 from gui.results_page.pdf_exporter import generate_pdf_report, parameters_explanation_dict, filter_parameters_explanation

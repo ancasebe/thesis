@@ -1,13 +1,19 @@
 """
-Combined Metrics Module
+Force data evaluation module for the Climbing Testing Application.
 
-This module merges the overall force evaluation functions with the repetition‐based metrics.
-It defines:
-  - Overall helper functions: for computing metrics from the entire force data.
-  - Rep-based helper functions: for computing metrics from segmented repetitions.
-  - The RepMetrics class: segments the force data into repetitions and computes rep‐based metrics.
-  - The CombinedForceMetrics class: computes all desired metrics (overall and rep‐based) in one evaluation.
-All computed numerical values are rounded to two decimals.
+This module provides functions and classes for analyzing force sensor data
+collected during climbing tests. It computes relevant metrics, identifies
+patterns, and extracts features from raw force data.
+
+Key functionalities:
+- Calculate maximum and mean force values
+- Identify repetitions and segments in force data
+- Compute time-domain and frequency-domain features
+- Normalize force data for comparison
+- Detect fatigue indicators and performance patterns
+
+The force evaluation module transforms raw sensor data into meaningful
+metrics that characterize climbing performance.
 """
 
 import os

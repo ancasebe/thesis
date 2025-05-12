@@ -1,3 +1,20 @@
+"""
+Data visualization utilities for the Climbing Testing Application.
+
+This module provides functions for generating various types of graphs and plots
+from climbing test data, including force curves, NIRS data, and normalized
+force comparisons.
+
+Key functionalities:
+- Generate combined force and NIRS visualizations
+- Create specialized force-only data plots
+- Produce NIRS-only visualizations
+- Generate normalized maximum force comparisons
+- Apply data smoothing for improved visualization
+
+These visualization utilities are used throughout the application to create
+consistent, high-quality data visualizations for analysis and reporting.
+"""
 import json
 import numpy as np
 import pandas as pd

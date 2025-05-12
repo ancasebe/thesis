@@ -1,8 +1,19 @@
 """
-Module to display the repetition-by-repetition report.
+Repetition report window module for the Climbing Testing Application.
 
-This window shows rep-by-rep metrics in a table and includes a button to display
-the rep graphs. It is styled similarly to the main TestReportWindow.
+This module defines the RepReportWindow class which provides detailed analysis
+of individual repetitions within a climbing test. It visualizes force data for
+specific repetitions and displays metrics relevant to each repetition.
+
+Key functionalities:
+- Display detailed metrics for individual repetitions
+- Visualize force curves for specific repetitions
+- Compare performance across repetitions
+- Analyze force application patterns
+
+The RepReportWindow complements the TestReportWindow by allowing deeper analysis
+at the individual repetition level, providing insights into technique consistency
+and fatigue effects across repetitions.
 """
 import os
 import pandas as pd

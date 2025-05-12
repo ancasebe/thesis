@@ -1,18 +1,28 @@
+
 """
-Module for predicting IRCRA ratings using trained models.
-Combines the model training from ircra_prediction_model.py with the prediction functionality
-of ircra_prediction_test.py.
+IRCRA prediction module for the Climbing Testing Application.
+
+This module defines the IRCRAPredictor class which uses machine learning models
+to predict a climber's IRCRA (International Rock Climbing Research Association)
+grade based on their test performance data.
+
+Key functionalities:
+- Load and use trained machine learning models
+- Process and transform test data for prediction
+- Generate IRCRA grade predictions using multiple models
+- Extract relevant features from test data
+- Provide confidence measures for predictions
+
+The IRCRAPredictor serves as the inference engine for the application's performance
+prediction capabilities, using models trained in the statistical module to estimate
+a climber's performance potential.
 """
 
 import os
 import json
 import ast
-import numpy as np
 import pandas as pd
-from sklearn import svm
-from sklearn.preprocessing import StandardScaler
-from sklearn.linear_model import LinearRegression
-import joblib  # Use joblib consistently
+import joblib
 
 from gui.research_members.climber_db_manager import ClimberDatabaseManager
 from gui.test_page.test_db_manager import ClimbingTestManager

@@ -1,6 +1,20 @@
+
 """
-Module for evaluating repetition-by-repetition metrics from force data,
-reusing helper functions from metrics_helpers.py.
+Repetition metrics module for the Climbing Testing Application.
+
+This module provides functions and utilities for analyzing individual repetitions
+within climbing tests. It extracts and computes metrics specific to each repetition,
+enabling detailed analysis of performance changes across a test.
+
+Key functionalities:
+- Identify and segment individual repetitions
+- Calculate per-repetition force metrics
+- Measure repetition duration and timing
+- Compare metrics across repetitions
+- Detect fatigue and technique changes between repetitions
+
+The repetition metrics module enables fine-grained analysis of performance
+consistency and fatigue effects throughout a test session.
 """
 
 import numpy as np

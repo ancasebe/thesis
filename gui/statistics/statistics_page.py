@@ -1,7 +1,23 @@
+"""
+Statistics and modeling module for the Climbing Testing Application.
+
+This module defines classes for statistical analysis, machine learning model training,
+and visualization of climbing performance data. It includes the StatisticsPage class
+for the main interface, PlotViewerDialog for viewing statistical plots, and
+ModelTrainingThread for background model training.
+
+Key functionalities:
+- Train and evaluate machine learning models for IRCRA prediction
+- Visualize statistical relationships between climbing metrics
+- View and export statistical plots
+- Background processing for computationally intensive tasks
+- Model metadata management
+
+The statistics module provides advanced analytical capabilities for research
+purposes, enabling the discovery of patterns and relationships within the
+climbing test data and prediction of climbing performance.
+"""
 import os
-import joblib
-import numpy as np
-import pandas as pd
 import json
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,

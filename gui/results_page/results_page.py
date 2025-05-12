@@ -1,15 +1,29 @@
-# results_page.py
+"""
+Results page module for the Climbing Testing Application.
 
-import os
+This module defines the ResultsPage class which displays test results for climbers.
+It provides filtering options by climber, test type, and data type, and allows viewing
+detailed test information, exporting data, and managing test records.
+
+Key functionalities:
+- Display test results in a filterable table
+- View basic test information
+- Access detailed test reports
+- Export test data in various formats (CSV, XLSX, HDF5)
+- Delete test records
+
+The ResultsPage integrates with the database to fetch and display all tests conducted
+by an admin, and provides navigation to more detailed analysis tools.
+"""
+
 import pandas as pd
-import matplotlib.pyplot as plt
+import logging
 from datetime import datetime
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QComboBox, QTableWidget,
+    QWidget, QHBoxLayout, QGridLayout, QComboBox, QTableWidget,
     QTableWidgetItem, QPushButton, QDialog, QMessageBox, QFormLayout,
     QLabel, QHeaderView, QVBoxLayout, QFileDialog
 )
-from PySide6.QtCore import Qt
 
 from gui.results_page.report_window import TestReportWindow  # Using the provided report_window script
 from gui.test_page.test_db_manager import ClimbingTestManager
@@ -129,6 +143,8 @@ class ResultsPage(QWidget):
 
         main_layout.addLayout(bottom_layout)
 
+    # Then update these methods:
+
     def load_climbers(self):
         """Load climbers for the current admin into the dropdown."""
         try:
@@ -147,9 +163,10 @@ class ResultsPage(QWidget):
                 # The returned structure now has 'id', 'name', and 'surname'
                 display_text = f"{climber['name']} {climber['surname']}"
                 self.climber_selector.addItem(display_text, climber['id'])
-                
+            
         except Exception as e:
-            print(f"Error loading climbers: {e}")
+            logging.error(f"Error loading climbers: {e}")
+            QMessageBox.critical(self, "Error", f"Failed to load climbers: {str(e)}")
 
     def on_climber_changed(self, index):
         self.selected_climber_id = self.climber_selector.itemData(index)
@@ -180,48 +197,64 @@ class ResultsPage(QWidget):
         """
         self.tests_table.setRowCount(0)
 
-        if self.selected_climber_id:
-            tests = self.test_db_manager.fetch_results_by_participant(participant_id=self.selected_climber_id)
-        else:
-            tests = self.test_db_manager.fetch_results_by_admin(admin_id=self.admin_id)
-        # If filtering by test label (other than "All Tests"), filter test rows.
-        if self.selected_test_label and self.selected_test_label != "All Tests":
-            filter_text = self.selected_test_label.lower()
-            tests = [t for t in tests if filter_text in str(t["test_type"]).lower()]
+        try:
+            if self.selected_climber_id:
+                tests = self.test_db_manager.fetch_results_by_participant(participant_id=self.selected_climber_id)
+            else:
+                tests = self.test_db_manager.fetch_results_by_admin(admin_id=self.admin_id)
+            
+            if tests is None:
+                QMessageBox.warning(self, "Database Error", "Failed to fetch test results from the database.")
+                return
+                
+            # If filtering by test label (other than "All Tests"), filter test rows.
+            if self.selected_test_label and self.selected_test_label != "All Tests":
+                filter_text = self.selected_test_label.lower()
+                tests = [t for t in tests if filter_text in str(t["test_type"]).lower()]
 
-        if self.selected_data_type and self.selected_data_type != "All Data":
-            filter_text = self.selected_data_type.lower()
-            tests = [t for t in tests if filter_text in str(t["data_type"]).lower()]
+            if self.selected_data_type and self.selected_data_type != "All Data":
+                filter_text = self.selected_data_type.lower()
+                tests = [t for t in tests if filter_text in str(t["data_type"]).lower()]
 
-        for row_index, test in enumerate(tests):
-            self.tests_table.insertRow(row_index)
+            for row_index, test in enumerate(tests):
+                self.tests_table.insertRow(row_index)
 
-            climber_data = self.climber_db_manager.get_user_data(self.admin_id, int(test["participant_id"]))
-            name = climber_data.get("name", "") if climber_data else ""
-            surname = climber_data.get("surname", "") if climber_data else ""
+                # Try to get climber data, with error handling
+                try:
+                    climber_data = self.climber_db_manager.get_user_data(self.admin_id, int(test["participant_id"]))
+                    name = climber_data.get("name", "") if climber_data else ""
+                    surname = climber_data.get("surname", "") if climber_data else ""
+                except Exception as e:
+                    logging.error(f"Error fetching climber data: {e}")
+                    name = "Unknown"
+                    surname = "Unknown"
 
-            # Extract values from the test dictionary
-            admin_id = str(test["admin_id"])
-            test_id = str(test["id"])
-            test_name = str(test["test_type"])
-            data_type = str(test["data_type"])
-            arm_tested = str(test["arm_tested"])
-            raw_timestamp = str(test["timestamp"])
+                # Extract values from the test dictionary
+                admin_id = str(test["admin_id"])
+                test_id = str(test["id"])
+                test_name = str(test["test_type"])
+                data_type = str(test["data_type"])
+                arm_tested = str(test["arm_tested"])
+                raw_timestamp = str(test["timestamp"])
 
-            date_str, time_str = self.format_timestamp(raw_timestamp)
+                date_str, time_str = self.format_timestamp(raw_timestamp)
 
-            # Populate table columns:
-            # Column 0: Admin ID, 1: Test ID, 2: Name, 3: Surname,
-            # 4: Test Name, 5: NIRS (data_type), 6: Arm Tested, 7: Date, 8: Time.
-            self.tests_table.setItem(row_index, 0, QTableWidgetItem(admin_id))
-            self.tests_table.setItem(row_index, 1, QTableWidgetItem(test_id))
-            self.tests_table.setItem(row_index, 2, QTableWidgetItem(name))
-            self.tests_table.setItem(row_index, 3, QTableWidgetItem(surname))
-            self.tests_table.setItem(row_index, 4, QTableWidgetItem(test_name))
-            self.tests_table.setItem(row_index, 5, QTableWidgetItem(data_type))
-            self.tests_table.setItem(row_index, 6, QTableWidgetItem(arm_tested))
-            self.tests_table.setItem(row_index, 7, QTableWidgetItem(date_str))
-            self.tests_table.setItem(row_index, 8, QTableWidgetItem(time_str))
+                # Populate table columns:
+                # Column 0: Admin ID, 1: Test ID, 2: Name, 3: Surname,
+                # 4: Test Name, 5: NIRS (data_type), 6: Arm Tested, 7: Date, 8: Time.
+                self.tests_table.setItem(row_index, 0, QTableWidgetItem(admin_id))
+                self.tests_table.setItem(row_index, 1, QTableWidgetItem(test_id))
+                self.tests_table.setItem(row_index, 2, QTableWidgetItem(name))
+                self.tests_table.setItem(row_index, 3, QTableWidgetItem(surname))
+                self.tests_table.setItem(row_index, 4, QTableWidgetItem(test_name))
+                self.tests_table.setItem(row_index, 5, QTableWidgetItem(data_type))
+                self.tests_table.setItem(row_index, 6, QTableWidgetItem(arm_tested))
+                self.tests_table.setItem(row_index, 7, QTableWidgetItem(date_str))
+                self.tests_table.setItem(row_index, 8, QTableWidgetItem(time_str))
+                
+        except Exception as e:
+            logging.error(f"Error loading tests: {e}")
+            QMessageBox.critical(self, "Error", f"Failed to load test data: {str(e)}")
 
     @staticmethod
     def format_timestamp(raw_timestamp):
@@ -249,17 +282,29 @@ class ResultsPage(QWidget):
         if not selected_items:
             QMessageBox.warning(self, "No Test Selected", "Please select a test from the table.")
             return None
-        row = selected_items[0].row()
-        test_id_item = self.tests_table.item(row, 1)
-        if not test_id_item:
-            return None
-        test_id = int(test_id_item.text())
+            
+        try:
+            row = selected_items[0].row()
+            test_id_item = self.tests_table.item(row, 1)
+            if not test_id_item:
+                return None
+            test_id = int(test_id_item.text())
 
-        tests = self.test_db_manager.fetch_results_by_admin(admin_id=self.admin_id)
-        for t in tests:
-            if t["id"] == test_id:
-                return t
-        return None
+            tests = self.test_db_manager.fetch_results_by_admin(admin_id=self.admin_id)
+            if tests is None:
+                QMessageBox.warning(self, "Database Error", "Failed to fetch test data from the database.")
+                return None
+            
+            for t in tests:
+                if t["id"] == test_id:
+                    return t
+                
+            QMessageBox.warning(self, "Test Not Found", f"Test with ID {test_id} could not be found.")
+            return None
+        except Exception as e:
+            logging.error(f"Error getting selected test: {e}")
+            QMessageBox.critical(self, "Error", f"Failed to retrieve test data: {str(e)}")
+            return None
 
     def show_info(self):
         """
@@ -306,18 +351,29 @@ class ResultsPage(QWidget):
         test = self.get_selected_test()
         if not test:
             return
-        participant_id = test["participant_id"]
-        participant_info = self.climber_db_manager.get_user_data(self.admin_id, participant_id)
-        if not participant_info:
-            participant_info = {"Name": "Unknown"}
-        db_data = self.test_db_manager.get_test_data(test_id=test['id'])
-        report_window = TestReportWindow(participant_info=participant_info,
-                                         db_data=db_data,
-                                         admin_id=self.admin_id,
-                                         climber_db_manager=self.climber_db_manager,
-                                         test_db_manager=self.test_db_manager,
-                                         parent=self)
-        report_window.show()
+    
+        try:
+            participant_id = test["participant_id"]
+            participant_info = self.climber_db_manager.get_user_data(self.admin_id, participant_id)
+            if not participant_info:
+                participant_info = {"name": "Unknown", "surname": "Unknown"}
+            
+            db_data = self.test_db_manager.get_test_data(test_id=test['id'])
+            if db_data is None:
+                QMessageBox.warning(self, "Missing Data", 
+                                    "Could not retrieve complete test data. The test may be corrupted.")
+                return
+            
+            report_window = TestReportWindow(participant_info=participant_info,
+                                            db_data=db_data,
+                                            admin_id=self.admin_id,
+                                            climber_db_manager=self.climber_db_manager,
+                                            test_db_manager=self.test_db_manager,
+                                            parent=self)
+            report_window.show()
+        except Exception as e:
+            logging.error(f"Error showing results: {e}")
+            QMessageBox.critical(self, "Error", f"Failed to display test results: {str(e)}")
 
     # def show_units(self):
     #     """
@@ -334,70 +390,91 @@ class ResultsPage(QWidget):
         if not test:
             return
 
-        # Get the test id for filename pattern.
-        test_id = test["id"]
+        try:
+            # Get the test id for filename pattern.
+            test_id = test["id"]
 
-        # Build a list of (file_type, path) tuples based on what is available.
-        files_to_export = []
-        if test.get("force_file") and test["force_file"].strip():
-            files_to_export.append((test['test_type'], "force", test["force_file"]))
-        if test.get("nirs_file") and test["nirs_file"].strip():
-            files_to_export.append((test['test_type'], "nirs", test["nirs_file"]))
+            # Build a list of (file_type, path) tuples based on what is available.
+            files_to_export = []
+            if test.get("force_file") and test["force_file"].strip():
+                files_to_export.append((test['test_type'], "force", test["force_file"]))
+            if test.get("nirs_file") and test["nirs_file"].strip():
+                files_to_export.append((test['test_type'], "nirs", test["nirs_file"]))
 
-        if not files_to_export:
-            QMessageBox.warning(self, "No Data Files", "No data file is associated with this test.")
-            return
+            if not files_to_export:
+                QMessageBox.warning(self, "No Data Files", "No data file is associated with this test.")
+                return
 
-        # Create a dialog for the user to choose export format.
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Export Test Data")
-        vlayout = QVBoxLayout(dialog)
-        vlayout.addWidget(QLabel("Select export format:"))
-        format_combo = QComboBox()
-        format_combo.addItems(["CSV", "XLSX", "HDF5"])
-        vlayout.addWidget(format_combo)
-        export_button = QPushButton("Export")
-        vlayout.addWidget(export_button)
+            # Create a dialog for the user to choose export format.
+            dialog = QDialog(self)
+            dialog.setWindowTitle("Export Test Data")
+            vlayout = QVBoxLayout(dialog)
+            vlayout.addWidget(QLabel("Select export format:"))
+            format_combo = QComboBox()
+            format_combo.addItems(["CSV", "XLSX", "HDF5"])
+            vlayout.addWidget(format_combo)
+            export_button = QPushButton("Export")
+            vlayout.addWidget(export_button)
 
-        def perform_export():
-            export_format = format_combo.currentText().lower()  # "csv", "xlsx", or "hdf5"
-            for test_type, data_type, path in files_to_export:
-                # Attempt to read the file (assumes it's stored in Feather format)
-                try:
-                    df = pd.read_feather(path)
-                except Exception as e:
-                    QMessageBox.warning(dialog, "Error Reading File", f"Could not read {path}:\n{str(e)}")
-                    continue
+            def perform_export():
+                export_format = format_combo.currentText().lower()  # "csv", "xlsx", or "hdf5"
+                export_success = False
+                
+                for test_type, data_type, path in files_to_export:
+                    # Attempt to read the file (assumes it's stored in Feather format)
+                    try:
+                        df = pd.read_feather(path)
+                    except FileNotFoundError:
+                        QMessageBox.warning(dialog, "File Not Found", 
+                                           f"Could not find file: {path}\nThe file may have been moved or deleted.")
+                        continue
+                    except Exception as e:
+                        QMessageBox.warning(dialog, "Error Reading File", 
+                                           f"Could not read {path}:\n{str(e)}")
+                        continue
 
-                # Create a suggested filename using the test id and file type
-                suggested_filename = f"test_{test_type}_{data_type}_{test_id}.{export_format}"
-                save_path, _ = QFileDialog.getSaveFileName(
-                    self,
-                    "Save Converted File",
-                    suggested_filename,
-                    f"{export_format.upper()} Files (*.{export_format});;All Files (*)"
-                )
-                if not save_path:
-                    # User canceled for this file
-                    continue
+                    # Create a suggested filename using the test id and file type
+                    suggested_filename = f"test_{test_type}_{data_type}_{test_id}.{export_format}"
+                    save_path, _ = QFileDialog.getSaveFileName(
+                        self,
+                        "Save Converted File",
+                        suggested_filename,
+                        f"{export_format.upper()} Files (*.{export_format});;All Files (*)"
+                    )
+                    if not save_path:
+                        # User canceled for this file
+                        continue
 
-                # Export according to the chosen format
-                try:
-                    if export_format == "csv":
-                        df.to_csv(save_path, index=False)
-                    elif export_format == "xlsx":
-                        df.to_excel(save_path, index=False)
-                    elif export_format == "hdf5":
-                        df.to_hdf(save_path, key="data", mode="w")
-                except Exception as e:
-                    QMessageBox.warning(dialog, "Export Error", f"Could not export to {save_path}:\n{str(e)}")
-                    continue
+                    # Export according to the chosen format
+                    try:
+                        if export_format == "csv":
+                            df.to_csv(save_path, index=False)
+                        elif export_format == "xlsx":
+                            df.to_excel(save_path, index=False)
+                        elif export_format == "hdf5":
+                            df.to_hdf(save_path, key="data", mode="w")
+                        export_success = True
+                    except PermissionError:
+                        QMessageBox.warning(dialog, "Permission Error", 
+                                           f"Could not write to {save_path}. The file may be open in another program or you don't have permission.")
+                        continue
+                    except Exception as e:
+                        QMessageBox.warning(dialog, "Export Error", 
+                                           f"Could not export to {save_path}:\n{str(e)}")
+                        continue
+                        
+                if export_success:
+                    QMessageBox.information(dialog, "Export", "Export completed successfully.")
+                else:
+                    QMessageBox.warning(dialog, "Export", "No files were exported.")
+                dialog.accept()
 
-            QMessageBox.information(dialog, "Export", "Export completed.")
-            dialog.accept()
-
-        export_button.clicked.connect(perform_export)
-        dialog.exec()
+            export_button.clicked.connect(perform_export)
+            dialog.exec()
+            
+        except Exception as e:
+            logging.error(f"Error during export: {e}")
+            QMessageBox.critical(self, "Export Error", f"An error occurred during export: {str(e)}")
 
     def delete_test(self):
         """
@@ -406,6 +483,7 @@ class ResultsPage(QWidget):
         test = self.get_selected_test()
         if not test:
             return
+        
         reply = QMessageBox.question(
             self,
             "Delete Test",
@@ -413,10 +491,15 @@ class ResultsPage(QWidget):
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No
         )
+        
         if reply == QMessageBox.Yes:
-            test_id = test['id']
-            cursor = self.test_db_manager.connection.cursor()
-            cursor.execute("DELETE FROM climbing_tests WHERE id = ?", (test_id,))
-            self.test_db_manager.connection.commit()
-            QMessageBox.information(self, "Deleted", "Test deleted successfully.")
-            self.load_tests()
+            try:
+                test_id = test['id']
+                cursor = self.test_db_manager.connection.cursor()
+                cursor.execute("DELETE FROM climbing_tests WHERE id = ?", (test_id,))
+                self.test_db_manager.connection.commit()
+                QMessageBox.information(self, "Deleted", "Test deleted successfully.")
+                self.load_tests()
+            except Exception as e:
+                logging.error(f"Error deleting test: {e}")
+                QMessageBox.critical(self, "Delete Error", f"Failed to delete test: {str(e)}")

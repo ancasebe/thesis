@@ -1,11 +1,19 @@
 """
-This module provides the `LoginDatabaseManager` class for handling admin and
-superuser login and registration.
+Authentication database management module for the Climbing Testing Application.
+
+This module defines the LoginDatabaseManager class which handles all database
+operations related to user authentication, including administrator accounts
+and login verification.
 
 Key functionalities:
-- Creating the admins table if it doesn't exist.
-- Registering a new superuser or admin with hashed password.
-- Verifying login credentials for admins and superuser.
+- Create and maintain the authentication database schema
+- Register new administrator accounts
+- Verify login credentials
+- Manage password hashing and security
+- Store and retrieve administrator metadata
+
+The login database manager ensures secure authentication for the application,
+controlling access to sensitive research data and operations.
 """
 
 import sqlite3

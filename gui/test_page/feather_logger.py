@@ -1,3 +1,22 @@
+"""
+Data logging module for the Climbing Testing Application.
+
+This module defines the FeatherBinaryLogger class which handles the efficient
+storage of time series data collected during climbing tests. It buffers data
+in memory and writes it to disk in the Apache Feather format for fast access
+and efficient storage.
+
+Key functionalities:
+- Buffer data points in memory during acquisition
+- Write data efficiently to disk in Feather format
+- Handle timestamped data pairs
+- Manage file paths and naming conventions
+- Support for database queue integration
+
+The Feather logger provides a performant data storage solution optimized for
+the high-frequency sampling required by the climbing tests, balancing memory
+usage and disk I/O.
+"""
 import os
 import pandas as pd
 

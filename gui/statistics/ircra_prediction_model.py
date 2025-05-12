@@ -1,7 +1,21 @@
 """
-This script consists of two parts:
-1. Representation of the correlation matrix
-2. The PCA (Principal Component Analysis) method with model saving
+IRCRA prediction model training module for the Climbing Testing Application.
+
+This module defines the PredictionIRCRA class which handles the training and
+evaluation of machine learning models for predicting climbing performance levels.
+It implements data preprocessing, feature engineering, dimensionality reduction
+(PCA), and support vector regression (SVR) for IRCRA grade prediction.
+
+Key functionalities:
+- Load and process test and climber data
+- Prepare and engineer features for model training
+- Perform principal component analysis (PCA)
+- Train and optimize support vector regression models
+- Generate visualizations of model performance
+- Save trained models for later use in prediction
+
+The prediction model training module provides the statistical foundation for
+the application's performance prediction capabilities.
 """
 
 import os
@@ -26,19 +40,32 @@ from gui.test_page.test_db_manager import ClimbingTestManager
 
 class PredictionIRCRA:
     """
-    Processor to load climber and test data from SQLite databases,
-    merge and prepare features, and compute PCA for dimensionality reduction.
-
+    A class that handles IRCRA prediction model training and evaluation.
+    
+    This class loads climber and test data from databases, prepares features,
+    performs dimensionality reduction using PCA, and trains regression models
+    for predicting climber IRCRA levels.
+    
     Attributes:
-        climber_manager: Instance of ClimberDatabaseManager to fetch climber info.
-        test_manager: Instance of ClimbingTestManager to fetch test results.
-        admin_id: Admin ID to filter data by administrator.
+        climber_manager: Instance of ClimberDatabaseManager to access climber data.
+        test_manager: Instance of ClimbingTestManager to access test results.
+        admin_id: ID of the administrator whose data is being analyzed.
+        model_dir: Directory path where trained models will be saved.
+        plots_dir: Directory path where visualizations will be saved.
     """
 
     def __init__(self,
                  climber_db: str = "climber_database.db",
                  tests_db: str = "tests_database.db",
                  admin_id: int = 1):
+        """
+        Initialize the PredictionIRCRA class with database connections and paths.
+        
+        Args:
+            climber_db: Path to the climber database file.
+            tests_db: Path to the tests database file.
+            admin_id: ID of the administrator whose data should be used.
+        """
         # Initialize database managers
         self.climber_manager = ClimberDatabaseManager(db_name=climber_db)
         self.test_manager = ClimbingTestManager(db_name=tests_db)
@@ -53,6 +80,12 @@ class PredictionIRCRA:
     def load_data(self, test_type: str = "ao") -> pd.DataFrame:
         """
         Load and merge climber demographic data with test metrics.
+        
+        Args:
+            test_type: Type of test to filter by (default: "ao").
+            
+        Returns:
+            DataFrame containing merged climber and test data.
         """
         # Fetch test entries for this admin - pass admin_id as an integer
         tests = self.test_manager.fetch_results_by_admin(self.admin_id)
@@ -164,12 +197,16 @@ class PredictionIRCRA:
 
         Args:
             df: Merged DataFrame from load_data().
-            include_metrics: List of metric keys to include (e.g., ["max_strength", "sum_work_above_cf", "critical_force"]).
-            include_demographics: List of demographic columns to include (e.g., ["gender", "age", "years_climbing"]).
+            include_metrics: List of metric keys to include (default: max_strength, 
+                             sum_work, sum_work_above_cf, critical_force, rfd_norm_overall).
+            include_demographics: List of demographic columns to include (default: gender, 
+                                  age, years_climbing, bouldering, climbing_indoor, etc.).
 
         Returns:
-            X: DataFrame of predictor variables (one-hot encoding applied where needed).
-            y: Series of target variable (ircra rating).
+            Tuple containing:
+            - corr_df: DataFrame for correlation analysis including target and features.
+            - X: DataFrame of predictor variables.
+            - y: Series of target variable (IRCRA rating).
         """
         # Default columns if not specified
         if include_demographics is None:
@@ -227,7 +264,15 @@ class PredictionIRCRA:
         return corr_df, X, y
 
     def corr_matrix(self, df):
-        """Generate and save correlation matrix without displaying"""
+        """
+        Generate and save a correlation matrix visualization.
+        
+        Args:
+            df: DataFrame containing the data for correlation analysis.
+            
+        Returns:
+            Path to the saved correlation matrix image file.
+        """
         correlation_matrix = df.corr()
         fig = plt.figure(figsize=(10, 8))
         sns.heatmap(correlation_matrix, annot=True, cmap="coolwarm", fmt=".2f")
@@ -241,12 +286,16 @@ class PredictionIRCRA:
 
     def pca_df(self, X_raw, y, save_model=True):
         """
-        Perform PCA, plot explained variance and PCA scatter,
-        and optionally save the scaler + PCA model for later.
-        """
-        # Prepare the data
-        # _, X_raw, y = self.prepare_features(df)
+        Perform PCA, generate visualizations, and optionally save the models.
         
+        Args:
+            X_raw: DataFrame of raw features.
+            y: Series containing target variable.
+            save_model: Whether to save the PCA model for future use (default: True).
+            
+        Returns:
+            DataFrame containing PCA components and target variable, or None if insufficient data.
+        """
         # Check if we have valid data
         if X_raw is None or y is None or len(X_raw) == 0 or len(y) == 0:
             print("Not enough valid data for PCA.")
@@ -320,13 +369,14 @@ class PredictionIRCRA:
     def prepare_pca_features(pca_df):
         """
         Prepare PCA-transformed features for regression models.
-
+        
         Args:
             pca_df: DataFrame with PCA components and target variable.
-
+            
         Returns:
-            X: DataFrame of PCA components as features.
-            y: Series of target variable (ircra rating).
+            Tuple containing:
+            - X: DataFrame of PCA components as features.
+            - y: Series of target variable (IRCRA rating).
         """
         df_copy = pca_df.copy()
 
@@ -358,13 +408,20 @@ class PredictionIRCRA:
 
     def train_best_svr(self, X, y, kernels=None, C_params=None):
         """
-        Train SVR models with different kernels and regularization parameters, and find the best model.
-
-        :param X: pandas DataFrame, feature matrix
-        :param y: pandas Series, target variable
-        :param kernels: list, list of kernel types (default: ["poly", "rbf", "sigmoid"])
-        :param C_params: numpy array, array of regularization parameters (default: [0.1, 1, 5, 10, 20, 100])
-        :return: tuple, best SVR model and accuracy DataFrame
+        Train SVR models with different configurations and find the best model.
+        
+        Args:
+            X: DataFrame of features.
+            y: Series of target values.
+            kernels: List of kernel types to try (default: ["poly", "rbf", "sigmoid"]).
+            C_params: Array of regularization parameters (default: [0.1, 1, 5, 10, 20, 100]).
+            
+        Returns:
+            Tuple containing:
+            - mse_pcr: Mean squared error for PCR model.
+            - mse_svr: Mean squared error for SVR model.
+            - svr_results_path: Path to the SVR results visualization.
+            - pcr_results_path: Path to the PCR results visualization.
         """
         if kernels is None:
             kernels = ["poly", "rbf", "sigmoid"]
@@ -451,14 +508,17 @@ class PredictionIRCRA:
 
     def plot_regression_results(self, x_test, y_test, y_pred_test, title, filename):
         """
-        Plot the regression results.
-
-        :param x_test: pandas DataFrame, testing features
-        :param y_test: pandas Series, actual target values for the test set
-        :param y_pred_test: array, predicted target values for the test set
-        :param title: str, title for the plot
-        :param filename: str, filename to save the plot
-        :return: str, path to the saved plot file
+        Create and save visualization of regression model results.
+        
+        Args:
+            x_test: DataFrame of test features.
+            y_test: Series of actual target values.
+            y_pred_test: Array of predicted target values.
+            title: Title for the plot.
+            filename: Filename to save the plot.
+            
+        Returns:
+            Path to the saved plot file.
         """
         x_dummy = np.linspace(1, x_test.shape[0], x_test.shape[0])
 

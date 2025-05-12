@@ -1,13 +1,21 @@
+
 """
-This module defines the main application page that users see after logging in.
+Main page module for the Climbing Testing Application.
+
+This module defines the interface shown after user authentication, providing the central
+navigation hub for the application. It includes two primary classes: MainAppPage for a
+simple welcome view, and MainPage which implements the complete navigation interface.
 
 Key functionalities:
-- Displays a welcome message and an image.
-- Provides a placeholder for sections like Calibration, Testing, and Results.
-- Handles user logout functionality through a callback.
-"""
+- Navigation to different application areas (Testing, Results, Statistics, etc.)
+- User session management and authentication display
+- Role-based access to admin functionality
+- Resource management for different application views
+- Navigation state management through a stacked widget interface
 
-# pylint: disable=E1101
+The main page serves as the control center of the application, allowing users to access
+all available functionality based on their authentication level and permissions.
+"""
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,

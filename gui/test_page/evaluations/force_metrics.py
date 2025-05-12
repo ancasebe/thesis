@@ -1,9 +1,19 @@
 """
-Helper functions for computing force evaluation metrics.
+Force metrics computation module for the Climbing Testing Application.
 
-This module provides functions to compute overall test metrics and additional
-rep-based metrics. The functions here include both calculations that operate
-directly on the entire force DataFrame and those that require rep segmentation.
+This module defines functions and utilities for computing standardized metrics
+from force sensor data. It provides a consistent set of measurements used
+throughout the application for analysis and comparison.
+
+Key functionalities:
+- Calculate maximum voluntary contraction (MVC)
+- Compute rate of force development (RFD)
+- Measure force impulse and integral values
+- Calculate fatigue indices
+- Determine force variability and stability metrics
+
+The force metrics module provides the quantitative foundation for analyzing
+climber strength, endurance, and technique based on force sensor data.
 """
 
 import numpy as np

@@ -1,3 +1,22 @@
+"""
+NIRS data evaluation module for the Climbing Testing Application.
+
+This module defines the NIRSEvaluation class which processes and analyzes Near-Infrared
+Spectroscopy (NIRS) data collected during climbing tests. It calculates key metrics
+related to muscle oxygenation levels during exercise and recovery phases.
+
+Key functionalities:
+- Load and pre-process raw NIRS data from Feather files
+- Apply data smoothing to reduce noise in the signal
+- Correct baseline anomalies and spikes in the data
+- Calculate baseline muscle oxygenation levels
+- Determine recovery time after exercise completion
+- Handle various data formats and file structures
+
+The NIRS evaluation provides critical physiological insights into muscle fatigue
+and recovery patterns during climbing activities, complementing the force-based
+measurements with tissue oxygenation data.
+"""
 import numpy as np
 import pandas as pd
 

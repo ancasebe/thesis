@@ -1,128 +1,133 @@
-# 🧗‍♀️ Climbing Performance Evaluation & Prediction Toolkit
+# Climbing Performance Evaluation & Prediction Application
+This repository contains a comprehensive application for evaluating climbers' physical performance and predicting their IRCRA (International Rock Climbing Research Association) levels. The toolkit integrates force sensor and NIRS (Near-Infrared Spectroscopy) data acquisition, test evaluation, and machine learning-based performance prediction.
+## Table of Contents
+- [Overview](#overview)
+- [Features](#features)
+- [System Architecture](#system-architecture)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Database Structure](#database-structure)
+- [Machine Learning Models](#machine-learning-models)
+- [Contributing](#contributing)
+- [License](#license)
 
-This repository contains the source code and documentation for a comprehensive system designed to evaluate climbers' physical performance and predict their IRCRA levels. The toolkit integrates force and NIRS data acquisition, test evaluation, and machine learning-based performance prediction.
+## Overview
+This application is developed as part of a research project to assess climbers' physical capabilities and predict their climbing performance potential. The system provides a comprehensive suite of tools for researchers to:
+- Manage climber profiles and demographic information
+- Conduct standardized force and physiological tests
+- Visualize and analyze test results in real-time
+- Generate detailed reports and export data
+- Train and utilize machine learning models for performance prediction
 
----
+## Features
+### User Management
+- Multi-level user authentication system
+- Role-based access control (admin vs. researcher)
+- User profile management
 
-## 📋 Table of Contents
+### Climber Management
+- Registration and management of climber profiles
+- Storage of demographic, experience, and physical data
+- Tracking of multiple climbers per researcher
 
-- [Overview](#-overview)
-- [Features](#-features)
-- [Installation](#-installation)
-- [Usage](#-usage)
-- [Data Import](#-data-import)
-- [Model Training](#-model-training)
-- [Prediction](#-prediction)
-- [Contributing](#-contributing)
-- [License](#-license)
+### Test Administration
+- Support for various test protocols (MVC, endurance, etc.)
+- Real-time data acquisition from force sensors and NIRS devices
+- Test session management and organization
 
----
+### Data Analysis
+- Force curve analysis and metric extraction
+- NIRS data processing for muscle oxygenation assessment
+- Computation of key performance indicators
 
-## 🧠 Overview
+### Results Visualization
+- Interactive data visualization of test results
+- Comparison tools for performance tracking
+- Detailed repetition-level analysis
 
-The system is developed as part of a master's thesis project, focusing on the assessment of climbers' physical capabilities and the prediction of their climbing performance levels. It provides tools for:
+### Performance Prediction
+- IRCRA grade prediction using machine learning models
+- Feature extraction and dimensionality reduction
+- Model training interface for researchers
 
-- Importing and managing climber data
-- Processing force and NIRS test data
-- Evaluating test results to extract key metrics
-- Training machine learning models to predict IRCRA levels
-- Generating comprehensive reports
+### Reporting
+- PDF report generation for test sessions
+- Data export in multiple formats (CSV, XLSX, HDF5)
+- Statistical analysis and aggregation
 
----
+## System Architecture
+The application is structured in a modular fashion with several key components:
+- **Authentication Module**: Manages user accounts and session control
+- **Climber Management Module**: Handles climber profiles and information
+- **Test Administration Module**: Controls test configuration and execution
+- **Data Acquisition Module**: Manages sensor data collection and processing
+- **Results Module**: Provides analysis and visualization of test data
+- **Statistics Module**: Implements machine learning models and predictions
+- **Database Layer**: Maintains structured storage of all application data
 
-## 🚀 Features
+## Installation
+### Prerequisites
+- Python 3.11 or higher
+- SQLite database engine
+- Required Python packages (listed in requirements.txt)
 
-- **Data Management**: Structured storage of climber profiles and test results using SQLite databases.
-- **Data Import**: Scripts to import data from Excel files and existing databases.
-- **Test Evaluation**: Automated computation of metrics like MVC, RFD, and critical force.
-- **Prediction Models**: Training and evaluation of Linear Regression and SVR models for IRCRA level prediction.
-- **Visualization**: Graphical representation of test data and prediction results.
-
----
-
-## 🛠️ Installation
-
-Clone the repository:
-
-```bash
-git clone https://github.com/ancasebe/thesis.git
-cd thesis
+### Setup
+1. Clone the repository:
+``` bash
+git clone https://github.com/yourusername/climbing-performance-toolkit.git
+cd climbing-performance-toolkit
 ```
-Create a virtual environment (optional but recommended):
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+1. Create and activate a virtual environment:
+``` bash
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 ```
-Install dependencies:
-```bash
+1. Install dependencies:
+``` bash
 pip install -r requirements.txt
 ```
-
----
-
-## 🧪 Usage
-
-The application is modular, with separate scripts for different functionalities:
-
-Data Import: Use exel_db_manager.py to import data from Excel files.
-Test Evaluation: Run evaluation scripts to process test data and compute metrics.
-Model Training: Train prediction models using the provided training scripts.
-Prediction: Use trained models to predict IRCRA levels for new test data.
-
----
-
-## 📥 Data Import
-
-To import data from an Excel file:
-
-python excel_db_manager.py path_to_excel_file.xlsx
-This script will:
-
-Read test data and participant metadata from the Excel file
-Create entries in the climber and test databases
-Compute evaluation metrics and store them in the database
-
----
-
-## 🧠 Model Training
-
-To train the prediction models:
-
-Ensure that the databases are populated with evaluated test data
-Run the training script:
-```bash
-python ircra_prediction_model.py
+1. Initialize the database:
+``` bash
+python main.py --init-db
 ```
-This will:
+## Usage
+### Running the Application
+Launch the application with:
+``` bash
+python main.py
+```
 
-Extract features and labels from the database
-Perform PCA for dimensionality reduction
-Train Linear Regression and SVR models
-Evaluate model performance and save the trained models
+Then log in with your administrator credentials.
 
----
+### Workflow
+1. **Register Climbers**: Add participant information through the Research Members interface
+2. **Conduct Tests**: Use the Test Page to configure and execute climbing tests
+3. **View Results**: Access the Results Page to analyze test data and visualize performance
+4. **Generate Reports**: Export data or create PDF reports from the Results interface
+5. **Train Models**: Use the Statistics Page to train and evaluate prediction models
+6. **Predict Performance**: Apply trained models to predict climber IRCRA grades
 
-## 📈 Prediction
+## Database Structure
+The application uses SQLite databases organized into three main components:
+1. **Login Database**: Stores user authentication information and research profiles
+2. **Climber Database**: Contains climber demographic and experience information
+3. **Tests Database**: Stores test configurations, results, and computed metrics
 
-To predict the IRCRA level for a new test:
+## Machine Learning Models
+The application employs several machine learning approaches for performance prediction:
+- : For dimensionality reduction of high-dimensional test data **Principal Component Analysis (PCA)**
+- : For IRCRA grade prediction based on test performance **Support Vector Regression (SVR)**
+- **Linear Regression**: For simplified performance modeling and comparison
 
-Ensure the test data is evaluated and stored in the database
-Run the prediction script:
-python predict_irca.py test_id
-This will:
+Models are trained on existing data and can be continuously improved as more test data is collected.
+## Contributing
+Contributions to this project are welcome. Please follow these steps:
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-Load the trained model
-Extract features for the specified test
-Predict the IRCRA level and display the result
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! If you have suggestions or improvements, feel free to fork the repository and submit a pull request.
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License. See the LICENSE file for details.
+## License
+This project is licensed under the MIT License - see the LICENSE file for details.
+_Note: This application is designed for research purposes. Always follow ethical guidelines when collecting and analyzing human subject data._

@@ -1,13 +1,22 @@
 """
-This module defines the `TestPage` class, which provides a unified interface for managing climbers
-and conducting tests.
+Test page module for the Climbing Testing Application.
+
+This module defines the TestPage class which provides the main interface for
+conducting climbing tests. It allows selection of climbers, test types, and
+data collection parameters, and launches test sessions.
 
 Key functionalities:
-- Allows admins to add, edit, and delete climbers.
-- Enables selection of a test, climber, and arm for testing.
-- Ensures validation before conducting a test and saves test data to the database.
-"""
+- Manage climber selection and information
+- Configure test parameters (arm tested, data type, etc.)
+- Launch test sessions with appropriate configuration
+- Handle NIRS device connections
+- Add, edit, and delete climber information
 
+The test page serves as the primary interface for test administration,
+connecting climber data management with the test execution interface.
+"""
+import time
+import logging
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
     QComboBox, QMessageBox,  QStackedWidget,  QDialog, QGridLayout
@@ -17,25 +26,33 @@ from PySide6.QtCore import Qt, QTimer
 from gui.research_members.edit_climber_info import EditClimberInfoPage
 from gui.research_members.new_climber import NewClimber
 from gui.test_page.data_communicator import CombinedDataCommunicator
-
 from gui.test_page.data_gen import DataGenerator
 
-import time
 
 class TestPage(QWidget):
     """
-    The Test Page allows admins to manage climbers and conduct tests.
-
-    Features:
-    - Add, edit, delete climbers.
-    - Select a climber, choose a test and arm, and save the test data.
-
-    Args:
-        db_manager (DatabaseManager): Database manager for data saving and retrieval.
-        admin_id (int): ID of the logged-in admin.
-        main_stacked_widget (QStackedWidget): Manages page transitions.
+    The Test Page interface for managing climbers and conducting tests.
+    
+    This class provides the main UI for test configuration and administration,
+    including climber selection, test type configuration, and test execution.
+    It also manages NIRS device connections and climber information management.
+    
+    Attributes:
+        db_manager: Database manager for data saving and retrieval.
+        admin_id: ID of the logged-in administrator.
+        main_stacked_widget: Main application widget for page transitions.
+        data_generator: Data generator instance for force and NIRS data.
+        button_styles: Dictionary of CSS styles for buttons in different states.
     """
     def __init__(self, db_manager, admin_id, main_stacked_widget):
+        """
+        Initialize the Test Page with required components and UI elements.
+        
+        Args:
+            db_manager: Database manager for data operations.
+            admin_id: ID of the logged-in administrator.
+            main_stacked_widget: Main stacked widget for page navigation.
+        """
         super().__init__(main_stacked_widget)
         self.db_manager = db_manager
         self.admin_id = admin_id
@@ -52,7 +69,17 @@ class TestPage(QWidget):
         self.load_climbers()
 
     def setup_ui(self):
-        """Sets up the user interface."""
+        """
+        Set up the user interface components for the test page.
+        
+        Creates and configures UI elements including:
+        - Title labels
+        - Climber and arm selection dropdowns
+        - Data type selection
+        - Climber management buttons
+        - NIRS connection button
+        - Test selection buttons
+        """
         main_layout = QVBoxLayout()
         main_layout.setAlignment(Qt.AlignTop)
 
@@ -156,51 +183,71 @@ class TestPage(QWidget):
 
     def nirs_connection(self):
         """
-        Handles the NIRS connection process, including connection dialog and status updates.
-        Provides user feedback on connection state and manages connection timeouts.
+        Handle the NIRS device connection and disconnection.
+        
+        Manages the connection process for NIRS devices, including:
+        - Connection state detection
+        - Connection establishment
+        - Connection monitoring
+        - UI feedback on connection status
+        - Error handling for connection issues
+        
+        Updates the NIRS connection button to reflect current status.
         """
-        # Get current connection state
-        # currently_connected = self.data_generator.is_nirs_connected()
-        currently_connected = self.data_generator.bluetooth_com.running
-        
-        if currently_connected:
-            # Disconnect if currently connected
-            self.data_generator.stop(nirs=True, force=False)
-            self.nirs_connect_button.setText("NIRS disconnected")
-            self.nirs_connect_button.setStyleSheet(self.button_styles['default'])
-            print("NIRS connection stopped")
-        else:
-            # Connect if not connected
-            print("Starting new NIRS connection")
-            # Pause data forwarding but continue collecting
-            self.data_generator.pause_data_forwarding()
-        
-            # Clear previous data
-            self.data_generator.clear_data()
-        
-            # Start the connection process
-            success = self.data_generator.start_nirs_connection()
-        
-            if not success:
+        try:
+            # Get current connection state
+            currently_connected = self.data_generator.bluetooth_com.running
+            
+            if currently_connected:
+                # Disconnect if currently connected
+                self.data_generator.stop(nirs=True, force=False)
                 self.nirs_connect_button.setText("NIRS disconnected")
-                self.nirs_connect_button.setStyleSheet(self.button_styles['error'])
-                return
-        
-            # Start monitoring connection state in a separate thread
+                self.nirs_connect_button.setStyleSheet(self.button_styles['default'])
+                print("NIRS connection stopped")
+            else:
+                # Connect if not connected
+                print("Starting new NIRS connection")
+                # Pause data forwarding but continue collecting
+                self.data_generator.pause_data_forwarding()
+            
+                # Clear previous data
+                self.data_generator.clear_data()
+            
+                # Start the connection process
+                success = self.data_generator.start_nirs_connection()
+            
+                if not success:
+                    self.nirs_connect_button.setText("NIRS disconnected")
+                    self.nirs_connect_button.setStyleSheet(self.button_styles['error'])
+                    QMessageBox.warning(self, "Connection Failed", 
+                                       "Failed to establish NIRS connection. Please check the device and try again.")
+                    return
+            
+                # Start monitoring connection state in a separate thread
 
-            # Show connecting status in the UI
-            self.nirs_connect_button.setText("Connecting...")
-            self.nirs_connect_button.setStyleSheet(self.button_styles['connecting'])
-        
-            # Create and configure a timer to monitor connection state
-            self.connection_timer = QTimer()
-            self.connection_timer.timeout.connect(self._check_nirs_connection_state)
-            self.connection_timer.start(500)  # Check every 500ms
-        
+                # Show connecting status in the UI
+                self.nirs_connect_button.setText("Connecting...")
+                self.nirs_connect_button.setStyleSheet(self.button_styles['connecting'])
+            
+                # Create and configure a timer to monitor connection state
+                self.connection_timer = QTimer()
+                self.connection_timer.timeout.connect(self._check_nirs_connection_state)
+                self.connection_timer.start(500)  # Check every 500ms
+        except Exception as e:
+            logging.error(f"Error connecting to NIRS: {e}")
+            QMessageBox.critical(self, "Connection Error", f"An error occurred while managing NIRS connection: {str(e)}")
+            self.nirs_connect_button.setText("NIRS Error")
+            self.nirs_connect_button.setStyleSheet(self.button_styles['error'])
+
     def _check_nirs_connection_state(self):
         """
-        Checks the NIRS connection state and updates the button accordingly.
-        Called by timer every 500ms during connection process.
+        Check the current NIRS connection state and update the UI accordingly.
+        
+        This method is called periodically during the connection process to:
+        - Detect when a real connection is established
+        - Update button state for simulation mode
+        - Handle connection failures
+        - Provide visual feedback on the connection state
         """
         # Get the latest connection state message
         state_msg = self.data_generator.bluetooth_com.connection_state
@@ -236,8 +283,11 @@ class TestPage(QWidget):
 
     def _finish_nirs_disconnect(self, dialog, status_label):
         """
-        Helper function to complete the NIRS disconnection process
-        and update the UI accordingly.
+        Complete the NIRS disconnection process and update UI elements.
+        
+        Args:
+            dialog: The dialog window associated with the disconnection.
+            status_label: The label to update with the disconnection status.
         """
         # Update the display to show disconnection is complete
         status_label.setText("NIRS Disconnected ✓")
@@ -270,7 +320,15 @@ class TestPage(QWidget):
         print(f"{time.strftime('%H:%M:%S')} - NIRS disconnected manually by user")
 
     def select_test(self, test_name):
-        """Sets the selected test and validates climber and arm selections."""
+        """
+        Handle test selection and validate required parameters.
+        
+        Args:
+            test_name: String representing the type of test selected (e.g., "MVC", "AO").
+            
+        Validates that a climber, arm, and data type are selected before 
+        proceeding to launch the test window.
+        """
         climber_id = self.climber_selector.currentData()
         selected_arm = self.arm_tested_combo.currentText()
         data_type = self.data_type_combo.currentText()
@@ -295,80 +353,99 @@ class TestPage(QWidget):
         self.launch_test_window(data_type, selected_arm, test_type)
 
     def launch_test_window(self, data_type, selected_arm, test_type):
-        """Launches a new window for a new test."""
-        if self.data_generator.is_nirs_connected():
-            self.nirs_connect_button.setText("NIRS Connected")
-            self.nirs_connect_button.setStyleSheet(self.button_styles['success'])
-
-        climber_id = self.climber_selector.currentData()
-        if not climber_id:
-            QMessageBox.warning(self, "No Climber Selected", "Please select a climber.")
-            return
-
-        # Clear data before starting the test - this is necessary
-        self.data_generator.clear_data()
+        """
+        Create and display a test window with the selected parameters.
         
-        # Make sure data forwarding is paused until explicitly started
-        self.data_generator.pause_data_forwarding()
+        Args:
+            data_type: Type of data being collected (e.g., "force", "force_nirs").
+            selected_arm: The arm being tested ("Dominant" or "Non-dominant").
+            test_type: The type of test being conducted (e.g., "mvc", "ao").
+            
+        Creates a dialog with the CombinedDataCommunicator for test execution and
+        configures start/stop buttons for test control.
+        """
+        try:
+            if self.data_generator.is_nirs_connected():
+                self.nirs_connect_button.setText("NIRS Connected")
+                self.nirs_connect_button.setStyleSheet(self.button_styles['success'])
 
-        # Set calibration and create dialog window
-        self.data_generator.update_calibration(43, 155)
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Test Window")
-        dialog.setMinimumSize(800, 600)
-        layout = QVBoxLayout(dialog)
+            climber_id = self.climber_selector.currentData()
+            if not climber_id:
+                QMessageBox.warning(self, "No Climber Selected", "Please select a climber.")
+                return
 
-        # Create communicator with auto_start=False
-        communicator = CombinedDataCommunicator(
-            data_generator=self.data_generator,
-            admin_id=self.admin_id,
-            climber_id=climber_id,
-            arm_tested=selected_arm,
-            window_size=60,
-            auto_start=False,  # Don't start automatically
-            data_type=data_type,
-            test_type=test_type,
-            parent=None  # Don't set parent to avoid reference cycles
-        )
-        layout.addWidget(communicator)
+            # Clear data before starting the test - this is necessary
+            self.data_generator.clear_data()
+            
+            # Make sure data forwarding is paused until explicitly started
+            self.data_generator.pause_data_forwarding()
 
-        # Create Start and Stop buttons
-        button_layout = QHBoxLayout()
-        start_button = QPushButton("Start")
-        stop_button = QPushButton("Stop")
-        button_layout.addWidget(start_button)
-        button_layout.addWidget(stop_button)
-        layout.addLayout(button_layout)
+            # Set calibration and create dialog window
+            self.data_generator.update_calibration(43, 155)
+            dialog = QDialog(self)
+            dialog.setWindowTitle("Test Window")
+            dialog.setMinimumSize(800, 600)
+            layout = QVBoxLayout(dialog)
 
-        # Connect the start button correctly
-        start_button.clicked.connect(communicator.start_acquisition)
-        stop_button.clicked.connect(lambda: (communicator.stop_acquisition(), dialog.accept()))
+            # Create communicator with auto_start=False
+            communicator = CombinedDataCommunicator(
+                data_generator=self.data_generator,
+                admin_id=self.admin_id,
+                climber_id=climber_id,
+                arm_tested=selected_arm,
+                window_size=60,
+                auto_start=False,  # Don't start automatically
+                data_type=data_type,
+                test_type=test_type,
+                parent=None  # Don't set parent to avoid reference cycles
+            )
+            layout.addWidget(communicator)
 
-        # Override dialog closeEvent
-        def dialog_close_event(event):
-            if not communicator.finalized:
-                reply = QMessageBox.question(
-                    dialog,
-                    "Confirm Exit",
-                    "Are you sure you want to close this Test window?",
-                    QMessageBox.Yes | QMessageBox.No,
-                    QMessageBox.No
-                )
-                if reply == QMessageBox.Yes:
-                    communicator.stop_acquisition()
-                    # Make sure to clear data when the window is closed
+            # Create Start and Stop buttons
+            button_layout = QHBoxLayout()
+            start_button = QPushButton("Start")
+            stop_button = QPushButton("Stop")
+            button_layout.addWidget(start_button)
+            button_layout.addWidget(stop_button)
+            layout.addLayout(button_layout)
+
+            # Connect the start button correctly
+            start_button.clicked.connect(communicator.start_acquisition)
+            stop_button.clicked.connect(lambda: (communicator.stop_acquisition(), dialog.accept()))
+
+            # Override dialog closeEvent
+            def dialog_close_event(event):
+                if not communicator.finalized:
+                    reply = QMessageBox.question(
+                        dialog,
+                        "Confirm Exit",
+                        "Are you sure you want to close this Test window?",
+                        QMessageBox.Yes | QMessageBox.No,
+                        QMessageBox.No
+                    )
+                    if reply == QMessageBox.Yes:
+                        communicator.stop_acquisition()
+                        # Make sure to clear data when the window is closed
+                        self.data_generator.clear_data()
+                        event.accept()
+                else:
+                    # Make sure to clear data even when finalized
                     self.data_generator.clear_data()
                     event.accept()
-            else:
-                # Make sure to clear data even when finalized
-                self.data_generator.clear_data()
-                event.accept()
 
-        dialog.closeEvent = dialog_close_event
-        dialog.exec()
+            dialog.closeEvent = dialog_close_event
+            dialog.exec()
+        except Exception as e:
+            logging.error(f"Error launching test window: {e}")
+            QMessageBox.critical(self, "Error", f"Failed to launch test window: {str(e)}")
 
     def edit_climber_info(self):
-        """Opens an edit dialog for the selected climber."""
+        """
+        Open a dialog to edit information for the selected climber.
+        
+        Creates and displays an edit dialog for modifying climber details.
+        Validates that a climber is selected before proceeding.
+        """
         climber_id = self.climber_selector.currentData()
         name = self.climber_selector.currentText()
         if climber_id:
@@ -406,7 +483,12 @@ class TestPage(QWidget):
             QMessageBox.warning(self, "No Climber Selected", "Please select a climber to edit.")
 
     def add_new_climber(self):
-        """Opens a dialog to add a new climber."""
+        """
+        Open a dialog to add a new climber to the database.
+        
+        Creates and displays a dialog with the NewClimber form for entering
+        climber information. Handles dialog closing with confirmation.
+        """
         add_dialog = QDialog(self)
         add_dialog.setWindowTitle("Add New Climber")
         add_dialog.setMinimumSize(600, 400)
@@ -439,7 +521,12 @@ class TestPage(QWidget):
         add_dialog.exec()
 
     def delete_climber(self):
-        """Deletes the selected climber after confirmation."""
+        """
+        Delete the selected climber from the database after confirmation.
+        
+        Checks if a climber is selected, asks for confirmation, and then
+        performs the deletion. Provides feedback on success or failure.
+        """
         climber_id = self.climber_selector.currentData()
         name = self.climber_selector.currentText()
         if climber_id:
@@ -448,27 +535,41 @@ class TestPage(QWidget):
                 QMessageBox.Yes | QMessageBox.No, QMessageBox.No
             )
             if reply == QMessageBox.Yes:
-                if self.db_manager.delete_climber(climber_id):
-                    QMessageBox.information(self, "Success", f"Climber {name} deleted successfully.")
-                    self.load_climbers()
-                else:
-                    QMessageBox.warning(self, "Error", "Failed to delete climber.")
+                try:
+                    if self.db_manager.delete_climber(climber_id):
+                        QMessageBox.information(self, "Success", f"Climber {name} deleted successfully.")
+                        self.load_climbers()
+                    else:
+                        QMessageBox.warning(self, "Error", "Failed to delete climber. The operation did not complete successfully.")
+                except Exception as e:
+                    logging.error(f"Error deleting climber: {e}")
+                    QMessageBox.critical(self, "Delete Error", f"Failed to delete climber: {str(e)}")
 
     def reload_climbers(self, editing):
-        """Reloads the members list after adding a new member."""
+        """
+        Reload the climber list and update the UI.
+        
+        Args:
+            editing: Boolean indicating if this reload follows an edit operation.
+        """
         if not editing:
             self.load_climbers()
         self.main_stacked_widget.setCurrentWidget(self)
 
     def load_climbers(self):
-        """Loads all climbers for the current admin into the dropdown."""
+        """
+        Load all climbers for the current admin into the dropdown menu.
+        
+        Queries the database for climbers associated with the current admin
+        and populates the climber selection dropdown with their names.
+        """
         try:
             self.climber_selector.clear()
             climbers = self.db_manager.get_climbers_by_admin(self.admin_id)
             if not climbers:
                 self.climber_selector.addItem("No climbers found", -1)
                 return
-        
+    
             # Add climbers to the dropdown
             self.climber_selector.addItem("Select a climber", -1)
             for climber in climbers:
@@ -476,11 +577,17 @@ class TestPage(QWidget):
                 display_text = f"{climber['name']} {climber['surname']}"
                 self.climber_selector.addItem(display_text, climber['id'])
         except Exception as e:
-            print(f"Error loading climbers: {e}")
+            logging.error(f"Error loading climbers: {e}")
+            QMessageBox.critical(self, "Database Error", f"Failed to load climbers: {str(e)}")
 
     def closeEvent(self, event):
         """
-        Handles application closure by stopping all threads and connections.
+        Handle the window close event, ensuring proper cleanup of resources.
+        
+        Args:
+            event: The close event to be handled.
+            
+        Stops all timers, threads, and connections before allowing the window to close.
         """
         # Stop the NIRS connection timer
         if hasattr(self, 'connection_timer') and self.connection_timer is not None:

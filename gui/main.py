@@ -1,11 +1,19 @@
 """
-This module is the entry point of the application, providing the main window that handles page
-transitions between login, registration, and the main application interface.
+Main application module for the Climbing Testing Application.
+
+This module initializes the application, sets up the main window, and coordinates
+navigation between different application views. It serves as the entry point for
+the application and orchestrates the overall application flow.
 
 Key functionalities:
-- Manages the application's main window and page transitions.
-- Switches between login, registration, and the main page.
-- Handles user logout and application shutdown.
+- Initialize the application environment
+- Set up the main application window
+- Manage page navigation and transitions
+- Coordinate database connections
+- Handle application startup and shutdown
+
+The main module ties together all application components and provides
+the overall structure for the climbing research software.
 """
 
 import sys

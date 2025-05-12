@@ -1,10 +1,20 @@
 """
-This module defines the `EditClimberInfoPage` class, which provides an interface for editing a climber's data.
+Climber information editing module for the Climbing Testing Application.
+
+This module defines the EditClimberInfoPage class which provides the user interface
+for modifying existing climber information. It allows researchers to update
+participant details, climbing experience, and other relevant information.
 
 Key functionalities:
-- Displays the current data of the selected climber in a form layout.
-- Allows admins to update fields such as personal info, climbing preferences, and activity levels.
-- Saves changes to the database and includes validation to ensure restricted access based on admin ID.
+- Display existing climber information in an editable form
+- Organize input fields in a structured layout with appropriate validation
+- Update climber records in the database when changes are confirmed
+- Implement interactive sliders for preference distributions (bouldering/lead, indoor/outdoor)
+- Confirm unsaved changes before navigation away from the edit page
+- Restrict access based on admin permissions
+
+The climber editing module ensures that participant information can be maintained
+accurately throughout the research process while preserving data integrity.
 """
 
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QLineEdit, QSpinBox, QLabel, QSlider,
